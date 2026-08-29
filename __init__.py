@@ -50,6 +50,21 @@ from .vessel import (
     VesselTemplate,
 )
 from .scheduler import FairQueue
+from .sailing import (
+    FULL,
+    FURLED,
+    REEFED,
+    SAIL_PLANS,
+    STORM,
+    WORKING,
+    PolarCurve,
+    SailPlan,
+    WindVector,
+    achievable_speed,
+    leeway_angle,
+    relative_wind_angle,
+    sail_plan,
+)
 from .scripts import MaritimeDriver
 from .simulation import (
     ACTIVE,
@@ -131,6 +146,20 @@ __all__ = (
     "format_position",
     "NAUTICAL",
     "RAW",
+    # sailing
+    "WindVector",
+    "PolarCurve",
+    "SailPlan",
+    "SAIL_PLANS",
+    "FURLED",
+    "STORM",
+    "REEFED",
+    "WORKING",
+    "FULL",
+    "sail_plan",
+    "relative_wind_angle",
+    "achievable_speed",
+    "leeway_angle",
     # motion
     "MotionState",
     "MotionLimits",

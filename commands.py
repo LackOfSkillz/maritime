@@ -21,12 +21,17 @@ from evennia.commands.command import Command
 
 from .formatting import RAW, format_position
 from .motion import HelmOrders
+from .sailing import SAIL_PLANS, relative_wind_angle, sail_plan
 from .position import normalize_bearing
 from .resolver import get_world_position
 from .typeclasses import Vessel
 
 # One knot is one nautical mile per hour, and a nautical mile is 1852 metres.
 METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
+
+# Fastest a vessel may be moving and still bring up safely. Letting go with way
+# still on her is how cables part and anchors are left on the bottom.
+MAX_ANCHORING_SPEED = 1.0
 
 
 def spell_bearing(bearing):
@@ -320,3 +325,173 @@ class CmdMaritimeStatus(MaritimeCommand):
             f"  Unsaved      {bool(vessel.ndb.maritime_dirty)}",
         ]
         self.caller.msg(chr(10).join(lines))
+
+
+class CmdSail(MaritimeCommand):
+    """
+    Set, shorten or hand the sail.
+
+    Usage:
+      sail <plan>
+      sail
+
+    Plans, from least canvas to most:
+      furled   - bare poles, no drive at all
+      storm    - storm canvas, for weather that would take the sticks out of her
+      reefed   - reefed sail, prudent in a fresh breeze
+      working  - working sail, her everyday rig
+      full     - everything she has, for light airs
+
+    With no argument, reports what is set and what she is making of it.
+
+    A sailing vessel is not ordered a speed. She makes what the wind on her
+    heading allows, and setting more canvas than the weather will bear is how
+    rigs are lost.
+
+    Example:
+      sail working
+    """
+
+    key = "sail"
+    aliases = ("canvas",)
+
+    def at_helm(self, vessel):
+        """Set or report the sail plan."""
+        wind = vessel.wind_here()
+        if not self.args.strip():
+            angle = relative_wind_angle(vessel.heading, wind)
+            self.caller.msg(
+                f"She carries {vessel.sail_plan.name}, "
+                f"{angle:.0f} degrees off a wind of "
+                f"{ms_to_knots(wind.speed):.0f} knots from {spell_bearing(wind.bearing)}. "
+                f"She could make {ms_to_knots(vessel.sailing_speed()):.1f} knots."
+            )
+            return
+
+        plan = sail_plan(self.args.strip().lower())
+        if plan is None:
+            names = ", ".join(known.key for known in SAIL_PLANS)
+            self.caller.msg(f"No such sail plan. Try one of: {names}")
+            return
+
+        vessel.sail_plan = plan
+        self.caller.msg(f'You call out, "Set {plan.name}!"')
+        self.announce(f'{self.caller.key} calls out, "Set {plan.name}!"')
+        self.aboard(vessel, f'The mate answers, "{plan.name.capitalize()}, aye sir."')
+
+        if wind.speed > plan.safe_wind:
+            self.aboard(
+                vessel,
+                'The mate adds, "She is carrying more than she should in this, sir."',
+            )
+
+
+class CmdWind(MaritimeCommand):
+    """
+    Read the wind.
+
+    Usage:
+      wind
+
+    Reports where the wind is from, how hard it blows, and how the vessel lies
+    to it - which is what decides whether she can go where you want.
+    """
+
+    key = "wind"
+
+    def at_helm(self, vessel):
+        """Report the wind and how she lies to it."""
+        wind = vessel.wind_here()
+        if wind.speed <= 0.0:
+            self.caller.msg("Flat calm. Not a breath, and the sails hang slack.")
+            return
+
+        angle = relative_wind_angle(vessel.heading, wind)
+        if angle < 30.0:
+            lying = "She lies head to wind and will not sail."
+        elif angle < 60.0:
+            lying = "She is close-hauled, working hard to windward."
+        elif angle < 120.0:
+            lying = "She has it on the beam, her best point of sailing."
+        elif angle < 160.0:
+            lying = "She has it on the quarter, running easy."
+        else:
+            lying = "She runs square before it."
+
+        self.caller.msg(
+            f"The wind is {ms_to_knots(wind.speed):.0f} knots "
+            f"from {spell_bearing(wind.bearing)}. {lying}"
+        )
+
+
+class CmdAnchor(MaritimeCommand):
+    """
+    Let go the anchor.
+
+    Usage:
+      drop anchor
+      anchor
+
+    Brings the vessel up and holds her. She must have little enough way on to
+    bring up safely - letting go with the ship still running is how cables part
+    and anchors are lost.
+
+    While anchored she will not answer her helm or make way, whatever canvas is
+    set. Use `weigh anchor` to get under way again.
+    """
+
+    key = "drop anchor"
+    aliases = ("anchor", "let go anchor", "come to anchor")
+
+    def at_helm(self, vessel):
+        """Let go, if she is quiet enough to bring up."""
+        if vessel.anchored:
+            self.caller.msg("She already lies to her anchor.")
+            return
+        if vessel.speed > MAX_ANCHORING_SPEED:
+            self.caller.msg(
+                f"She has too much way on - {ms_to_knots(vessel.speed):.1f} knots. "
+                "Take the way off her first, or you will part the cable."
+            )
+            return
+
+        vessel.anchored = True
+        vessel.orders = HelmOrders(heading=vessel.orders.heading, speed=0.0)
+        self.caller.msg('You call out, "Let go the anchor!"')
+        self.announce(f'{self.caller.key} calls out, "Let go the anchor!"')
+        self.aboard(
+            vessel,
+            "The cable roars out through the hawse, and the anchor takes the ground. "
+            "She brings up and lies quiet.",
+        )
+
+
+class CmdWeighAnchor(MaritimeCommand):
+    """
+    Weigh the anchor and get under way.
+
+    Usage:
+      weigh anchor
+      weigh
+
+    Breaks the anchor out of the ground and brings it home. She will answer her
+    helm again, though she will need canvas set and a wind to go anywhere.
+    """
+
+    key = "weigh anchor"
+    aliases = ("weigh", "up anchor")
+
+    def at_helm(self, vessel):
+        """Break out the anchor."""
+        if not vessel.anchored:
+            self.caller.msg("The anchor is already catted; she is not brought up.")
+            return
+
+        vessel.anchored = False
+        self.caller.msg('You call out, "Weigh anchor!"')
+        self.announce(f'{self.caller.key} calls out, "Weigh anchor!"')
+        self.aboard(
+            vessel,
+            "The capstan turns and the cable comes in dripping. "
+            'The mate calls, "Anchor\'s aweigh, sir!"',
+        )

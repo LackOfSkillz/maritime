@@ -12,6 +12,13 @@ simulation exists yet.
 
 ### Feat
 
+- Add sailing. Wind, a data-driven polar curve, sail plans and leeway, so speed
+  stops being something you order and becomes something you negotiate: a vessel
+  makes what the wind on her heading allows, which head to wind is nothing at all.
+  Wind is named for where it blows *from*, as every chart and sailor names it.
+  Leeway sets her off her heading, worst close-hauled - which is why dead
+  reckoning goes wrong to windward. Adds `sail`, `wind`, `drop anchor` and
+  `weigh anchor`, with period orders and crew replies.
 - Add position formatting, so players read a position rather than coordinates.
   Latitude and longitude in degrees and decimal minutes, which works out cleanly
   because a nautical mile *is* one minute of latitude by definition - northing
@@ -35,6 +42,13 @@ simulation exists yet.
   by, below you feel her heel and hear water on the planking.
 
 ### Fix
+
+- A vessel that turned too close to the wind was trapped for good: she lost drive,
+  losing drive cost her steerage, and without steerage she could not turn back out.
+  The trap is authentic - it is what being in irons means - but a hull nothing can
+  recover is a broken ship rather than a hard one. A crew with canvas aloft can now
+  back a sail to shove her bow round, which is what a real crew does. With sails
+  furled she remains genuinely helpless, as she should be.
 
 - `WorldPosition.__str__` now shows millimetres rather than a single decimal.
   Coordinates were always full 64-bit floats and collision, grappling and

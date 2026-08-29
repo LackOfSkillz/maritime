@@ -3,27 +3,179 @@
 Contribution by Gary Mix, 2026
 
 A maritime simulation system for Evennia. Vessels occupy continuous world coordinates
-rather than moving between ocean rooms — they accelerate, turn, sail with wind and
-current, run aground on real bathymetry, dock at ports and carry characters in ordinary
-Evennia rooms while underway. The ocean is simulated; rooms are how characters experience
-parts of it. Genre-neutral, and usable with core Evennia alone.
+rather than moving between ocean rooms — they gather way, come round, sail with the wind
+on their own polar curves, make leeway, anchor, and carry characters in ordinary Evennia
+rooms while under way. The sea has a bottom, the bottom has depth, and the tide moves the
+surface over it. Genre-neutral, and usable with core Evennia alone.
 
 ## Status
 
-Early development. Nothing here is stable or usable yet.
+**Early development.** The foundations, spatial model, vessels, simulation and sailing are
+working and tested; ports, navigation, weather, crew, combat and damage are not built yet.
+Nothing here is API-stable.
+
+What works today:
+
+```text
+> wind
+The wind is 17 knots from 0-0-0. She has it on the beam, her best point of sailing.
+
+> sail working
+You call out, "Set working sail!"
+The mate answers, "Working sail, aye sir."
+
+> helm 090
+You call out, "Helm, steer 0-9-0."
+The helmsman answers, "Steering 0-9-0 now, sir."
+The deck leans as she comes round to starboard.
+    ...
+The helmsman reports, "Vessel steady on 0-9-0 now, sir."
+She runs east, the sea sliding past her rail.
+
+> position
+Test Sloop
+  Position   0°08.6'S  0°00.5'E
+  Heading    0-9-0   ordered 0-9-0
+  Speed      6.6 kt   ordered 0.0 kt
+```
+
+## Design
+
+Five ideas do most of the work. `docs/architecture.md` has the rest.
+
+**Ships are simulation entities, not moving rooms.** A vessel holds a position; her
+cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
+stores a coordinate, so moving the hull moves the whole ship's company at once, and a
+hundred passengers cost no more than one.
+
+**Continuous coordinates are authoritative, in three axes.** `WorldPosition(x, y, z)`
+where z is elevation against a sea-level datum — negative is seabed, positive is dry land.
+There is no separate depth map: water depth is the difference between the current surface
+and the terrain beneath it, which is what makes tides move every depth in the world
+without touching any terrain.
+
+**The host game owns the clock.** Maritime never invents a travel-speed multiplier. It
+reads elapsed game time from a provider, so a vessel's eight knots means eight nautical
+miles per *in-world* hour whatever `TIME_FACTOR` the game runs at.
+
+**The domain returns data; a separate layer speaks.** Physics and rules are plain Python
+returning structured results. Commands and messaging turn those into prose, which is what
+lets a game replace every word without touching the simulation — including telling a
+captain, a deck hand and a lookout three different things about one event.
+
+**One scheduler, bounded and fair.** Not a ticker per vessel: Evennia's `TickerHandler`
+keys subscriptions on callback and interval but not arguments, so a fleet subscribing one
+method silently overwrites itself and most ships stop moving. A single service processes
+what fits in its budget and resumes where it stopped, so a large fleet lengthens the
+revisit interval rather than blocking the reactor.
 
 ## Installation
 
-Not yet installable. Installation instructions will be added with the first working
-release.
+Not yet installable as a release. To try the current state, place the package at
+`evennia/contrib/full_systems/maritime` and add the helm command set to a ship's room:
+
+```python
+room.cmdset.add("evennia.contrib.full_systems.maritime.cmdsets.HelmCmdSet", persistent=True)
+```
+
+Add the driver script once per game, or nothing will move:
+
+```python
+from evennia.utils import create
+from evennia.contrib.full_systems.maritime.scripts import MaritimeDriver
+
+create.create_script(MaritimeDriver)
+```
+
+Full installation instructions will accompany the first release.
+
+## Settings
+
+All optional. Every one is prefixed `MARITIME_`.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `MARITIME_TIME_PROVIDER` | the game's own clock | Dotted path to a time provider |
+| `MARITIME_RNG_SEED` | unset | Pin the master seed to make a run reproducible |
+| `MARITIME_POSITION_STYLE` | `nautical` | `nautical` or `raw` |
+| `MARITIME_ORIGIN_NORTHING` | `0.0` | Places the world's origin on the globe |
+| `MARITIME_ORIGIN_EASTING` | `0.0` | As above, for longitude |
+| `MARITIME_WIND_BEARING` | `0.0` | Bearing the wind blows *from* |
+| `MARITIME_WIND_SPEED` | `0.0` | Wind speed in metres per second |
 
 ## Usage
 
-Not yet available.
+Commands are on the ship's rooms, so they work with a deck under you and nowhere else.
+
+| Command | Effect |
+| --- | --- |
+| `helm <bearing>` | Steer a course. Spoken and answered as at sea |
+| `sail <plan>` | `furled`, `storm`, `reefed`, `working`, `full` |
+| `wind` | Where the wind is from and how she lies to it |
+| `speed <knots>` | Order a speed, for vessels not under sail |
+| `allstop` | Take the way off her |
+| `drop anchor` / `weigh anchor` | Bring up, and get under way again |
+| `position` | Latitude, longitude, course and speed |
+| `@maritime` | Raw coordinates and motion state (Builder+) |
 
 ## Examples
 
-Not yet available.
+Sailing is a negotiation, not an order. A vessel makes what the wind on her heading
+allows:
+
+```python
+from evennia.contrib.full_systems.maritime import WorldPosition
+from evennia.contrib.full_systems.maritime.sailing import (
+    WindVector, PolarCurve, WORKING, achievable_speed,
+)
+from evennia.contrib.full_systems.maritime.motion import MotionLimits
+
+hull = MotionLimits(max_speed=10.0, acceleration=1.0, turn_rate=6.0)
+wind = WindVector(bearing=0.0, speed=10.0)      # a northerly
+
+achievable_speed(90.0, wind, WORKING, PolarCurve(), hull)   # beam reach - fast
+achievable_speed(45.0, wind, WORKING, PolarCurve(), hull)   # close-hauled - slower
+achievable_speed(0.0, wind, WORKING, PolarCurve(), hull)    # head to wind - nothing
+```
+
+Ship classes are data. There is no `Sloop` class anywhere in this contrib:
+
+```python
+from evennia.contrib.full_systems.maritime import (
+    VesselTemplate, VesselCapacity, DeckPlan, DeckLevel, OPEN, INTERIOR,
+)
+
+SLOOP = VesselTemplate(
+    key="test_sloop", name="Test Sloop",
+    length=18.0, beam=5.4, draft=2.2,
+    capacity=VesselCapacity(displacement=32000.0, berths=4),
+    deck_plan=DeckPlan(decks=(
+        DeckLevel(level=0, name="Main Deck", slots=2, exposure=OPEN),
+        DeckLevel(level=-1, name="Cargo Hold", slots=1, exposure=INTERIOR),
+    )),
+    crew_minimum=1, crew_ideal=4,
+)
+```
+
+## Testing
+
+```bash
+evennia test --settings settings.py evennia.contrib.full_systems.maritime
+```
+
+Roughly 590 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+would take half an hour of wall time runs in milliseconds.
+
+## Limitations
+
+- No ports, docking, navigation, charts, weather, crew, cargo, combat or damage yet.
+- One global wind. A weather provider replaces it later; call sites will not change.
+- Grounding is not implemented, so a vessel will sail across dry land quite happily.
+- The world is a plane. Longitude does not narrow towards the poles, deliberately —
+  a cosine correction would make the displayed position disagree with the distance
+  actually sailed.
+- Spatial indexes are a linear scan. The interface is settled; the structure behind it
+  lands when there is real traffic to measure it against.
 
 ## License
 

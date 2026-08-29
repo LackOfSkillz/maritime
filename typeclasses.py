@@ -26,6 +26,15 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject, DefaultRoom
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .sailing import (
+    FURLED,
+    steerage_floor,
+    PolarCurve,
+    WindVector,
+    achievable_speed,
+    leeway_angle,
+    sail_plan,
+)
 from .position import WorldPosition, bearing_difference, normalize_bearing
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK, OPEN, SEMI_EXPOSED
 
@@ -90,6 +99,9 @@ class Vessel(DefaultObject):
         self.db.speed = 0.0
         self.db.orders = HelmOrders()
         self.db.motion_limits = MotionLimits()
+        self.db.sail_plan_key = FURLED.key
+        self.db.anchored = False
+        self.db.polar_curve = PolarCurve()
 
     # --- position -----------------------------------------------------------
 
@@ -238,6 +250,110 @@ class Vessel(DefaultObject):
             raise TypeError(f"Expected MotionLimits, got {type(limits).__name__}.")
         self.db.motion_limits = limits
 
+    @property
+    def anchored(self):
+        """
+        Whether she lies to her anchor.
+
+        Returns:
+            anchored (bool): True if brought up.
+
+        """
+        return bool(self.db.anchored)
+
+    @anchored.setter
+    def anchored(self, value):
+        """
+        Args:
+            value (bool): Whether she is brought up.
+
+        """
+        self.db.anchored = bool(value)
+
+    # --- rig ----------------------------------------------------------------
+
+    @property
+    def sail_plan(self):
+        """
+        How much canvas is set.
+
+        Returns:
+            plan (SailPlan): The current sail plan. Bare poles by default - a
+                vessel does not put to sea with sail already set.
+
+        """
+        return sail_plan(self.db.sail_plan_key or FURLED.key) or FURLED
+
+    @sail_plan.setter
+    def sail_plan(self, plan):
+        """
+        Args:
+            plan (SailPlan): The plan to set.
+
+        """
+        self.db.sail_plan_key = plan.key
+
+    @property
+    def polar_curve(self):
+        """
+        How this rig drives at each angle off the wind.
+
+        Returns:
+            curve (PolarCurve): The hull's performance data.
+
+        """
+        return self.db.polar_curve or PolarCurve()
+
+    @polar_curve.setter
+    def polar_curve(self, curve):
+        """
+        Args:
+            curve (PolarCurve): The rig's polar data.
+
+        """
+        self.db.polar_curve = curve
+
+    def wind_here(self):
+        """
+        The wind where this vessel is.
+
+        Returns:
+            wind (WindVector): The local wind.
+
+        Notes:
+            A single world wind for now, from `MARITIME_WIND_BEARING` and
+            `MARITIME_WIND_SPEED`. A weather provider replaces this later; the
+            call site does not change when it does.
+
+        """
+        from . import config
+
+        return WindVector(
+            bearing=float(config.get_setting("WIND_BEARING", 0.0)),
+            speed=float(config.get_setting("WIND_SPEED", 0.0)),
+        )
+
+    def sailing_speed(self):
+        """
+        The best speed she can make as she is currently set.
+
+        Returns:
+            speed (float): Metres per second.
+
+        Notes:
+            Replaces the ordered speed when under sail. A sailing vessel is not
+            asked how fast to go; she goes as fast as the wind on this heading
+            allows, which on some headings is not at all.
+
+        """
+        return achievable_speed(
+            self.heading,
+            self.wind_here(),
+            self.sail_plan,
+            self.polar_curve,
+            self.motion_limits,
+        )
+
     # --- simulation ---------------------------------------------------------
 
     def at_maritime_tick(self, elapsed):
@@ -259,9 +375,48 @@ class Vessel(DefaultObject):
         position = self.maritime_position
         if position is None:
             return False
+        if self.anchored:
+            # She is held by the ground. Canvas and helm make no difference until
+            # the anchor is weighed - which is the whole point of letting it go.
+            if self.speed:
+                self.ndb.speed = 0.0
+                self.ndb.maritime_dirty = True
+            return False
 
         before = MotionState(position=position, heading=self.heading, speed=self.speed)
-        after = advance(before, self.orders, self.motion_limits, elapsed)
+
+        orders = self.orders
+        wind = self.wind_here()
+        under_sail = self.sail_plan.area > 0.0 and wind.speed > 0.0
+        if under_sail:
+            orders = HelmOrders(heading=orders.heading, speed=self.sailing_speed())
+
+        limits = self.motion_limits
+        if under_sail:
+            # A crew with canvas aloft can back a sail to shove her bow round,
+            # so she is never wholly without steering.
+            floor = steerage_floor(wind, self.sail_plan)
+            if floor > 0.0 and before.speed < limits.max_speed:
+                needed = floor * limits.max_speed / max(before.speed, 1e-9)
+                limits = MotionLimits(
+                    max_speed=limits.max_speed,
+                    acceleration=limits.acceleration,
+                    turn_rate=max(limits.turn_rate, min(needed, limits.turn_rate * 20.0)),
+                )
+
+        after = advance(before, orders, limits, elapsed)
+
+        if under_sail and after.speed > 0.0:
+            slip = leeway_angle(after.heading, wind, self.sail_plan, after.speed)
+            if slip:
+                # She points one way and travels another. Correct the track
+                # rather than the heading - her head really is where it was.
+                travelled = before.position.horizontal_distance_to(after.position)
+                after = MotionState(
+                    position=before.position.moved(after.heading + slip, travelled),
+                    heading=after.heading,
+                    speed=after.speed,
+                )
         if after == before:
             return False
 
