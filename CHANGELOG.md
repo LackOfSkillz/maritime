@@ -68,6 +68,11 @@ combat and damage are not.
 
 ### Fix
 
+- Remove two unused imports from the grounding tests. Caught by CI rather than
+  locally, because the local check before that push was the discipline script
+  alone and not the linters CI also runs. The three commands that make up the
+  gate are now written down in `CLAUDE.md` as one gate.
+
 - A vessel that turned too close to the wind was trapped for good: she lost drive,
   losing drive cost her steerage, and without steerage she could not turn back out.
   The trap is authentic - it is what being in irons means - but a hull nothing can
@@ -210,6 +215,10 @@ combat and damage are not.
   tutorial zone a deliverable rather than optional polish.
 
 ### Chore
+
+- Move the CI actions to `checkout@v5` and `setup-python@v6`. The v4/v5 pair
+  targets Node 20, which the runners now force onto Node 24 with a deprecation
+  annotation on every build - a warning that is about to become a failure.
 
 - Add CI running `black`, `flake8`, project discipline checks, and the unit tests
   on Python 3.12 and 3.13 with the contrib installed at its canonical import path.

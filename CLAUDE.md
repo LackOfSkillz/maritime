@@ -556,7 +556,21 @@ turns an unrelated upstream release into a red build on an untouched branch.
 
 ## 17. Before you claim you are done
 
-Run the tests. Run the discipline checks. Read the output. Confirm the change is inside this
-folder and nothing leaked into the Evennia clone.
+Run the tests. Run the whole gate, not part of it. Read the output. Confirm the change is
+inside this folder and nothing leaked into the Evennia clone.
+
+The gate is three commands, and it is three because CI runs three. Running only the last
+one is how a push goes red on two unused imports that `black` and the discipline script
+were never asked about:
+
+```bash
+black --check --diff --line-length 100 --extend-exclude _reference .
+flake8 --max-line-length 100 --extend-exclude _reference .
+python .github/scripts/check_discipline.py
+```
+
+`--extend-exclude _reference` matters. The studied copy of another contrib lives there and
+is not ours to format; without the exclusion the gate fails on somebody else's line
+lengths and you learn to ignore it, which is worse than not running it.
 
 Evidence before assertions, every time.
