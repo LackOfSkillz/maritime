@@ -12,6 +12,14 @@ simulation exists yet.
 
 ### Feat
 
+- Add terrain elevation, tides and derived water depth. There is no depth map -
+  one terrain field crosses zero, and depth is the difference between the current
+  water surface and the ground beneath it, computed rather than stored. Sea level
+  is a datum, not a constant, so moving the surface changes every depth in the
+  world without touching terrain: a bank can dry out at low water and flood as the
+  tide rises. Depth queries require a game time, since a depth without one asks
+  about the datum rather than the water actually present. `FlatTideProvider` and
+  `FlatSeaMapProvider` give a game vessels before it needs bathymetry.
 - Add `WorldPosition`: continuous three-axis coordinates, where z is elevation
   relative to the sea-level datum. One field covers land, sea surface and seabed,
   so tides, grounding and shorelines derive from a single model rather than three.

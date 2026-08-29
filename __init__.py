@@ -12,6 +12,13 @@ Commonly used names are re-exported here, so games can import them directly:
 """
 
 from . import config  # noqa: F401
+from .bathymetry import (
+    DATUM,
+    FlatSeaMapProvider,
+    FlatTideProvider,
+    MaritimeMapProvider,
+    MaritimeTideProvider,
+)
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
 from .position import DEFAULT_REGION, WorldPosition, normalize_bearing
@@ -40,6 +47,11 @@ __all__ = (
     "AI",
     # space
     "WorldPosition",
+    "DATUM",
+    "MaritimeMapProvider",
+    "FlatSeaMapProvider",
+    "MaritimeTideProvider",
+    "FlatTideProvider",
     "normalize_bearing",
     "DEFAULT_REGION",
     # events
