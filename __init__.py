@@ -14,6 +14,7 @@ Commonly used names are re-exported here, so games can import them directly:
 from . import config  # noqa: F401
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
+from .position import DEFAULT_REGION, WorldPosition, normalize_bearing
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -37,6 +38,10 @@ __all__ = (
     "DAMAGE",
     "WEATHER",
     "AI",
+    # space
+    "WorldPosition",
+    "normalize_bearing",
+    "DEFAULT_REGION",
     # events
     "Event",
     "EventBus",

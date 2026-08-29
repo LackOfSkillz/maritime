@@ -7,11 +7,21 @@ Entry prefixes follow Evennia's own changelog convention (`Feat:`, `Fix:`, `Docs
 
 ## Unreleased
 
-Nothing released yet. The contrib is in Phase 0 - foundations only, no vessel
-simulation exists.
+Nothing released yet. Foundations and the spatial model are in place; no vessel
+simulation exists yet.
 
 ### Feat
 
+- Add `WorldPosition`: continuous three-axis coordinates, where z is elevation
+  relative to the sea-level datum. One field covers land, sea surface and seabed,
+  so tides, grounding and shorelines derive from a single model rather than three.
+  Bearings are compass bearings - north is 0, east is 90, increasing clockwise -
+  which is deliberately not the convention `math.atan2` uses. Horizontal and true
+  distance are separate methods, because a diver forty metres below a hull is
+  nearly zero metres away for navigation and forty for proximity. A region is a
+  coordinate space rather than a label: a lake and an ocean may both have a point
+  at (0, 0), so operations across regions raise instead of returning a
+  meaningless number. Non-finite coordinates are refused at construction.
 - Add settings resolution. Games configure maritime from their own `settings.py`
   using `MARITIME_`-prefixed names, never by editing contrib source.
   `MARITIME_TIME_PROVIDER` takes a dotted path so a game can substitute its own
