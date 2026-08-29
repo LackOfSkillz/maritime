@@ -353,7 +353,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 935 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 955 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -370,9 +370,9 @@ would take half an hour of wall time runs in milliseconds.
   reckoned rather than known, but a lookout's range to a contact is still exact.
 - Every vessel scans every tick, against a linear index. Fine for a harbour, and the reason
   the index interface exists separately from what is behind it.
-- Grounding samples the vessel centre point only. A hull can step over a reef
-  narrower than one tick of movement; swept hull-footprint testing lands with the
-  water column phase.
+- A hull is sampled at seven points along her track, not swept as a continuous shape, so
+  a hazard smaller than the gaps between those points can still pass between them. A
+  vessel with no measured length or beam is tested at her centre alone.
 - The world is a plane. Longitude does not narrow towards the poles, deliberately —
   a cosine correction would make the displayed position disagree with the distance
   actually sailed.

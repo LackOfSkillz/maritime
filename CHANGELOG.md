@@ -13,6 +13,22 @@ combat and damage are not.
 
 ### Feat
 
+- Grounding now tests a hull's footprint along her whole track instead of one
+  point where she ends up. This was the largest known gap between the
+  architecture doc and the code, recorded in both for several phases: a fast
+  vessel could step clean over a reef narrower than one tick of her movement,
+  and the faster she went the more of the seabed she was entitled to ignore -
+  precisely backwards, since speed is what makes grounding expensive.
+- A hull is seven points in a rough ship shape rather than a rectangle, because
+  a rectangle puts steel where a ship has none. Her bow can ground while her
+  centre is still in deep water, which is what a large ship actually does.
+- She is stopped at the first thing she touches rather than at the end of the
+  move. A ship that struck a reef a third of the way through a tick did not
+  travel the other two thirds.
+- Demonstrated live: a hull making 25 m/s asked to run 750 metres across 400
+  metres of rock. The old point test at her destination reported clear water; the
+  swept test stopped her one metre short of the ledge.
+
 - Add dead reckoning, and with it the possibility of being genuinely lost. A
   vessel now carries an estimate of her own position, advanced by the course
   steered and the distance logged and by nothing else - which is what a
@@ -373,6 +389,14 @@ combat and damage are not.
   tutorial zone a deliverable rather than optional polish.
 
 ### Chore
+
+- Record the two ways mutation testing lies, in `CLAUDE.md`. A mutation that does
+  not apply is a no-op that prints OK exactly like a survivor - already guarded.
+  The new one: Python validates a `.pyc` against source mtime *and size*, so a
+  same-length mutation written and restored inside one second leaves bytecode the
+  interpreter goes on serving after the file is back. That produced a test
+  failing against code that was correct when read, and could as easily have
+  hidden a survivor. The harnesses now clear `__pycache__` on restore.
 
 - Move the crew's spoken orders and replies out of `commands.py` and into
   `messaging.py`, alongside the ship's own narration. `MARITIME_NARRATOR` was

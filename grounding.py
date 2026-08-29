@@ -61,6 +61,9 @@ class GroundingResult(Result):
         bottom (str): What the ground is made of.
         speed (float): Speed at the moment of contact, in metres per second.
         severity (str): `TOUCHED`, `AGROUND` or `HOLED`.
+        position (WorldPosition or None): Where along her track this was found.
+            Set by the swept test, which stops her where she struck rather than
+            where she was heading.
 
     Notes:
         A successful result means she is clear, with `clearance` reporting by how
@@ -74,6 +77,7 @@ class GroundingResult(Result):
     bottom: str = UNKNOWN
     speed: float = 0.0
     severity: str = ""
+    position: object = None
 
 
 def keel_clearance(position, draft, map_provider, game_time):
@@ -188,3 +192,166 @@ def refloats_on_tide(result):
 
     """
     return result.severity != HOLED and result.bottom not in FOUL_GROUND
+
+
+# Sample points on a hull, as fractions of half-length along her and half-beam
+# across her. A pointed bow and a single stern point rather than a rectangle's
+# four corners, because a rectangle puts steel where a ship has none and would
+# ground her on water she is not actually over.
+HULL_OUTLINE = (
+    (0.0, 0.0),  # amidships
+    (1.0, 0.0),  # bow
+    (0.6, 1.0),  # starboard bow
+    (0.6, -1.0),  # port bow
+    (-0.6, 1.0),  # starboard quarter
+    (-0.6, -1.0),  # port quarter
+    (-1.0, 0.0),  # stern
+)
+
+# How far apart to test along a track, as a fraction of the vessel's length.
+# Below one, consecutive footprints overlap, so nothing longer than the gap can
+# pass between two samples untested.
+SWEEP_OVERLAP = 0.5
+
+# Shortest step to take along a track, in metres, whatever the hull's length.
+# Stops an unmeasured or very small vessel asking for an unbounded number of
+# samples across a long run.
+MIN_SWEEP_STEP = 2.0
+
+
+def hull_points(position, heading, length, beam):
+    """
+    The points on a hull worth testing against the ground.
+
+    Args:
+        position (WorldPosition): Where her centre is.
+        heading (float): Which way she is pointing, in degrees.
+        length (float): Her length, in metres.
+        beam (float): Her beam, in metres.
+
+    Returns:
+        points (tuple): `WorldPosition` objects, amidships first.
+
+    Notes:
+        A hull is not a point, and testing her centre alone says a ship is safe
+        while her bow is over a reef. Seven points in a rough ship shape - a
+        single bow, quarters at the widest part, a single stern.
+
+        A vessel with no dimensions returns her centre only. That is deliberate:
+        a game that has not measured its hulls gets the old behaviour rather than
+        a hull of size zero or an error.
+
+    """
+    if length <= 0.0 or beam <= 0.0:
+        return (position,)
+
+    half_length, half_beam = length / 2.0, beam / 2.0
+    points = []
+    for along, across in HULL_OUTLINE:
+        forward = position.moved(heading, along * half_length)
+        points.append(forward.moved(heading + 90.0, across * half_beam))
+    return tuple(points)
+
+
+def sweep_positions(before, after, length):
+    """
+    Centre positions to test along a track.
+
+    Args:
+        before (WorldPosition): Where she started the step.
+        after (WorldPosition): Where she is proposing to end it.
+        length (float): Her length, in metres.
+
+    Returns:
+        positions (tuple): Centres from just after the start through to the end.
+
+    Notes:
+        The reason this exists at all: a vessel tested only where she ends up can
+        step clean over a shoal narrower than one tick of her movement, and the
+        faster she goes the more of the seabed she is entitled to ignore - which
+        is precisely backwards, since speed is what makes grounding expensive.
+
+        Steps overlap by construction, so nothing longer than half her length can
+        lie between two consecutive tests untouched. Something smaller than the
+        gaps *within* the outline can still slip between her sample points; that
+        is a real limit of sampling a shape with seven points rather than a flaw
+        in the sweep.
+
+    """
+    travelled = before.horizontal_distance_to(after)
+    step = max(length * SWEEP_OVERLAP, MIN_SWEEP_STEP)
+    if travelled <= step:
+        return (after,)
+
+    bearing = before.bearing_to(after)
+    count = int(travelled / step)
+    positions = [before.moved(bearing, step * index) for index in range(1, count + 1)]
+    positions.append(after)
+    return tuple(positions)
+
+
+def check_swept_grounding(
+    before, after, heading, draft, speed, length, beam, map_provider, game_time
+):
+    """
+    Test a hull along her whole track, not only where she ends up.
+
+    Args:
+        before (WorldPosition): Where she started the step.
+        after (WorldPosition): Where propulsion and the water would put her.
+        heading (float): Which way she is pointing, in degrees.
+        draft (float): How deep she sits, in metres.
+        speed (float): How fast she is going, in metres per second.
+        length (float): Her length, in metres.
+        beam (float): Her beam, in metres.
+        map_provider (MaritimeMapProvider): The world's terrain.
+        game_time (float): Game time in seconds.
+
+    Returns:
+        result (GroundingResult): Successful if she is clear the whole way, and
+            failed at the first contact if she is not. `position` is where she
+            actually got to.
+
+    Notes:
+        Stops her at the first thing she touches rather than at the end of the
+        step. A ship that struck a reef a third of the way through a tick did not
+        also travel the other two thirds, and putting her at the far end of the
+        move before declaring her aground would leave her sitting somewhere she
+        never reached.
+
+        The clearance reported is the least found anywhere on the hull, so a
+        vessel whose bow is in three metres and whose stern is in twelve reports
+        three - which is the number that decides anything.
+
+    """
+    thinnest = None
+    for centre in sweep_positions(before, after, length):
+        for point in hull_points(centre, heading, length, beam):
+            contact = check_grounding(point, draft, speed, map_provider, game_time)
+            if not contact:
+                return GroundingResult.failed(
+                    contact.severity,
+                    clearance=contact.clearance,
+                    depth=contact.depth,
+                    bottom=contact.bottom,
+                    speed=speed,
+                    severity=contact.severity,
+                    position=centre,
+                )
+            if thinnest is None or contact.clearance < thinnest.clearance:
+                thinnest = contact
+
+    # Clear the whole way, so she is where she was going. The clearance reported
+    # is the least found anywhere along it - that is the number a shoal warning
+    # is about - but the *position* is the end of the run and never the shallow
+    # spot she passed over, or a ship would be dragged back to the thinnest water
+    # she crossed.
+    if thinnest is None:
+        return GroundingResult.ok(position=after)
+    return GroundingResult.ok(
+        clearance=thinnest.clearance,
+        depth=thinnest.depth,
+        bottom=thinnest.bottom,
+        speed=speed,
+        position=after,
+    )

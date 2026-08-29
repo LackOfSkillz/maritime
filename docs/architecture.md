@@ -300,10 +300,22 @@ she is proposing to be. Sampling only the endpoints lets a fast hull step clean 
 narrower than one tick of movement — and the faster she goes, the more of the seabed she can
 ignore, which is precisely backwards.
 
-Not built. Grounding currently samples the vessel's centre point at the end of the step.
-This is the largest known gap between what this document describes and what the code does;
-it is recorded in the README's limitations and lands with the water column phase. The
-interface does not change when it does.
+Built. A hull is seven points in a rough ship shape — a single bow, quarters at her widest,
+a single stern — rather than a rectangle, because a rectangle puts steel where a ship has
+none and would ground her on water she is not over. The track is sampled at half her length,
+so consecutive footprints overlap and nothing longer than the gap lies between two tests
+untouched, and she is stopped at the first thing she touches rather than at the end of the
+move — a ship that struck a reef a third of the way through a tick did not travel the other
+two thirds.
+
+Demonstrated against the test world's own ledge: a hull making 25 m/s asked to run 750
+metres in one tick, straight across 400 metres of rock. The old point test at her
+destination reported clear water. The swept test stopped her one metre short of the ledge.
+
+Two limits remain, and both are sampling rather than structure. Something smaller than the
+gaps *within* the seven-point outline can still slip between them, and a vessel with no
+measured length or beam is tested at her centre alone — which is deliberate, so a game that
+has not measured its hulls gets the old behaviour rather than a hull of size zero.
 
 ---
 
@@ -695,10 +707,10 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | --- | --- | --- | --- |
 | 0 | Foundation | done | Package, clock, `TimeProvider`, RNG streams, results, events, config, test harness |
 | 1 | Coordinates and navigational surface | done | `WorldPosition`, distance, bearing, terrain Z, derived depth, map provider, resolver |
-| 2 | Hazard geometry and spatial foundation | partial | Both indexes done. Map tiles, hull footprint and swept envelope are not |
+| 2 | Hazard geometry and spatial foundation | partial | Indexes, hull footprint and swept envelope done. Map tiles are not |
 | 3 | Vessel foundation | done | `Vessel`, `VesselTemplate`, `ShipRoom`, creation, persistence |
 | 4 | Simulation service | partial | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore. The budget is a batch count, not a measured millisecond budget |
-| 5 | Basic safe movement | partial | Movement, helm, grounding, reload survival. Centre-point testing, not swept |
+| 5 | Basic safe movement | done | Movement, helm, swept grounding against a hull footprint, reload survival |
 | 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
 | 7 | Ports | done | Sized berths, approach preconditions, gangway as a real exit, `dock` and `cast off` |
 | 8 | Observation | partial | Horizon, height of eye, contacts, `lookout`. Dynamic exterior descriptions are not built |

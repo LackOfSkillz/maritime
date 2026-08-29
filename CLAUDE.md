@@ -139,6 +139,25 @@ Never claim something works without running the tests and reading the output.
 
 ---
 
+### Mutation testing, and the two ways it lies to you
+
+Changing a line and re-running is how a test suite gets checked. Two failure modes make it
+report success when it has proved nothing, and both have happened here:
+
+**A mutation that does not apply is a no-op**, and a no-op prints OK exactly like a
+surviving mutant. Every mutation must assert its target text is present before it is
+written. Never skip this.
+
+**A same-length mutation can leave stale bytecode behind.** Python validates a `.pyc`
+against the source's mtime *and size*. Flip `<` to `>` and the size is identical; write and
+restore inside the same second and the mtime matches too — so the interpreter keeps serving
+the mutant after the file on disk has been put back. That produced a test failing against
+code that was demonstrably correct when read, and it could as easily hide a surviving
+mutant in a later run. Delete `__pycache__` after restoring, every time.
+
+Both of these turn the exercise into theatre while looking exactly like diligence, which is
+what makes them worth writing down rather than remembering.
+
 ## 5. Code style (Evennia Style Guide + PEP 8)
 
 Authoritative settings, taken from Evennia's own linter config:

@@ -27,7 +27,7 @@ from evennia.objects.objects import DefaultObject
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
-from .grounding import check_grounding
+from .grounding import check_swept_grounding
 from .observation import Lookout
 from .sailing import Rigged, steerage_floor, leeway_angle
 from .position import WorldPosition, normalize_bearing
@@ -428,11 +428,30 @@ class Vessel(Navigator, Berthing, Lookout, Rigged, Situated, Compartmented, Defa
         # anything she does, so it is set rather than integrated - which is why
         # she cannot be sailed down to the seabed by assigning a negative z.
         floating = after.position.with_z(world.sea_surface_z_at(after.position, now))
-        after = MotionState(position=floating, heading=after.heading, speed=after.speed)
 
-        contact = check_grounding(floating, self.draft, after.speed, world, now)
+        # Her whole hull, along her whole track. Testing one point where she ends
+        # up lets a fast ship step over a shoal narrower than one tick of her
+        # movement, and lets a wide one sail her bow through a reef.
+        contact = check_swept_grounding(
+            before.position,
+            floating,
+            after.heading,
+            self.draft,
+            after.speed,
+            self.length,
+            self.beam,
+            world,
+            now,
+        )
 
-        self.ndb.maritime_position = floating
+        # Where she actually got to, which on a contact is where she struck
+        # rather than where she was going.
+        reached = (contact.position or floating).with_z(
+            world.sea_surface_z_at(contact.position or floating, now)
+        )
+        after = MotionState(position=reached, heading=after.heading, speed=after.speed)
+
+        self.ndb.maritime_position = reached
         self.ndb.heading = after.heading
         self.ndb.maritime_dirty = True
 

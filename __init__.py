@@ -62,6 +62,9 @@ from .messaging import (
     spell_bearing,
 )
 from .grounding import (
+    check_swept_grounding,
+    hull_points,
+    sweep_positions,
     AGROUND,
     HOLED,
     TOUCHED,
@@ -318,6 +321,9 @@ __all__ = (
     # grounding
     "keel_clearance",
     "check_grounding",
+    "check_swept_grounding",
+    "hull_points",
+    "sweep_positions",
     "is_shoaling",
     "refloats_on_tide",
     "GroundingResult",
