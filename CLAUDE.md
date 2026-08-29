@@ -91,9 +91,23 @@ instructions are required, not optional, and must be detailed enough to actually
 
 - Every milestone ships implementation **and** its tests together. Never defer tests to a
   later pass.
-- Tests go in `tests.py`, or a `tests/` package when there are many across modules. Evennia
-  discovers them automatically.
-- Use `evennia.utils.test_resources` base classes rather than hand-rolling fixtures.
+- Test modules must be named `test*.py` (`tests.py`, `test_sailing.py`). Evennia finds them
+  wherever they are in the package. Use a `tests/` package once there are many.
+- Test classes inherit from `unittest.TestCase` at any distance; test methods start with
+  `test_`.
+
+**Use the `Base*` test classes, not the plain ones.** This is a contrib, so its tests are run
+as part of the whole Evennia suite via `evennia test evennia` — under *default* settings, not
+ours. The `Base*` variants enforce default settings and are the correct choice here:
+
+| Class | Use |
+| --- | --- |
+| `BaseEvenniaTest` | full object environment, default settings enforced |
+| `BaseEvenniaCommandTest` | as above, plus the `.call()` command tester |
+| `BaseEvenniaTestCase` | no default objects, just enforced default settings |
+
+All are in `evennia.utils.test_resources`. They define `setUp`/`tearDown` already — if you
+override either, call `super()` or you will break the fixture.
 
 Run them with:
 
@@ -170,7 +184,76 @@ still ask.
 
 ---
 
-## 7. General engineering standards
+## 7. Evennia engine rules
+
+These are drawn from Evennia's own docs and are the ones most likely to be broken by someone
+who knows Python but not Evennia. Several are silent failures rather than errors.
+
+### Typeclass names are globally unique
+
+> "The typeclass' name must be *unique* across the entire server namespace. There must never
+> be two same-named classes defined anywhere."
+
+Before naming a typeclass, grep the Evennia tree for a class of that name. A collision is a
+server-wide error, not a local one. Also note a typeclass is only discoverable if its module
+is imported from somewhere.
+
+### Never use a ticker to catch changes
+
+> "You should *never* use a ticker to catch *changes*."
+
+Polling every second to notice something that changed is wasted work 99% of the time, and
+worse if it means walking objects in the database. Prefer:
+
+- systems that **report their own** state changes (hooks, signals),
+- values computed **on demand**, when something actually examines them.
+
+A vessel under way genuinely changes every tick, so simulating it is justified. Derived
+state — visibility, contacts, effective speed — is not, and should be computed when asked
+for. This is the same split as persist-vs-derive in `docs/architecture.md`.
+
+### TickerHandler subscriptions collide silently
+
+Tickers are identified by callable + interval + `persistent` flag + `idstring` — **not** by
+their arguments. Two subscriptions to the same callback and interval with different arguments
+will overwrite each other unless each supplies a distinct `idstring`. Everything passed to a
+ticker is pickled, with the same restrictions as Attributes.
+
+### Attribute reads are cheap; writes and nested mutation are not
+
+Evennia caches Attributes aggressively — reading a cached Attribute is about as fast as a
+normal Python property. The costs are elsewhere:
+
+- **Writing** repeatedly (many times per second) is the real expense.
+- A `dict` or `list` off `.db` comes back as a `_SaverDict`/`_SaverList`, and **every nested
+  mutation commits**. Take one snapshot, mutate it in plain Python, write it back once.
+- Deeply nested structures are slower to store, because Evennia must walk the whole structure
+  to find database objects to convert. Keep stored shapes flat.
+
+This is why the simulation keeps hot state in memory and checkpoints, rather than writing
+through per step.
+
+### Use a Script, not a homeless Object
+
+> "If you ever consider creating an Object with a `None`-location just to store some game
+> data, you should really be using a Script instead."
+
+Once a Script exists, starting, stopping and pausing it is cheap.
+
+### Optimise only after measuring
+
+Evennia's own guidance quotes Knuth: don't optimise until you have identified a real need,
+and remember optimisation usually costs readability. Working first, measured second, faster
+third.
+
+For load testing use the **Dummyrunner** (`evennia/server/profiling`) — never against a
+production database. `cProfile` output lands in `server/logs/server.prof`. When timing
+anything involving database writes, drop `timeit`'s repeat count to ~100–1000; the default of
+a million will not finish.
+
+---
+
+## 8. General engineering standards
 
 These are not stylistic preferences. Treat violations as defects.
 
@@ -188,7 +271,7 @@ These are not stylistic preferences. Treat violations as defects.
 
 ---
 
-## 8. Dependencies
+## 9. Dependencies
 
 > "The contribution should preferably work in isolation from other contribs (only make use of
 > core Evennia) so it can easily be dropped into use."
@@ -201,7 +284,7 @@ These are not stylistic preferences. Treat violations as defects.
 
 ---
 
-## 9. Genre-agnostic by default
+## 10. Genre-agnostic by default
 
 > "Try to make your contribution as genre-agnostic as possible and assume your code will be
 > applied to a very different game than you had in mind when creating it."
@@ -212,7 +295,7 @@ what happens to an offline character, tidal range, how damage maps to their comb
 
 ---
 
-## 10. Licensing
+## 11. Licensing
 
 All contributions are released under the **same license as Evennia** (BSD 3-Clause). See
 `LICENSE`.
@@ -223,7 +306,7 @@ not at submission time, when it is no longer reconstructible.
 
 ---
 
-## 11. Git hygiene
+## 12. Git hygiene
 
 - Commit subjects are written for a stranger reading the log, because a stranger will.
 - One logical change per commit. No churn commits, no "fix fix fix" chains.
@@ -235,7 +318,7 @@ not at submission time, when it is no longer reconstructible.
 
 ---
 
-## 12. Submission process — for reference, not to act on
+## 13. Submission process — for reference, not to act on
 
 - A contrib is submitted as a **pull request** to Evennia.
 - PRs are reviewed and may go through several iterations. Merging is not guaranteed —
@@ -247,7 +330,7 @@ Do not initiate any of this. Gary decides when and whether to submit.
 
 ---
 
-## 13. Before you claim you are done
+## 14. Before you claim you are done
 
 Run the tests. Read the output. Check the line count of anything you touched. Confirm the
 change is inside this folder and nothing leaked into the Evennia clone.
