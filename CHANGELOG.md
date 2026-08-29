@@ -357,6 +357,17 @@ combat and damage are not.
 
 ### Chore
 
+- Say "take the way off her" once instead of three times. Docked, aground and
+  anchored each stopped the tick with the same four lines, which is three places
+  for them to drift apart. `held_by()` names which one has her - they are undone
+  by three different acts and the distinction is worth keeping - and
+  `take_way_off()` does the stopping.
+- Record the amended file-size rule in `CLAUDE.md`: a thousand lines unless
+  splitting makes no code sense, with the measurement to check before proposing
+  one. `typeclasses.py` is 920 lines carrying 99 lines of logic; the rest is the
+  docstrings the style guide requires. A `Vessel` split into a mixin of getters
+  and setters would have been worse code with a better number.
+
 - Move `ShipRoom` out of `typeclasses.py` into `rooms.py`. A compartment is not
   a vessel, and this is where deck plans, stations, flooding order and
   compartment damage all land. `typeclasses.py` drops from 825 lines to 718.

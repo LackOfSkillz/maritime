@@ -657,6 +657,38 @@ class Vessel(DefaultObject):
 
     # --- simulation ---------------------------------------------------------
 
+    #: What stops a hull answering her helm. Lines ashore, the ground under her,
+    #: or her own anchor - canvas and rudder make no difference to any of them,
+    #: and each is undone by a different act with its own name.
+    HELD_FAST = ("docked", "aground", "anchored")
+
+    def held_by(self):
+        """
+        What is holding her, if anything.
+
+        Returns:
+            reason (str or None): One of `HELD_FAST`, or None if she is free.
+
+        """
+        for reason in self.HELD_FAST:
+            if getattr(self, reason):
+                return reason
+        return None
+
+    def take_way_off(self):
+        """
+        Stop her, if she is still carrying way.
+
+        Returns:
+            stopped (bool): True if there was way to take off.
+
+        """
+        if not self.speed:
+            return False
+        self.ndb.speed = 0.0
+        self.ndb.maritime_dirty = True
+        return True
+
     def at_maritime_tick(self, elapsed):
         """
         Advance this vessel through a stretch of game time.
@@ -682,26 +714,8 @@ class Vessel(DefaultObject):
         traffic().note(self, position)
         self.narrator.sightings(self.contacts())
 
-        if self.docked:
-            # Made fast. Lines ashore hold her against wind, sail and helm alike,
-            # and getting under way is an act with a name.
-            if self.speed:
-                self.ndb.speed = 0.0
-                self.ndb.maritime_dirty = True
-            return False
-        if self.aground:
-            # Held by the ground. Canvas and helm will not shift her; getting off
-            # is a separate act, which is the point of running aground.
-            if self.speed:
-                self.ndb.speed = 0.0
-                self.ndb.maritime_dirty = True
-            return False
-        if self.anchored:
-            # She is held by the ground. Canvas and helm make no difference until
-            # the anchor is weighed - which is the whole point of letting it go.
-            if self.speed:
-                self.ndb.speed = 0.0
-                self.ndb.maritime_dirty = True
+        if self.held_by():
+            self.take_way_off()
             return False
 
         before = MotionState(position=position, heading=self.heading, speed=self.speed)

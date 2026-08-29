@@ -193,11 +193,33 @@ Modules start with a docstring explaining what the module is and why it exists.
 
 **Hard guideline: no source file over 1000 lines.**
 
-If a file is approaching the limit, that is a signal the design is wrong, not that the limit
-is wrong. Split it along a real seam — a separate concern, not an arbitrary cut point.
+**Unless splitting makes no code sense.** The limit exists to catch a design going wrong,
+so it is a prompt to look, not an instruction to cut. When a file approaches it, the
+question is *what is the most complex thing in here* — not *how do I get under the number*.
+Split along a real seam, a separate concern; never at an arbitrary line.
 
 **Exceeding 1000 lines requires Gary's explicit approval, in advance.** Do not commit a file
-over the limit and explain afterwards. Ask, give the reason, and wait for a decision.
+over the limit and explain afterwards. Ask, give the reason, and wait for a decision. If the
+honest answer is that no seam exists, say that and ask — do not invent one.
+
+### Raw lines over-report in this codebase, and by a lot
+
+Every member here carries mandatory `Args`/`Returns`/`Notes`. Measure before proposing a
+split, because the number is mostly prose:
+
+```text
+typeclasses.py   920 lines = 585 docstring + 34 comment + 202 blank + 99 code
+commands.py      822 lines = 407 docstring +  6 comment + 180 blank + 229 code
+```
+
+Ninety-nine lines of logic is not a god file, however it scores. A `Vessel` split into a
+mixin of getters and setters would be worse code with a better number, and two places to
+look for one question.
+
+Note the direction this cuts. Decomposing a 116-line method into six small documented ones
+made `typeclasses.py` *longer* — six docstrings cost more than the block they replaced. A
+rule read literally would have rejected the better structure. Read as a prompt, it found
+the real defect underneath: the same four lines repeated in three guards.
 
 This applies to source modules. Data files and generated content are judged case by case, but
 still ask.
