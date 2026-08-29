@@ -22,6 +22,12 @@ from .bathymetry import (
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
 from .position import DEFAULT_REGION, WorldPosition, normalize_bearing
+from .resolver import (
+    NoWorldPosition,
+    get_world_position,
+    has_world_position,
+    resolve_chain,
+)
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -52,6 +58,10 @@ __all__ = (
     "FlatSeaMapProvider",
     "MaritimeTideProvider",
     "FlatTideProvider",
+    "get_world_position",
+    "has_world_position",
+    "resolve_chain",
+    "NoWorldPosition",
     "normalize_bearing",
     "DEFAULT_REGION",
     # events

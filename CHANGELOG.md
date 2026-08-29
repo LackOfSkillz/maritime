@@ -12,6 +12,15 @@ simulation exists yet.
 
 ### Feat
 
+- Add the world-position resolver. Every subsystem asks `get_world_position()`
+  rather than working the answer out itself, because the answer is rarely direct:
+  a character aboard a vessel has a cabin, which belongs to a hull, which is the
+  thing that actually sits somewhere. An entity joins world space by declaring
+  either a `maritime_position` or a `maritime_position_source` to ask instead;
+  otherwise ordinary `location` is followed. A declared source outranks location,
+  so a docked vessel's interior resolves to the hull and not the harbour room.
+  Anything outside the maritime world returns `NoWorldPosition`, a falsy singleton
+  rather than `None`, so absence cannot be quietly treated as a coordinate.
 - Add terrain elevation, tides and derived water depth. There is no depth map -
   one terrain field crosses zero, and depth is the difference between the current
   water surface and the ground beneath it, computed rather than stored. Sea level
