@@ -5,6 +5,12 @@ Vessels are simulation entities holding a position in continuous world space.
 Their interiors remain ordinary Evennia rooms, which move with the vessel rather
 than determining where it is.
 
-Nothing is exported yet; this package is under initial development.
+Commonly used names are re-exported here, so games can import them directly:
+
+    from evennia.contrib.full_systems.maritime import GameTimeProvider
 
 """
+
+from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
+
+__all__ = ("MaritimeTimeProvider", "GameTimeProvider", "ManualTimeProvider")
