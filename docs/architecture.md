@@ -357,6 +357,21 @@ The engine knows the exact position. The character does not.
 dead reckoning, chart quality, current, visibility and operator skill. This is what allows
 being genuinely lost.
 
+**Units are display, and there are two of them.** Metres are the unit everywhere inside
+the simulation and always will be. What a player is shown is set by
+`MARITIME_DISTANCE_UNITS` — leagues, nautical, metric or raw — and separately by
+`MARITIME_DEPTH_UNITS`, because a ship reckoned her run in leagues and her water in
+fathoms at the same moment, and tying the two together would force one of them to be
+wrong. Every distance scheme falls back to cables under a mile: no scheme has a useful
+word for a tenth of its own unit, and every one of them borrowed the cable instead.
+
+Soundings are called, not printed. `leadsman_call` reads a depth to the quarter fathom and
+gives it the way a hand lead is read — *"By the mark seven"* where the line carries leather
+or rag, *"By the deep six"* where it carries nothing, *"A quarter less eight"* for three
+quarters over because it is shorter and harder to mishear than the alternative, and *"No
+bottom with this line"* past twenty fathoms. The distinction is not decoration: it is the
+difference between a depth a leadsman felt and one he counted.
+
 Charts are *knowledge of* the world, not the world. A chart's soundings are surveyed values
 against the datum; applying the tide is the navigator's job, and a bad chart is a real
 hazard.
@@ -516,6 +531,7 @@ The contrib deliberately does not answer these. Each is a seam.
 | Tidal range | Depends on authored harbour geometry |
 | Skills, combat, economy, progression | Reached through adapters, never imported |
 | Prose and message routing | The domain emits results; the game renders them |
+| Units shown to players | Metres are internal; leagues, miles or kilometres are taste |
 
 ---
 

@@ -13,6 +13,24 @@ combat and damage are not.
 
 ### Feat
 
+- Distances and depths are now reported in units a game chooses, defaulting to
+  the ones the subject matter used. `MARITIME_DISTANCE_UNITS` takes `leagues`
+  (the default: cables, sea miles, then leagues), `nautical`, `metric` or `raw`;
+  `MARITIME_DEPTH_UNITS` takes `fathoms` (the default) or `metres`. The two are
+  separate on purpose - a ship reckoned her run in leagues and her water in
+  fathoms at the same moment. Metres remain the unit everywhere inside the
+  simulation.
+- Soundings are called the way a lead line is actually read. `leadsman_call`
+  reads a depth to the quarter fathom and gives it as `"By the mark seven!"`
+  where the line carries leather or rag, `"By the deep six!"` where it carries
+  nothing, `"A quarter less eight!"` for three quarters over, and `"No bottom
+  with this line!"` past twenty fathoms. Two fathoms is `"By the mark twain!"`,
+  which is where Samuel Clemens got the name. Verified live against a
+  game-supplied seabed at four depths.
+- `GroundingResult` now carries the depth it measured as well as the clearance.
+  They are different questions: a leadsman reports what his line finds and knows
+  nothing about the draft of the ship he is standing on.
+
 - Add observation. Detection at sea is a height problem before it is a range
   problem: a hull is hidden by the curve of the water, so how far you can see is
   decided by how high your eye is, and how far you can see *a particular thing*

@@ -21,7 +21,13 @@ it was meant to fix.
 """
 
 from . import config
-from .position import METRES_PER_NAUTICAL_MILE, WorldPosition
+from .position import (
+    METRES_PER_CABLE,
+    METRES_PER_FATHOM,
+    METRES_PER_LEAGUE,
+    METRES_PER_NAUTICAL_MILE,
+    WorldPosition,
+)
 from .resolver import NoWorldPosition
 
 # Small numbers of cables, said rather than counted.
@@ -34,12 +40,36 @@ _CABLE_NAMES = ("", "one", "two", "three", "four", "five", "six", "seven", "eigh
 METRES_PER_MINUTE = METRES_PER_NAUTICAL_MILE
 MINUTES_PER_DEGREE = 60.0
 
-# Presentation styles. `nautical` is what a player should see; `raw` is for staff
-# and for working out why two hulls did or did not touch.
+# Presentation styles for position. `nautical` is what a player should see; `raw`
+# is for staff and for working out why two hulls did or did not touch.
 NAUTICAL = "nautical"
 RAW = "raw"
 
 STYLES = (NAUTICAL, RAW)
+
+# Schemes for reporting a distance. These are display only - metres are the unit
+# everywhere inside the simulation, and always will be.
+#
+#   leagues   cables, sea miles, then leagues. The age of sail as it was spoken.
+#   nautical  cables and sea miles only. Any era's working navigator.
+#   metric    metres and kilometres. For a game that is not pretending.
+#   raw       metres, for staff.
+#
+# `leagues` is the default because this is a maritime contrib before it is a
+# generic one, and a league is the unit the subject matter actually used. A game
+# in another genre changes one setting.
+LEAGUES = "leagues"
+METRIC = "metric"
+
+DISTANCE_UNITS = (LEAGUES, NAUTICAL, METRIC, RAW)
+
+# Schemes for reporting a depth, kept separate from distance on purpose. A ship
+# reckoned her run in leagues and her water in fathoms at the same moment, and
+# tying the two together would force one of them to be wrong.
+FATHOMS = "fathoms"
+METRES = "metres"
+
+DEPTH_UNITS = (FATHOMS, METRES, RAW)
 
 
 def _degrees_minutes(metres, positive, negative):
@@ -131,38 +161,84 @@ def format_position(position, style=None):
     return line
 
 
-def format_range(metres, style=None):
+def _cables(metres):
     """
-    Say a distance the way it would be reported at sea.
-
     Args:
         metres (float): Distance in metres.
-        style (str, optional): `NAUTICAL` or `RAW`. Defaults to the configured
-            style.
 
     Returns:
-        text (str): e.g. `"4.2 miles"`, `"three cables"`, `"1830 m"`.
-
-    Notes:
-        Cables under a mile, miles above it. A cable is a tenth of a nautical
-        mile and about a ship's-length unit of thought - close enough that
-        "three cables" is a decision and "555 metres" is a measurement. Ranges
-        at sea are estimates, and spelling the small ones in words keeps them
-        from reading as though somebody had a rangefinder.
+        text (str): The distance in cables, or `"alongside"` under half a cable.
 
     """
-    if style is None:
-        style = config.get_setting("POSITION_STYLE", NAUTICAL)
-    if style == RAW:
-        return f"{metres:.0f} m"
-
-    miles = metres / METRES_PER_NAUTICAL_MILE
-    if miles >= 1.0:
-        return f"{miles:.1f} miles"
-
-    cables = int(round(miles * 10.0))
+    cables = int(round(metres / METRES_PER_CABLE))
     if cables <= 0:
         return "alongside"
     if cables < len(_CABLE_NAMES):
         return f"{_CABLE_NAMES[cables]} cable{'s' if cables != 1 else ''}"
     return f"{cables} cables"
+
+
+def format_range(metres, units=None):
+    """
+    Say a distance the way it would be reported at sea.
+
+    Args:
+        metres (float): Distance in metres.
+        units (str, optional): One of `DISTANCE_UNITS`. Defaults to the
+            configured scheme.
+
+    Returns:
+        text (str): e.g. `"two leagues"`, `"4.2 miles"`, `"three cables"`.
+
+    Notes:
+        Every scheme falls back to cables at close range, because no scheme has a
+        useful word for a tenth of its own unit and every one of them borrowed
+        the cable instead. Ranges at sea are estimates, and spelling the small
+        ones in words keeps them from reading as though somebody had a
+        rangefinder.
+
+    """
+    if units is None:
+        units = config.get_setting("DISTANCE_UNITS", LEAGUES)
+
+    if units == RAW:
+        return f"{metres:.0f} m"
+
+    if units == METRIC:
+        if metres < 1000.0:
+            return f"{metres:.0f} m"
+        return f"{metres / 1000.0:.1f} km"
+
+    if metres < METRES_PER_NAUTICAL_MILE:
+        return _cables(metres)
+
+    miles = metres / METRES_PER_NAUTICAL_MILE
+    if units == LEAGUES and metres >= METRES_PER_LEAGUE:
+        leagues = metres / METRES_PER_LEAGUE
+        return f"{leagues:.1f} leagues"
+    return f"{miles:.1f} miles"
+
+
+def format_depth(metres, units=None):
+    """
+    Say a depth the way it would be reported.
+
+    Args:
+        metres (float): Depth in metres.
+        units (str, optional): One of `DEPTH_UNITS`. Defaults to the configured
+            scheme.
+
+    Returns:
+        text (str): e.g. `"7.0 fathoms"`, `"12.8 m"`.
+
+    Notes:
+        Separate from `format_range` because depth and distance were separate
+        questions with separate answers. A ship reckoning her run in leagues
+        still sounded in fathoms.
+
+    """
+    if units is None:
+        units = config.get_setting("DEPTH_UNITS", FATHOMS)
+    if units == FATHOMS:
+        return f"{metres / METRES_PER_FATHOM:.1f} fathoms"
+    return f"{metres:.1f} m"

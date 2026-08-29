@@ -19,9 +19,9 @@ nothing else.
 
 from evennia.commands.command import Command
 
-from .formatting import RAW, format_position, format_range
+from .formatting import RAW, format_depth, format_position, format_range
 from .grounding import SHOAL_WARNING_CLEARANCE
-from .messaging import spell_bearing
+from .messaging import leadsman_call, spell_bearing
 from .observation import (
     CLASSIFIED,
     DEFAULT_HEIGHT_OF_EYE,
@@ -582,7 +582,7 @@ class CmdSound(MaritimeCommand):
     aliases = ("depth", "leadline")
 
     def at_helm(self, vessel):
-        """Report the clearance under the keel."""
+        """Cast the lead, and report both what it found and what it leaves her."""
         clearance = vessel.keel_clearance()
         if clearance is None:
             self.caller.msg("She is not afloat anywhere the lead would reach.")
@@ -594,15 +594,10 @@ class CmdSound(MaritimeCommand):
             self.aboard(vessel, 'The leadsman calls, "No bottom under her - she is on it, sir!"')
             return
 
+        depth = clearance + vessel.draft
+        report = f'The leadsman calls, "{leadsman_call(depth)}"'
+        under = f"{format_depth(clearance)} under her keel"
         if clearance < SHOAL_WARNING_CLEARANCE:
-            self.aboard(
-                vessel,
-                f"The leadsman calls the depth: {clearance:.1f} metres under her keel. "
-                "Shoal water, sir.",
-            )
+            self.aboard(vessel, f"{report} That is {under}. Shoal water, sir.")
             return
-
-        self.aboard(
-            vessel,
-            f"The leadsman calls the depth: {clearance:.1f} metres under her keel.",
-        )
+        self.aboard(vessel, f"{report} That is {under}.")

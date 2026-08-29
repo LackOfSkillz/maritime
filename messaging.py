@@ -27,7 +27,7 @@ hand differently, without reimplementing when to speak.
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
 from .observation import CLASSIFIED, IDENTIFIED, bearing_in_points
-from .position import bearing_difference
+from .position import METRES_PER_FATHOM, bearing_difference
 from .vessel import WEATHER_DECKS
 
 # Compass points, for describing a heading to someone who is not reading an
@@ -223,10 +223,8 @@ class VesselNarrator:
             return "She is close enough now to make out her rig.", None
 
         if event == SHOALING:
-            call = (
-                f"The leadsman calls the depth: {detail['clearance']:.1f} metres "
-                f"under her keel, and shoaling."
-            )
+            spoken = leadsman_call(detail["depth"])
+            call = f'The leadsman calls, "{spoken}" - and shoaling.'
             return call, call
 
         raise KeyError(event)
@@ -289,7 +287,7 @@ class VesselNarrator:
         if vessel.ndb.reported_shoaling:
             return
         vessel.ndb.reported_shoaling = True
-        self.deliver(*self.phrase_for(SHOALING, clearance=contact.clearance))
+        self.deliver(*self.phrase_for(SHOALING, depth=contact.depth))
 
     def sightings(self, seen):
         """
@@ -385,3 +383,86 @@ class VesselNarrator:
         vessel.ndb.reported_under_way = under_way
 
         return event, detail
+
+
+# Marks on a hand lead line, in fathoms. Leather, rags and knots at these depths
+# and nothing at the others, so a leadsman could read the line by feel in the
+# dark. The unmarked fathoms between them are the deeps, which is why a call
+# names which kind it is: "by the mark" means he felt something, "by the deep"
+# means he counted.
+LEAD_MARKS = (2, 3, 5, 7, 10, 13, 15, 17, 20)
+
+# How much line a hand lead has. Past this there is no answer to give.
+LEAD_LINE_FATHOMS = 20
+
+# Spoken numbers, because a leadsman calls rather than reads. Two is "twain" in
+# this call and nowhere else - the archaic form survived precisely because it
+# could not be confused with anything else shouted across a deck.
+# Index 0 is never used - a call of under one fathom is handled before this.
+_FATHOM_WORDS = (
+    "",
+    "one",
+    "twain",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+    "twenty",
+)
+
+
+def leadsman_call(metres):
+    """
+    Call a sounding the way a leadsman calls it.
+
+    Args:
+        metres (float): Depth of water, in metres. Not clearance under the keel -
+            a leadsman reports what his line finds, and knows nothing about the
+            draft of the ship he is standing on.
+
+    Returns:
+        call (str): e.g. `"By the mark seven!"`, `"And a half three!"`,
+            `"A quarter less eight!"`, `"No bottom with this line!"`
+
+    Notes:
+        Read to the quarter fathom, because that is as fine as a wet line marked
+        in leather and rag can be read. A depth landing on a mark is called by
+        it; one landing between marks is called by the deep; a quarter or a half
+        over is called as such, and three quarters is called down from the
+        fathom above - "a quarter less eight" rather than "and three quarters
+        seven", which is both shorter and harder to mishear.
+
+    """
+    quarters = int(round(metres / METRES_PER_FATHOM * 4.0))
+    if quarters <= 0:
+        return "No water under her at all - she is on the ground!"
+    if quarters < 4:
+        return "Less than a fathom, sir!"
+
+    whole, remainder = divmod(quarters, 4)
+    if remainder == 3:
+        whole, remainder = whole + 1, -1
+    if whole > LEAD_LINE_FATHOMS:
+        return "No bottom with this line!"
+
+    word = _FATHOM_WORDS[whole]
+    if remainder == -1:
+        return f"A quarter less {word}!"
+    if remainder == 1:
+        return f"And a quarter {word}!"
+    if remainder == 2:
+        return f"And a half {word}!"
+    return f"By the {'mark' if whole in LEAD_MARKS else 'deep'} {word}!"

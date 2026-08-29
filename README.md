@@ -52,12 +52,20 @@ Twenty-eight metres up her mast, the same ship at the same instant:
 ```text
 > lookout
 The lookout reports:
-  On the starboard beam               15.9 miles   a sail
+  On the starboard beam              5.3 leagues   a sail
+```
+
+And the lead is cast the way a lead line is actually read:
+
+```text
+> sound
+Elias orders a cast of the lead.
+The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
 ```
 
 ## Design
 
-Six ideas do most of the work. `docs/architecture.md` has the rest.
+Seven ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -80,6 +88,13 @@ returning structured results, and nothing in the simulation knows the word "agro
 watch the sea go by, below you feel her heel and hear water on the planking. Point
 `MARITIME_NARRATOR` at a `VesselNarrator` subclass, override one method, and every line
 the system speaks changes without a line of physics moving.
+
+**Units are display; metres are the truth.** Nothing inside the simulation knows what a
+league is. What a player is shown is two settings, not one, because a ship reckoned her run
+in leagues and her water in fathoms at the same moment — and every distance scheme falls
+back to cables under a mile, because no scheme has a useful word for a tenth of its own
+unit and they all borrowed the cable instead. A game in another genre changes one line and
+gets kilometres.
 
 **Seeing is a height problem, not a range problem.** A hull is hidden by the curve of the
 water, so how far you can see depends on how high your eye is — and how far you can see a
@@ -129,6 +144,8 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
+| `MARITIME_DISTANCE_UNITS` | `leagues` | `leagues`, `nautical`, `metric` or `raw` |
+| `MARITIME_DEPTH_UNITS` | `fathoms` | `fathoms`, `metres` or `raw` |
 | `MARITIME_DEFAULT_DEPTH` | `200.0` | Depth of the default flat sea, in metres |
 
 ## Usage
@@ -221,13 +238,24 @@ detection_level(0.9 * limit, limit)      # 'contact'    - something on the water
 detection_level(0.1 * limit, limit)      # 'identified' - you know the ship
 ```
 
+Soundings are called, not printed:
+
+```python
+from evennia.contrib.full_systems.maritime import leadsman_call, METRES_PER_FATHOM
+
+leadsman_call(7.00 * METRES_PER_FATHOM)   # 'By the mark seven!'   - the line is marked here
+leadsman_call(6.00 * METRES_PER_FATHOM)   # 'By the deep six!'     - and not here
+leadsman_call(7.75 * METRES_PER_FATHOM)   # 'A quarter less eight!'
+leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
+```
+
 ## Testing
 
 ```bash
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 770 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 800 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations

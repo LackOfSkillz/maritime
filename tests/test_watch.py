@@ -308,7 +308,7 @@ class TestFormatRange(BaseEvenniaTest):
         self.assertEqual(format_range(5.0), "alongside")
 
     def test_raw_style_is_metres(self):
-        self.assertEqual(format_range(1830.0, style=RAW), "1830 m")
+        self.assertEqual(format_range(1830.0, units=RAW), "1830 m")
 
 
 class TestCmdLookout(EmptySeaMixin, BaseEvenniaCommandTest):

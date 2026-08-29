@@ -55,6 +55,9 @@ class GroundingResult(Result):
     Attributes:
         clearance (float): Metres between keel and ground. Negative means she is
             in it.
+        depth (float): Metres of water from surface to ground. What a lead line
+            finds, and not the same question as clearance - the leadsman knows
+            nothing about the draft of the ship he is standing on.
         bottom (str): What the ground is made of.
         speed (float): Speed at the moment of contact, in metres per second.
         severity (str): `TOUCHED`, `AGROUND` or `HOLED`.
@@ -67,6 +70,7 @@ class GroundingResult(Result):
     """
 
     clearance: float = 0.0
+    depth: float = 0.0
     bottom: str = UNKNOWN
     speed: float = 0.0
     severity: str = ""
@@ -143,10 +147,11 @@ def check_grounding(position, draft, speed, map_provider, game_time):
 
     """
     clearance = keel_clearance(position, draft, map_provider, game_time)
+    depth = clearance + float(draft)
     bottom = map_provider.bottom_type_at(position)
 
     if clearance > 0.0:
-        return GroundingResult.ok(clearance=clearance, bottom=bottom, speed=speed)
+        return GroundingResult.ok(clearance=clearance, depth=depth, bottom=bottom, speed=speed)
 
     if bottom in FOUL_GROUND and speed > HOLING_SPEED:
         severity = HOLED
@@ -156,7 +161,12 @@ def check_grounding(position, draft, speed, map_provider, game_time):
         severity = TOUCHED
 
     return GroundingResult.failed(
-        severity, clearance=clearance, bottom=bottom, speed=speed, severity=severity
+        severity,
+        clearance=clearance,
+        depth=depth,
+        bottom=bottom,
+        speed=speed,
+        severity=severity,
     )
 
 

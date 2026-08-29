@@ -38,8 +38,23 @@ FULL_CIRCLE = 360.0
 
 # One nautical mile, which is one minute of latitude - the same quantity, and the
 # reason a distance and a position can be read off the same scale. Exact by
-# definition since 1929, not a rounding.
+# definition since 1929, not a rounding. Before that it was not quite settled: the
+# Admiralty mile was 6080 feet, about a metre and a third longer.
 METRES_PER_NAUTICAL_MILE = 1852.0
+
+# A cable, the close-quarters unit: gunnery, anchoring, station-keeping. A tenth
+# of a sea mile, and near enough the hundred fathoms the Royal Navy reckoned it
+# as that nobody argued.
+METRES_PER_CABLE = METRES_PER_NAUTICAL_MILE / 10.0
+
+# A marine league, three sea miles. The long-range unit of the age of sail, and
+# the one a chart or a set of orders would actually use.
+METRES_PER_LEAGUE = 3.0 * METRES_PER_NAUTICAL_MILE
+
+# A fathom, six feet, the span of a man's outstretched arms - which is how a
+# leadsman measured it, hauling the line in arm over arm. Depth is reckoned in
+# these and always has been.
+METRES_PER_FATHOM = 1.8288
 
 # Compass bearings, for readable tests and content.
 NORTH = 0.0

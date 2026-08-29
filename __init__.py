@@ -23,8 +23,23 @@ from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
-from .formatting import NAUTICAL, RAW, format_position, format_range
+from .formatting import (
+    DEPTH_UNITS,
+    DISTANCE_UNITS,
+    FATHOMS,
+    LEAGUES,
+    METRES,
+    METRIC,
+    NAUTICAL,
+    RAW,
+    format_depth,
+    format_position,
+    format_range,
+)
 from .messaging import (
+    LEAD_LINE_FATHOMS,
+    LEAD_MARKS,
+    leadsman_call,
     AT_SPEED,
     COMING_ROUND,
     HULL_HOLED,
@@ -64,6 +79,10 @@ from .observation import (
 from .traffic import VesselTraffic, traffic
 from .position import (
     DEFAULT_REGION,
+    METRES_PER_CABLE,
+    METRES_PER_FATHOM,
+    METRES_PER_LEAGUE,
+    METRES_PER_NAUTICAL_MILE,
     WorldPosition,
     bearing_difference,
     normalize_bearing,
@@ -172,6 +191,10 @@ __all__ = (
     "INTERIOR",
     "BELOW_WATERLINE",
     "normalize_bearing",
+    "METRES_PER_NAUTICAL_MILE",
+    "METRES_PER_CABLE",
+    "METRES_PER_LEAGUE",
+    "METRES_PER_FATHOM",
     "bearing_difference",
     # commands
     "HelmCmdSet",
@@ -182,8 +205,18 @@ __all__ = (
     # presentation
     "format_position",
     "format_range",
+    "format_depth",
+    "leadsman_call",
+    "LEAD_MARKS",
+    "LEAD_LINE_FATHOMS",
     "NAUTICAL",
     "RAW",
+    "LEAGUES",
+    "METRIC",
+    "FATHOMS",
+    "METRES",
+    "DISTANCE_UNITS",
+    "DEPTH_UNITS",
     "VesselNarrator",
     "compass_point",
     "spell_bearing",
