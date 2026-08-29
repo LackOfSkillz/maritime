@@ -40,6 +40,16 @@ from .vessel import (
     VesselCapacity,
     VesselTemplate,
 )
+from .scheduler import FairQueue
+from .simulation import (
+    ACTIVE,
+    DORMANT,
+    STRATEGIC,
+    TACTICAL,
+    TIERS,
+    TIER_INTERVALS,
+    MaritimeSimulationService,
+)
 from .spatial import ContactIndex, ProximityIndex, SpatialIndex
 from .results import (
     INVALID_TARGET,
@@ -78,6 +88,15 @@ __all__ = (
     "SpatialIndex",
     "ContactIndex",
     "ProximityIndex",
+    # simulation
+    "MaritimeSimulationService",
+    "FairQueue",
+    "TIERS",
+    "TIER_INTERVALS",
+    "DORMANT",
+    "STRATEGIC",
+    "ACTIVE",
+    "TACTICAL",
     # vessels
     "VesselTemplate",
     "VesselCapacity",

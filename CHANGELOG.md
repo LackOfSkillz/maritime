@@ -12,6 +12,17 @@ simulation exists yet.
 
 ### Feat
 
+- Add the simulation service and its fair scheduler. One service drives everything
+  rather than a ticker per vessel - partly for cost, partly because Evennia's
+  TickerHandler keys subscriptions on callback, interval and idstring but not on
+  arguments, so a fleet subscribing one method at one interval silently overwrites
+  itself and most ships just stop moving. Work is tiered (dormant, strategic,
+  active, tactical) and each pass is bounded, resuming from where it stopped, so a
+  large fleet lengthens the revisit interval instead of blocking the reactor. The
+  rotation keeps its cursor across passes: restarting from zero looks fair but
+  starves everything past the budget. Catch-up is capped, so a server down for a
+  week does not hand a vessel a week of movement in one step. A failing update or
+  checkpoint is logged and skipped rather than stopping the fleet.
 - Add the `Vessel` and `ShipRoom` typeclasses. A compartment holds no position; it
   names its vessel, and the resolver walks through to whatever the hull reports, so
   moving a ship moves everyone aboard at once with no bookkeeping. Position lives
