@@ -28,6 +28,7 @@ from .resolver import (
     has_world_position,
     resolve_chain,
 )
+from .spatial import ContactIndex, ProximityIndex, SpatialIndex
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -62,6 +63,9 @@ __all__ = (
     "has_world_position",
     "resolve_chain",
     "NoWorldPosition",
+    "SpatialIndex",
+    "ContactIndex",
+    "ProximityIndex",
     "normalize_bearing",
     "DEFAULT_REGION",
     # events

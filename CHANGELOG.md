@@ -12,6 +12,17 @@ simulation exists yet.
 
 ### Feat
 
+- Add `ContactIndex` and `ProximityIndex`. Two indexes rather than one, because
+  the difference is geometry and not tuning: horizon range is a surface question,
+  so contacts ignore elevation, while boarding is not, so proximity measures true
+  distance and a diver thirty metres beneath a hull is correctly nowhere near it.
+  Both produce candidates, never answers - whether a hull can actually be seen
+  depends on weather, light and height of eye, none of which an index knows.
+  Entities in other regions are never candidates, since regions are separate
+  coordinate spaces. Currently a linear scan: with no vessels yet there is nothing
+  to index, and picking a structure now would mean guessing at query patterns that
+  do not exist. The interface is what matters, and the structure behind it is
+  replaceable without a caller noticing.
 - Add the world-position resolver. Every subsystem asks `get_world_position()`
   rather than working the answer out itself, because the answer is rarely direct:
   a character aboard a vessel has a cabin, which belongs to a hull, which is the
