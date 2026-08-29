@@ -374,6 +374,18 @@ combat and damage are not.
 
 ### Chore
 
+- Move the crew's spoken orders and replies out of `commands.py` and into
+  `messaging.py`, alongside the ship's own narration. `MARITIME_NARRATOR` was
+  built as the one place a game replaces the prose, and commands were bypassing
+  it entirely with seventy-one hardcoded messages - so overriding it changed
+  what the *ship* said and left the crew answering in the contrib's words. Two
+  voices in one game, and the second unreachable without forking every command.
+  A command now says `self.order(vessel, HELM_ORDER, spoken=spoken)` and knows
+  that an order was given and who hears it, never what it sounds like.
+- Prose has no branching and no state, so the file holding it can grow to any
+  length without costing anything. That is why it is the right place for it, and
+  why `messaging.py` is exempt from the reasoning that applies to code.
+
 - Compose `Vessel` from the seams the domain modules already draw: `Navigator`
   in `navigation.py`, `Berthing` in `ports.py`, `Lookout` in `observation.py`,
   `Rigged` in `sailing.py`, `Situated` in `environment.py` and `Compartmented`

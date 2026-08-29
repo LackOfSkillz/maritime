@@ -25,6 +25,8 @@ hand differently, without reimplementing when to speak.
 
 """
 
+from dataclasses import dataclass
+
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
 from .observation import CLASSIFIED, IDENTIFIED, bearing_in_points
 from .position import METRES_PER_FATHOM, bearing_difference
@@ -64,6 +66,55 @@ CONTACT_LOST = "contact_lost"
 CONTACT_CLOSER = "contact_closer"
 HULL_HOLED = "hull_holed"
 SHOALING = "shoaling"
+
+
+# --- orders, and the answers to them ---------------------------------------
+#
+# An order at sea is spoken, repeated back and acted on, and that exchange is the
+# most-read text this system produces. It lives here rather than inside the
+# commands for the same reason the ship's own narration does: a game that wants
+# its own voice should change words in one file, not fork every command.
+#
+# There is no branching below and no state - it is prose, and it can grow to any
+# length without costing anything.
+
+HELM_ORDER = "helm_order"
+SPEED_ORDER = "speed_order"
+ALL_STOP = "all_stop"
+SAIL_ORDER = "sail_order"
+SAIL_CARRIED_HARD = "sail_carried_hard"
+ANCHOR_ORDER = "anchor_order"
+WEIGH_ORDER = "weigh_order"
+CAST_THE_LEAD = "cast_the_lead"
+ALONGSIDE_ORDER = "alongside_order"
+MADE_FAST = "made_fast"
+GANGWAY_DOWN = "gangway_down"
+SINGLE_UP = "single_up"
+LET_GO = "let_go"
+WORK_THE_FIX = "work_the_fix"
+
+
+@dataclass(frozen=True)
+class Order:
+    """
+    What is said when an order is given.
+
+    Attributes:
+        called (str): What the person giving it hears themselves say.
+        overheard (str): What everyone else on deck hears.
+        answered (str): What the crew say back, carried through the ship. Empty
+            if the order needs no answer.
+
+    Notes:
+        Three strings because an order is three events - given, overheard,
+        answered - and a command that only printed the first would turn a crewed
+        vessel into several people each sailing their own private ship.
+
+    """
+
+    called: str
+    overheard: str = ""
+    answered: str = ""
 
 
 def compass_point(bearing):
@@ -330,6 +381,135 @@ class VesselNarrator:
                 self.deliver(*self.phrase_for(CONTACT_LOST))
 
         vessel.ndb.contacts = now
+
+    def order_for(self, event, **detail):
+        """
+        The words for one spoken order.
+
+        Args:
+            event (str): One of the order constants in this module.
+            **detail: What the order carries - a bearing, a sail plan, a berth.
+                `who` is the name of whoever gave it.
+
+        Returns:
+            order (Order): Called, overheard and answered.
+
+        Raises:
+            KeyError: If the order is not one this voice knows.
+
+        Notes:
+            The counterpart of `phrase_for`, and the other half of replacing the
+            prose of the whole system. Between them, every player-facing word a
+            vessel or her crew produces passes through two methods on one class.
+
+        """
+        who = detail.get("who", "Someone")
+
+        if event == HELM_ORDER:
+            spoken = detail["spoken"]
+            return Order(
+                called=f'You call out, "Helm, steer {spoken}."',
+                overheard=f'{who} calls out, "Helm, steer {spoken}."',
+                answered=f'The helmsman answers, "Steering {spoken} now, sir."',
+            )
+
+        if event == SPEED_ORDER:
+            knots = detail["knots"]
+            return Order(
+                called=f'You call out, "Make her {knots:.0f} knots."',
+                overheard=f'{who} calls out, "Make her {knots:.0f} knots."',
+                answered=f'The mate answers, "Making {knots:.0f} knots now, sir."',
+            )
+
+        if event == ALL_STOP:
+            return Order(
+                called='You call out, "All stop."',
+                overheard=f'{who} calls out, "All stop."',
+                answered='The mate answers, "All stop, aye sir."',
+            )
+
+        if event == SAIL_ORDER:
+            name = detail["plan"]
+            return Order(
+                called=f'You call out, "Set {name}!"',
+                overheard=f'{who} calls out, "Set {name}!"',
+                answered=f'The mate answers, "{name.capitalize()}, aye sir."',
+            )
+
+        if event == SAIL_CARRIED_HARD:
+            return Order(
+                called="",
+                answered='The mate adds, "She is carrying more than she should in this, sir."',
+            )
+
+        if event == ANCHOR_ORDER:
+            return Order(
+                called='You call out, "Let go the anchor!"',
+                overheard=f'{who} calls out, "Let go the anchor!"',
+                answered=(
+                    "The cable roars out through the hawse, and the anchor takes the "
+                    "ground. She brings up and lies quiet."
+                ),
+            )
+
+        if event == WEIGH_ORDER:
+            return Order(
+                called='You call out, "Weigh anchor!"',
+                overheard=f'{who} calls out, "Weigh anchor!"',
+                answered=(
+                    "The capstan turns and the cable comes in dripping. "
+                    'The mate calls, "Anchor\'s aweigh, sir!"'
+                ),
+            )
+
+        if event == CAST_THE_LEAD:
+            return Order(
+                called="You order a cast of the lead.",
+                overheard=f"{who} orders a cast of the lead.",
+            )
+
+        if event == ALONGSIDE_ORDER:
+            return Order(
+                called='You call out, "Take her alongside!"',
+                overheard=f'{who} calls out, "Take her alongside!"',
+                answered='The mate answers, "Alongside, aye sir."',
+            )
+
+        if event == MADE_FAST:
+            return Order(
+                called="",
+                answered=(
+                    f"Lines go ashore fore and aft. She is made fast at "
+                    f"{detail['berth']}, {detail['side']} side to."
+                ),
+            )
+
+        if event == GANGWAY_DOWN:
+            return Order(called="", answered="The gangway comes down onto the quay.")
+
+        if event == SINGLE_UP:
+            return Order(
+                called='You call out, "Single up, and stand by to let go!"',
+                overheard=f'{who} calls out, "Single up, and stand by to let go!"',
+                answered='The mate answers, "Singled up, aye sir."',
+            )
+
+        if event == LET_GO:
+            return Order(
+                called="",
+                answered=(
+                    "The gangway comes up. Lines are let go fore and aft, and she "
+                    "swings clear of the quay."
+                ),
+            )
+
+        if event == WORK_THE_FIX:
+            return Order(
+                called="",
+                answered=f"The mate takes a bearing on {detail['landmark']} and works the fix.",
+            )
+
+        raise KeyError(event)
 
     # --- transitions --------------------------------------------------------
 

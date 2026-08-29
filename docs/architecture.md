@@ -122,8 +122,13 @@ Messaging is a separate layer that renders results per observer. A `caller.msg()
 physics or damage calculation is a defect — it is the easiest law to break by accident, and
 breaking it makes the messaging layer unreplaceable by a game that wants its own voice.
 
-That layer is `messaging.py`, and it answers two questions the simulation does not: which
-change is worth mentioning, and who hears it. The first is why narration state lives there
+That layer is `messaging.py`, and it holds two things: what a ship narrates about herself,
+and what her crew say when they are given an order. Both go through one class, so a game
+replacing its voice replaces all of it — for a while only the first did, and a game could
+change what the ship said while the crew went on answering in the contrib's words.
+
+It answers two questions the simulation does not: which change is worth mentioning, and who
+hears it. The first is why narration state lives there
 rather than on the vessel — deciding whether to speak needs to know what was last said,
 which is a property of the conversation and not of the hull. A game points
 `MARITIME_NARRATOR` at a `VesselNarrator` subclass and overrides `phrase_for`, which every
@@ -751,9 +756,11 @@ ordinary Evennia rooms throughout.
 Two defects surfaced during that passage that no unit test had caught, both recorded below
 and both fixed. A slice is worth running for that reason and not for the screenshot.
 
-**First-voyage acceptance**, from the plan, and the arithmetic the whole clock design exists
-to make true: 20 nautical miles at 8 knots is 2.5 game hours, which at DireMud's 4:1 is
-37.5 real minutes — and runs in milliseconds under `ManualTimeProvider`. The tests must show
+**First-voyage acceptance**, and the arithmetic the whole clock design exists to make true:
+20 nautical miles at 8 knots is 2.5 game hours — 37.5 real minutes in a game running 4:1,
+two and a half hours in one running 1:1, and milliseconds under `ManualTimeProvider`. The
+contrib states the distance and the speed; the host game's clock decides the rest, which is
+Law 1 seen from the acceptance end. The tests must show
 a neutral current arriving on time, a favourable one early, an adverse one late, poor sail
 later still, the shoal crossing grounding her and the channel not.
 

@@ -4,14 +4,17 @@ Tests for what a ship's company is told while she is under way.
 """
 
 from evennia.utils import create
-from evennia.utils.test_resources import BaseEvenniaTest
+from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 
 from .base import EmptySeaMixin
 
 from django.test import override_settings
 
+from ..commands import CmdAllStop, CmdHelm
 from ..messaging import (
     COMING_ROUND,
+    HELM_ORDER,
+    Order,
     VesselNarrator,
     compass_point,
     spell_bearing,
@@ -216,12 +219,17 @@ class TestTurnDirection(ReportingTestCase):
 
 
 class Laconic(VesselNarrator):
-    """A game that would rather its ships said less."""
+    """A game that would rather its ships and its crews said less."""
 
     def phrase_for(self, event, **detail):
         if event == COMING_ROUND:
             return "Turning.", "Turning."
         return super().phrase_for(event, **detail)
+
+    def order_for(self, event, **detail):
+        if event == HELM_ORDER:
+            return Order(called=f"Steer {detail['spoken']}.", answered="Aye.")
+        return super().order_for(event, **detail)
 
 
 class NotANarrator:
@@ -322,3 +330,40 @@ class TestDelivery(EmptySeaMixin, BaseEvenniaTest):
         """
         VesselNarrator(self.hull).deliver("On deck.")
         self.assertEqual((self.topside, self.below), (["On deck."], []))
+
+
+class TestTheCrewSpeakThroughTheNarratorToo(EmptySeaMixin, BaseEvenniaCommandTest):
+    """
+    A game's voice reaches the crew's replies, not only the ship's narration.
+
+    It did not, once. Commands carried their own hardcoded prose, so overriding
+    `MARITIME_NARRATOR` changed what the *ship* said and left the crew answering
+    in the contrib's words - two voices in one game, and the second of them
+    unreachable without forking every command.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Sloop")
+        self.deck = create.create_object(ShipRoom, key="Main Deck")
+        self.deck.vessel = self.hull
+        self.deck.exposure = OPEN
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.char1.location = self.deck
+
+    def test_the_default_crew_answer_in_full(self):
+        output = self.call(CmdHelm(), "090")
+        self.assertIn("Steering 0-9-0 now, sir", output)
+
+    def test_a_game_can_replace_what_the_crew_say(self):
+        with override_settings(MARITIME_NARRATOR=f"{Laconic.__module__}.Laconic"):
+            output = self.call(CmdHelm(), "090")
+        self.assertIn("Steer 0-9-0.", output)
+        self.assertNotIn("sir", output)
+
+    def test_orders_it_does_not_override_keep_the_default_voice(self):
+        """Overriding one order inherits the rest, as with `phrase_for`."""
+        with override_settings(MARITIME_NARRATOR=f"{Laconic.__module__}.Laconic"):
+            output = self.call(CmdAllStop(), "")
+        self.assertIn("All stop", output)

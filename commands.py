@@ -21,7 +21,24 @@ from evennia.commands.command import Command
 
 from .formatting import RAW, format_depth, format_position, format_range
 from .grounding import SHOAL_WARNING_CLEARANCE
-from .messaging import leadsman_call, spell_bearing
+from .messaging import (
+    ALL_STOP,
+    ALONGSIDE_ORDER,
+    ANCHOR_ORDER,
+    CAST_THE_LEAD,
+    GANGWAY_DOWN,
+    HELM_ORDER,
+    LET_GO,
+    MADE_FAST,
+    SAIL_CARRIED_HARD,
+    SAIL_ORDER,
+    SINGLE_UP,
+    SPEED_ORDER,
+    WEIGH_ORDER,
+    WORK_THE_FIX,
+    leadsman_call,
+    spell_bearing,
+)
 from .ports import (
     BADLY_ALIGNED,
     OCCUPIED,
@@ -135,6 +152,30 @@ class MaritimeCommand(Command):
         """
         raise NotImplementedError
 
+    def order(self, vessel, event, **detail):
+        """
+        Give a spoken order, and let the crew answer it.
+
+        Args:
+            vessel (Vessel): The hull whose company is speaking.
+            event (str): One of the order constants in `messaging`.
+            **detail: What the order carries.
+
+        Notes:
+            The words come from the vessel's narrator, so a game that has
+            replaced its voice has replaced this too. A command's job is to know
+            *that* an order was given and to whom it carries - never what it
+            sounds like.
+
+        """
+        spoken = vessel.narrator.order_for(event, who=self.caller.key, **detail)
+        if spoken.called:
+            self.caller.msg(spoken.called)
+        if spoken.overheard:
+            self.announce(spoken.overheard)
+        if spoken.answered:
+            self.aboard(vessel, spoken.answered)
+
     def announce(self, text):
         """
         Call an order out loud, so everyone in earshot hears it.
@@ -206,9 +247,7 @@ class CmdHelm(MaritimeCommand):
             return
         spoken = spell_bearing(bearing)
         vessel.orders = HelmOrders(heading=bearing, speed=orders.speed)
-        self.caller.msg(f'You call out, "Helm, steer {spoken}."')
-        self.announce(f'{self.caller.key} calls out, "Helm, steer {spoken}."')
-        self.aboard(vessel, f'The helmsman answers, "Steering {spoken} now, sir."')
+        self.order(vessel, HELM_ORDER, spoken=spoken)
 
 
 class CmdSpeed(MaritimeCommand):
@@ -249,9 +288,7 @@ class CmdSpeed(MaritimeCommand):
             self.caller.msg("Order a reciprocal heading rather than a negative speed.")
             return
         vessel.orders = HelmOrders(heading=orders.heading, speed=knots_to_ms(knots))
-        self.caller.msg(f'You call out, "Make her {knots:.0f} knots."')
-        self.announce(f'{self.caller.key} calls out, "Make her {knots:.0f} knots."')
-        self.aboard(vessel, f'The mate answers, "Making {knots:.0f} knots now, sir."')
+        self.order(vessel, SPEED_ORDER, knots=knots)
 
 
 class CmdAllStop(MaritimeCommand):
@@ -271,9 +308,7 @@ class CmdAllStop(MaritimeCommand):
     def at_helm(self, vessel):
         """Order zero speed, keeping the current heading order."""
         vessel.orders = HelmOrders(heading=vessel.orders.heading, speed=0.0)
-        self.caller.msg('You call out, "All stop."')
-        self.announce(f'{self.caller.key} calls out, "All stop."')
-        self.aboard(vessel, 'The mate answers, "All stop, aye sir."')
+        self.order(vessel, ALL_STOP)
 
 
 class CmdPosition(MaritimeCommand):
@@ -457,15 +492,10 @@ class CmdSail(MaritimeCommand):
             return
 
         vessel.sail_plan = plan
-        self.caller.msg(f'You call out, "Set {plan.name}!"')
-        self.announce(f'{self.caller.key} calls out, "Set {plan.name}!"')
-        self.aboard(vessel, f'The mate answers, "{plan.name.capitalize()}, aye sir."')
+        self.order(vessel, SAIL_ORDER, plan=plan.name)
 
         if wind.speed > plan.safe_wind:
-            self.aboard(
-                vessel,
-                'The mate adds, "She is carrying more than she should in this, sir."',
-            )
+            self.order(vessel, SAIL_CARRIED_HARD)
 
 
 class CmdWind(MaritimeCommand):
@@ -635,19 +665,13 @@ class CmdDock(MaritimeCommand):
             self.caller.msg("She has no open deck for a gangway to land on.")
             return
 
-        self.caller.msg('You call out, "Take her alongside!"')
-        self.announce(f'{self.caller.key} calls out, "Take her alongside!"')
-        self.aboard(vessel, 'The mate answers, "Alongside, aye sir."')
+        self.order(vessel, ALONGSIDE_ORDER)
 
         gangway = rig_gangway(deck, port)
         vessel.make_fast(port, berth, gangway)
 
-        self.aboard(
-            vessel,
-            f"Lines go ashore fore and aft. She is made fast at {berth.key}, "
-            f"{result.side} side to.",
-        )
-        self.aboard(vessel, "The gangway comes down onto the quay.")
+        self.order(vessel, MADE_FAST, berth=berth.key, side=result.side)
+        self.order(vessel, GANGWAY_DOWN)
         port.msg_contents(f"{vessel.key} comes alongside, and her gangway comes down.")
 
     def landing_deck(self, vessel):
@@ -699,17 +723,11 @@ class CmdCastOff(MaritimeCommand):
             return
 
         port = vessel.docked_at
-        self.caller.msg('You call out, "Single up, and stand by to let go!"')
-        self.announce(f'{self.caller.key} calls out, "Single up, and stand by to let go!"')
-        self.aboard(vessel, 'The mate answers, "Singled up, aye sir."')
+        self.order(vessel, SINGLE_UP)
 
         vessel.let_go()
 
-        self.aboard(
-            vessel,
-            "The gangway comes up. Lines are let go fore and aft, and she swings "
-            "clear of the quay.",
-        )
+        self.order(vessel, LET_GO)
         if port:
             port.msg_contents(f"{vessel.key} takes in her gangway and casts off.")
 
@@ -757,7 +775,7 @@ class CmdFix(MaritimeCommand):
         experienced = vessel.fix_position()
         moved = before.horizontal_distance_to(vessel.maritime_position)
 
-        self.aboard(vessel, f"The mate takes a bearing on {port.key} and works the fix.")
+        self.order(vessel, WORK_THE_FIX, landmark=port.key)
         if moved < FIX_UNCERTAINTY:
             self.caller.msg("She is where you reckoned her, near enough.")
         else:
@@ -804,13 +822,7 @@ class CmdAnchor(MaritimeCommand):
 
         vessel.anchored = True
         vessel.orders = HelmOrders(heading=vessel.orders.heading, speed=0.0)
-        self.caller.msg('You call out, "Let go the anchor!"')
-        self.announce(f'{self.caller.key} calls out, "Let go the anchor!"')
-        self.aboard(
-            vessel,
-            "The cable roars out through the hawse, and the anchor takes the ground. "
-            "She brings up and lies quiet.",
-        )
+        self.order(vessel, ANCHOR_ORDER)
 
 
 class CmdWeighAnchor(MaritimeCommand):
@@ -835,13 +847,7 @@ class CmdWeighAnchor(MaritimeCommand):
             return
 
         vessel.anchored = False
-        self.caller.msg('You call out, "Weigh anchor!"')
-        self.announce(f'{self.caller.key} calls out, "Weigh anchor!"')
-        self.aboard(
-            vessel,
-            "The capstan turns and the cable comes in dripping. "
-            'The mate calls, "Anchor\'s aweigh, sir!"',
-        )
+        self.order(vessel, WEIGH_ORDER)
 
 
 class CmdSound(MaritimeCommand):
@@ -870,7 +876,7 @@ class CmdSound(MaritimeCommand):
             self.caller.msg("She is not afloat anywhere the lead would reach.")
             return
 
-        self.announce(f"{self.caller.key} orders a cast of the lead.")
+        self.order(vessel, CAST_THE_LEAD)
 
         if clearance <= 0.0:
             self.aboard(vessel, 'The leadsman calls, "No bottom under her - she is on it, sir!"')

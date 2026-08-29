@@ -112,7 +112,9 @@ miles per *in-world* hour whatever `TIME_FACTOR` the game runs at.
 
 **The domain returns data; a separate layer speaks.** Physics and rules are plain Python
 returning structured results, and nothing in the simulation knows the word "aground".
-`messaging.py` decides which change is worth mentioning and who hears it — on deck you
+`messaging.py` holds every player-facing word the system produces — the ship's own
+narration and the crew's replies to orders alike — and decides which change is worth
+mentioning and who hears it — on deck you
 watch the sea go by, below you feel her heel and hear water on the planking. Point
 `MARITIME_NARRATOR` at a `VesselNarrator` subclass, override one method, and every line
 the system speaks changes without a line of physics moving.
@@ -351,7 +353,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 930 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 935 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
