@@ -28,6 +28,18 @@ from .resolver import (
     has_world_position,
     resolve_chain,
 )
+from .vessel import (
+    BELOW_WATERLINE,
+    EXPOSURES,
+    INTERIOR,
+    MAIN_DECK,
+    OPEN,
+    SEMI_EXPOSED,
+    DeckLevel,
+    DeckPlan,
+    VesselCapacity,
+    VesselTemplate,
+)
 from .spatial import ContactIndex, ProximityIndex, SpatialIndex
 from .results import (
     INVALID_TARGET,
@@ -66,6 +78,17 @@ __all__ = (
     "SpatialIndex",
     "ContactIndex",
     "ProximityIndex",
+    # vessels
+    "VesselTemplate",
+    "VesselCapacity",
+    "DeckPlan",
+    "DeckLevel",
+    "MAIN_DECK",
+    "EXPOSURES",
+    "OPEN",
+    "SEMI_EXPOSED",
+    "INTERIOR",
+    "BELOW_WATERLINE",
     "normalize_bearing",
     "DEFAULT_REGION",
     # events

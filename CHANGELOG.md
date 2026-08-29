@@ -12,6 +12,15 @@ simulation exists yet.
 
 ### Feat
 
+- Add vessel templates, capacity and deck plans. A ship class is data, not a
+  subclass - changing a sloop's beam is editing a number, so no `Sloop` class
+  exists anywhere in the contrib and a game can define its own hulls importing
+  only `VesselTemplate`. Deck levels are integers relative to the main deck, so
+  they map straight onto elevation and flooding can fill from the lowest
+  compartment upward without a separate model of which room is under which.
+  `VesselCapacity` and deck slots are declared now although nothing consumes them
+  yet: they are what make later fit-out a set of trade-offs rather than a shopping
+  list, and adding them after templates exist means rewriting every template.
 - Add `ContactIndex` and `ProximityIndex`. Two indexes rather than one, because
   the difference is geometry and not tuning: horizon range is a surface question,
   so contacts ignore elevation, while boarding is not, so proximity measures true
