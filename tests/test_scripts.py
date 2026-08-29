@@ -166,7 +166,13 @@ class TestHelmCmdSet(BaseEvenniaTest):
         cmdset = HelmCmdSet()
         cmdset.at_cmdset_creation()
         keys = {command.key for command in cmdset.commands}
-        self.assertEqual(keys, {"helm", "speed", "allstop", "position"})
+        self.assertEqual(keys, {"helm", "speed", "allstop", "position", "@maritime"})
+
+    def test_the_staff_view_is_locked(self):
+        """Raw coordinates are not for players."""
+        from ..commands import CmdMaritimeStatus
+
+        self.assertIn("Builder", CmdMaritimeStatus.locks)
 
     def test_is_addable_by_path(self):
         """

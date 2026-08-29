@@ -12,6 +12,17 @@ simulation exists yet.
 
 ### Feat
 
+- Add position formatting, so players read a position rather than coordinates.
+  Latitude and longitude in degrees and decimal minutes, which works out cleanly
+  because a nautical mile *is* one minute of latitude by definition - northing
+  divided by 1852 needs no fudge factor. Longitude keeps the same scale rather
+  than narrowing towards the poles: this world is a plane, and a cosine
+  correction would make the displayed position disagree with the distance
+  actually sailed. Kept in the messaging layer rather than on `WorldPosition`,
+  since a fantasy game may reckon in leagues and a sci-fi one will not use
+  latitude at all. `MARITIME_ORIGIN_NORTHING` and `MARITIME_ORIGIN_EASTING` place
+  the world's origin on the globe; `MARITIME_POSITION_STYLE` chooses the
+  presentation. Raw coordinates move to a new staff-only `@maritime` command.
 - Add the driver script, the helm command set, and reporting to the ship's
   company. `MaritimeDriver` is one repeating script for the whole game that ticks
   the service and checkpoints periodically - without it everything below is

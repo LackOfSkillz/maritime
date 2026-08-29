@@ -19,6 +19,7 @@ nothing else.
 
 from evennia.commands.command import Command
 
+from .formatting import RAW, format_position
 from .motion import HelmOrders
 from .position import normalize_bearing
 from .resolver import get_world_position
@@ -280,9 +281,42 @@ class CmdPosition(MaritimeCommand):
         orders = vessel.orders
         lines = [
             f"|w{vessel.key}|n",
-            f"  Position   {where}",
-            f"  Heading    {vessel.heading:05.1f}   ordered {orders.heading:05.1f}",
+            f"  Position   {format_position(where)}",
+            f"  Heading    {spell_bearing(vessel.heading)}"
+            f"   ordered {spell_bearing(orders.heading)}",
             f"  Speed      {ms_to_knots(vessel.speed):.1f} kt"
             f"   ordered {ms_to_knots(orders.speed):.1f} kt",
         ]
         self.caller.msg("\n".join(lines))
+
+
+class CmdMaritimeStatus(MaritimeCommand):
+    """
+    Staff view of a vessel's simulation state.
+
+    Usage:
+      @maritime
+
+    Shows the underlying coordinates and motion state rather than the navigator's
+    view. For working out why a vessel is where she is - a different question from
+    where a character believes she is.
+    """
+
+    key = "@maritime"
+    locks = "cmd:perm(Builder)"
+
+    def at_helm(self, vessel):
+        """Report the raw simulation state."""
+        where = get_world_position(vessel)
+        orders = vessel.orders
+        limits = vessel.motion_limits
+        lines = [
+            f"|w{vessel.key}|n  (#{vessel.id})",
+            f"  Coordinates  {format_position(where, style=RAW)}",
+            f"  Heading      {vessel.heading:.4f}   ordered {orders.heading:.4f}",
+            f"  Speed        {vessel.speed:.4f} m/s   ordered {orders.speed:.4f} m/s",
+            f"  Limits       max {limits.max_speed:.2f} m/s,"
+            f" accel {limits.acceleration:.2f} m/s2, turn {limits.turn_rate:.2f} deg/s",
+            f"  Unsaved      {bool(vessel.ndb.maritime_dirty)}",
+        ]
+        self.caller.msg(chr(10).join(lines))

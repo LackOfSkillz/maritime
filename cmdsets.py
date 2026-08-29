@@ -13,7 +13,7 @@ the next reload and then quietly vanishes, taking every command with it.
 
 from evennia.commands.cmdset import CmdSet
 
-from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
+from .commands import CmdAllStop, CmdHelm, CmdMaritimeStatus, CmdPosition, CmdSpeed
 
 
 class HelmCmdSet(CmdSet):
@@ -35,3 +35,4 @@ class HelmCmdSet(CmdSet):
         self.add(CmdSpeed())
         self.add(CmdAllStop())
         self.add(CmdPosition())
+        self.add(CmdMaritimeStatus())

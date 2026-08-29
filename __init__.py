@@ -23,6 +23,7 @@ from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
+from .formatting import NAUTICAL, RAW, format_position
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .position import (
     DEFAULT_REGION,
@@ -126,6 +127,10 @@ __all__ = (
     "CmdSpeed",
     "CmdAllStop",
     "CmdPosition",
+    # presentation
+    "format_position",
+    "NAUTICAL",
+    "RAW",
     # motion
     "MotionState",
     "MotionLimits",

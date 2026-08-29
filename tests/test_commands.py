@@ -176,10 +176,16 @@ class TestCmdPosition(HelmTestCase):
         self.assertIn("Position", self.call(CmdPosition(), ""))
 
     def test_shows_ordered_against_actual(self):
+        """Headings are shown as they are spoken, digit by digit."""
         self.hull.orders = HelmOrders(heading=90.0, speed=knots_to_ms(8.0))
         output = self.call(CmdPosition(), "")
-        self.assertIn("ordered 090.0", output)
+        self.assertIn("ordered 0-9-0", output)
         self.assertIn("ordered 8.0 kt", output)
+
+    def test_shows_a_navigators_position_not_coordinates(self):
+        """A player reads a position; metres are for staff."""
+        output = self.call(CmdPosition(), "")
+        self.assertNotIn("0.000,", output)
 
     def test_refuses_ashore(self):
         self.char1.location = self.room1
