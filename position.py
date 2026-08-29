@@ -270,4 +270,18 @@ class WorldPosition:
         return self.offset(dx=distance * math.sin(radians), dy=distance * math.cos(radians))
 
     def __str__(self):
-        return f"({self.x:.1f}, {self.y:.1f}, {self.z:.1f}) in {self.region}"
+        """
+        A readable form, to millimetres.
+
+        Notes:
+            Three decimals, not because navigation needs them but because
+            collision, grappling and boarding do - and this is the view a
+            developer reads when working out why two hulls did or did not touch.
+            Coordinates are stored as full 64-bit floats regardless; this only
+            decides how much of that is shown.
+
+            A player-facing report should round further. That is the messaging
+            layer's decision, not this one's.
+
+        """
+        return f"({self.x:.3f}, {self.y:.3f}, {self.z:.3f}) in {self.region}"

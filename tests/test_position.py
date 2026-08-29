@@ -246,9 +246,29 @@ class TestRepresentation(BaseEvenniaTestCase):
 
     def test_str_shows_coordinates_and_region(self):
         text = str(WorldPosition(18422.9, 9912.4, -3.5, region="western_sea"))
-        self.assertIn("18422.9", text)
-        self.assertIn("-3.5", text)
+        self.assertIn("18422.900", text)
+        self.assertIn("-3.500", text)
         self.assertIn("western_sea", text)
+
+    def test_str_shows_millimetres(self):
+        """
+        Collision and boarding work at this scale, and this is the view a
+        developer reads when working out why two hulls did or did not touch.
+
+        """
+        self.assertIn("18422.573", str(WorldPosition(18422.5734, 0.0)))
+
+    def test_full_precision_is_retained_regardless_of_display(self):
+        """Display rounding must never be mistaken for stored precision."""
+        position = WorldPosition(925.8573215153035, -11011.44325490956)
+        self.assertEqual(position.x, 925.8573215153035)
+        self.assertEqual(position.y, -11011.44325490956)
+
+    def test_sub_millimetre_differences_survive_arithmetic(self):
+        """Grapple range checks depend on this holding."""
+        first = WorldPosition(0.0, 0.0)
+        second = first.offset(dx=0.0001)
+        self.assertGreater(second.horizontal_distance_to(first), 0.0)
 
     def test_math_module_is_used_for_hypot(self):
         """Guards the horizontal formula against a hand-rolled regression."""

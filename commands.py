@@ -28,6 +28,25 @@ from .typeclasses import Vessel
 METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
 
 
+def spell_bearing(bearing):
+    """
+    Speak a bearing the way it is actually said aloud.
+
+    Args:
+        bearing (float): Compass bearing in degrees.
+
+    Returns:
+        spoken (str): Digits separated, e.g. `"0-9-0"` for 090.
+
+    Notes:
+        Courses are always given digit by digit and always in three figures.
+        "Ninety" and "one nine zero" are dangerously easy to confuse across a
+        windy deck; "zero-nine-zero" is not, which is why the convention exists.
+
+    """
+    return "-".join(f"{int(round(bearing)) % 360:03d}")
+
+
 def knots_to_ms(knots):
     """
     Convert knots to metres per second.
@@ -101,6 +120,40 @@ class MaritimeCommand(Command):
         """
         raise NotImplementedError
 
+    def announce(self, text):
+        """
+        Call an order out loud, so everyone in earshot hears it.
+
+        Args:
+            text (str): What the caller is heard to order.
+
+        Notes:
+            Orders on a ship are spoken. A helm order that only the person who
+            typed it can see turns a crewed vessel into several people each
+            sailing their own private ship.
+
+        """
+        location = getattr(self.caller, "location", None)
+        if location is not None:
+            location.msg_contents(text, exclude=self.caller)
+
+    def aboard(self, vessel, text):
+        """
+        Send a line to everyone aboard, wherever they are standing.
+
+        Args:
+            vessel (Vessel): The hull whose company should hear it.
+            text (str): What is said.
+
+        Notes:
+            An order acknowledged at the helm carries through the ship. Unlike
+            `announce`, this reaches the hold as well as the deck, and includes
+            the person who gave the order - they are meant to hear the answer.
+
+        """
+        for room in vessel.ship_rooms:
+            room.msg_contents(text)
+
 
 class CmdHelm(MaritimeCommand):
     """
@@ -136,8 +189,11 @@ class CmdHelm(MaritimeCommand):
         except ValueError:
             self.caller.msg("Give a bearing in degrees, for example: helm 072")
             return
+        spoken = spell_bearing(bearing)
         vessel.orders = HelmOrders(heading=bearing, speed=orders.speed)
-        self.caller.msg(f"The helm comes over. Steering {bearing:05.1f}.")
+        self.caller.msg(f'You call out, "Helm, steer {spoken}."')
+        self.announce(f'{self.caller.key} calls out, "Helm, steer {spoken}."')
+        self.aboard(vessel, f'The helmsman answers, "Steering {spoken} now, sir."')
 
 
 class CmdSpeed(MaritimeCommand):
@@ -178,7 +234,9 @@ class CmdSpeed(MaritimeCommand):
             self.caller.msg("Order a reciprocal heading rather than a negative speed.")
             return
         vessel.orders = HelmOrders(heading=orders.heading, speed=knots_to_ms(knots))
-        self.caller.msg(f"Ordered {knots:.1f} knots.")
+        self.caller.msg(f'You call out, "Make her {knots:.0f} knots."')
+        self.announce(f'{self.caller.key} calls out, "Make her {knots:.0f} knots."')
+        self.aboard(vessel, f'The mate answers, "Making {knots:.0f} knots now, sir."')
 
 
 class CmdAllStop(MaritimeCommand):
@@ -198,7 +256,9 @@ class CmdAllStop(MaritimeCommand):
     def at_helm(self, vessel):
         """Order zero speed, keeping the current heading order."""
         vessel.orders = HelmOrders(heading=vessel.orders.heading, speed=0.0)
-        self.caller.msg("All stop. She carries her way for a while yet.")
+        self.caller.msg('You call out, "All stop."')
+        self.announce(f'{self.caller.key} calls out, "All stop."')
+        self.aboard(vessel, 'The mate answers, "All stop, aye sir."')
 
 
 class CmdPosition(MaritimeCommand):

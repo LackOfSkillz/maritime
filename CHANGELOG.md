@@ -12,6 +12,24 @@ simulation exists yet.
 
 ### Feat
 
+- Add the driver script, the helm command set, and reporting to the ship's
+  company. `MaritimeDriver` is one repeating script for the whole game that ticks
+  the service and checkpoints periodically - without it everything below is
+  inert. Orders are called out loud and answered using real helm procedure:
+  courses are spoken digit by digit ("Helm, steer 0-9-0"), the helm repeats the
+  order back, and reports again when the vessel is steady on it. Ambient
+  reporting describes *transitions* rather than conditions, so a turn is
+  announced once and on completion instead of every tick, and what reaches a
+  person depends on their compartment's exposure - on deck you watch the sea go
+  by, below you feel her heel and hear water on the planking.
+
+### Fix
+
+- `WorldPosition.__str__` now shows millimetres rather than a single decimal.
+  Coordinates were always full 64-bit floats and collision, grappling and
+  boarding always read them directly, but the display hid that from the one view
+  a developer uses to work out why two hulls did or did not touch.
+
 - Wire motion into the vessel and add helm commands: `helm`, `speed`, `allstop`
   and `position`. A vessel under way is advanced by the simulation service, and
   movement never touches the database - it updates in memory and is checkpointed,

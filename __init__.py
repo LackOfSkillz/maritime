@@ -21,6 +21,7 @@ from .bathymetry import (
 )
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
+from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .position import (
@@ -48,6 +49,7 @@ from .vessel import (
     VesselTemplate,
 )
 from .scheduler import FairQueue
+from .scripts import MaritimeDriver
 from .simulation import (
     ACTIVE,
     DORMANT,
@@ -96,6 +98,7 @@ __all__ = (
     "ContactIndex",
     "ProximityIndex",
     # simulation
+    "MaritimeDriver",
     "MaritimeSimulationService",
     "FairQueue",
     "TIERS",
@@ -118,6 +121,7 @@ __all__ = (
     "normalize_bearing",
     "bearing_difference",
     # commands
+    "HelmCmdSet",
     "CmdHelm",
     "CmdSpeed",
     "CmdAllStop",

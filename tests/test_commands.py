@@ -69,7 +69,13 @@ class TestCmdHelm(HelmTestCase):
         self.assertEqual(self.hull.orders.heading, 72.0)
 
     def test_confirms_the_order(self):
-        self.call(CmdHelm(), "072", "The helm comes over. Steering 072.0.")
+        """Courses are spoken digit by digit, as they are at sea."""
+        self.call(CmdHelm(), "072", 'You call out, "Helm, steer 0-7-2."')
+
+    def test_the_helm_answers(self):
+        """The repeat-back is how an order is confirmed heard."""
+        output = self.call(CmdHelm(), "072")
+        self.assertIn("Steering 0-7-2 now, sir.", output)
 
     def test_reports_when_given_no_argument(self):
         self.hull.orders = HelmOrders(heading=90.0)
@@ -107,7 +113,11 @@ class TestCmdSpeed(HelmTestCase):
         self.assertAlmostEqual(self.hull.orders.speed, knots_to_ms(6.0))
 
     def test_confirms_in_knots(self):
-        self.call(CmdSpeed(), "6", "Ordered 6.0 knots.")
+        self.call(CmdSpeed(), "6", 'You call out, "Make her 6 knots."')
+
+    def test_the_mate_answers(self):
+        output = self.call(CmdSpeed(), "6")
+        self.assertIn("Making 6 knots now, sir.", output)
 
     def test_reports_when_given_no_argument(self):
         self.call(CmdSpeed(), "", "Ordered 0.0 knots")
@@ -147,9 +157,13 @@ class TestCmdAllStop(HelmTestCase):
         self.call(CmdAllStop(), "")
         self.assertEqual(self.hull.orders.heading, 72.0)
 
-    def test_says_she_carries_her_way(self):
+    def test_is_called_out(self):
         output = self.call(CmdAllStop(), "")
-        self.assertIn("carries her way", output)
+        self.assertIn("All stop.", output)
+
+    def test_the_mate_answers(self):
+        output = self.call(CmdAllStop(), "")
+        self.assertIn("All stop, aye sir.", output)
 
 
 class TestCmdPosition(HelmTestCase):
