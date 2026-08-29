@@ -12,16 +12,31 @@ Commonly used names are re-exported here, so games can import them directly:
 """
 
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
+from .results import (
+    INVALID_TARGET,
+    NOT_PERMITTED,
+    PRECONDITION_FAILED,
+    UNSUPPORTED,
+    Result,
+)
 from .rng import AI, COMBAT, DAMAGE, NAVIGATION, WEATHER, RNGContext
 
 __all__ = (
+    # time
     "MaritimeTimeProvider",
     "GameTimeProvider",
     "ManualTimeProvider",
+    # randomness
     "RNGContext",
     "NAVIGATION",
     "COMBAT",
     "DAMAGE",
     "WEATHER",
     "AI",
+    # results
+    "Result",
+    "NOT_PERMITTED",
+    "PRECONDITION_FAILED",
+    "INVALID_TARGET",
+    "UNSUPPORTED",
 )
