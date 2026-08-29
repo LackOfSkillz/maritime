@@ -27,6 +27,7 @@ from evennia.objects.objects import DefaultObject, DefaultRoom
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .grounding import check_grounding, keel_clearance
+from .observation import DEFAULT_HEIGHT_OF_EYE, detection_limit, scan
 from .sailing import (
     FURLED,
     steerage_floor,
@@ -37,7 +38,8 @@ from .sailing import (
     sail_plan,
 )
 from .position import WorldPosition, normalize_bearing
-from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
+from .traffic import MAX_TARGET_HEIGHT, traffic
+from .vessel import EXPOSURES, INTERIOR, MAIN_DECK, WEATHER_DECKS
 
 
 class Vessel(DefaultObject):
@@ -63,6 +65,7 @@ class Vessel(DefaultObject):
         self.db.anchored = False
         self.db.aground = False
         self.db.draft = 2.0
+        self.db.air_draft = 12.0
         self.db.polar_curve = PolarCurve()
 
     # --- position -----------------------------------------------------------
@@ -324,6 +327,84 @@ class Vessel(DefaultObject):
 
         return config.narrator_class()(self)
 
+    @property
+    def air_draft(self):
+        """
+        How high she stands above the water.
+
+        Returns:
+            air_draft (float): Metres from the waterline to her highest point.
+
+        Notes:
+            Her masthead, not her deck. This is what decides how far away someone
+            else can see her, and it is the same number that will decide whether
+            she fits under a bridge - which is why it is height above the water
+            and not height overall.
+
+        """
+        return float(self.db.air_draft or 0.0)
+
+    @air_draft.setter
+    def air_draft(self, metres):
+        """
+        Args:
+            metres (float): Height above the waterline.
+
+        """
+        self.db.air_draft = float(metres)
+
+    @property
+    def height_of_eye(self):
+        """
+        How high this ship's own lookout sees from.
+
+        Returns:
+            height (float): Metres above the waterline.
+
+        Notes:
+            The highest weather deck she has, because that is where a lookout
+            would stand. Building a masthead compartment therefore buys real
+            range rather than flavour, and a ship with nothing but a main deck
+            sees like a small boat - which she is.
+
+        """
+        heights = [room.height_of_eye for room in self.ship_rooms if room.exposure in WEATHER_DECKS]
+        return max(heights) if heights else DEFAULT_HEIGHT_OF_EYE
+
+    def contacts(self, height_of_eye=None):
+        """
+        What can be seen from this hull.
+
+        Args:
+            height_of_eye (float, optional): How high the observer's eye is, in
+                metres above the waterline. Defaults to her own lookout's.
+
+        Returns:
+            sightings (tuple): `Sighting` objects, nearest first.
+
+        Notes:
+            Two phases. The register supplies candidates within the furthest
+            anything could possibly be seen from this height, and each candidate
+            is then tested against its own height - so a low boat and a tall ship
+            at the same range get different answers, which is the entire point.
+
+        """
+        position = self.maritime_position
+        if position is None:
+            return ()
+        if height_of_eye is None:
+            height_of_eye = self.height_of_eye
+        from . import config
+
+        seeing = config.visibility()
+        radius = detection_limit(height_of_eye, MAX_TARGET_HEIGHT, seeing)
+        candidates = [
+            (other, other.maritime_position, other.air_draft)
+            for other in traffic().near(position, radius)
+            if other is not self and other.maritime_position is not None
+        ]
+        return scan(position, self.heading, height_of_eye, candidates, seeing)
+
     # --- rig ----------------------------------------------------------------
 
     @property
@@ -429,6 +510,12 @@ class Vessel(DefaultObject):
         position = self.maritime_position
         if position is None:
             return False
+
+        # Kept up to date before anything else, and whether or not she moves. A
+        # ship at anchor is still visible, and still has a lookout.
+        traffic().note(self, position)
+        self.narrator.sightings(self.contacts())
+
         if self.aground:
             # Held by the ground. Canvas and helm will not shift her; getting off
             # is a separate act, which is the point of running aground.
@@ -541,6 +628,23 @@ class Vessel(DefaultObject):
         super().at_server_reload()
         self.checkpoint()
 
+    def at_object_delete(self):
+        """
+        Take her off the register on the way out.
+
+        Returns:
+            proceed (bool): True, always - nothing here can refuse a deletion.
+
+        Notes:
+            The register is memory, not a foreign key, so nothing removes her
+            from it when her row goes. A hull that sinks and is deleted would
+            otherwise stay visible on the horizon indefinitely, which is a
+            haunting rather than a feature.
+
+        """
+        traffic().forget(self)
+        return super().at_object_delete()
+
     def at_server_shutdown(self):
         """Flush live state before the server stops."""
         super().at_server_shutdown()
@@ -585,6 +689,7 @@ class ShipRoom(DefaultRoom):
         self.db.vessel = None
         self.db.deck_level = MAIN_DECK
         self.db.exposure = INTERIOR
+        self.db.height_of_eye = DEFAULT_HEIGHT_OF_EYE
 
     @property
     def maritime_position_source(self):
@@ -602,6 +707,34 @@ class ShipRoom(DefaultRoom):
 
         """
         return self.db.vessel
+
+    @property
+    def height_of_eye(self):
+        """
+        How high an observer standing here has their eye.
+
+        Returns:
+            height (float): Metres above the waterline.
+
+        Notes:
+            Set per compartment rather than derived from deck level, because the
+            thing that makes a masthead worth manning is that it is nothing like
+            a deck height above the water. A crosstree thirty metres up sees more
+            than three times as far as a man on deck, and no formula over deck
+            numbers would produce that.
+
+        """
+        height = self.db.height_of_eye
+        return DEFAULT_HEIGHT_OF_EYE if height is None else float(height)
+
+    @height_of_eye.setter
+    def height_of_eye(self, metres):
+        """
+        Args:
+            metres (float): Height above the waterline.
+
+        """
+        self.db.height_of_eye = float(metres)
 
     @property
     def deck_level(self):

@@ -8,6 +8,8 @@ from django.test import override_settings
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
+from .base import EmptySeaMixin
+
 from ..bathymetry import MUD, REEF, ROCK, FlatSeaMapProvider, MaritimeMapProvider
 from ..grounding import (
     AGROUND,
@@ -192,7 +194,7 @@ class TestRefloating(BaseEvenniaTestCase):
         self.assertTrue(refloats_on_tide(result))
 
 
-class TestVesselGrounding(BaseEvenniaTest):
+class TestVesselGrounding(EmptySeaMixin, BaseEvenniaTest):
     """
     A hull actually running aground.
 
@@ -256,7 +258,7 @@ class TestVesselGrounding(BaseEvenniaTest):
         self.assertIsNone(idle.keel_clearance())
 
 
-class TestSurfaceConstraint(BaseEvenniaTest):
+class TestSurfaceConstraint(EmptySeaMixin, BaseEvenniaTest):
     """A surface vessel floats, and cannot be sailed under."""
 
     def setUp(self):

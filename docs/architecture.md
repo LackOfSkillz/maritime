@@ -366,6 +366,24 @@ Detection depends on range, observer and target height, size, weather, light and
 Surface observation is a horizon problem; detecting what is *below* is a different and much
 shorter-ranged sense.
 
+Built, in `observation.py`: a horizon of `2.07·√h` nautical miles, a geographic range that
+is the *sum* of two horizons, and a detection limit that is the lesser of that and what the
+air allows. Height of eye comes from the compartment the observer is standing in, so
+building a masthead buys range rather than flavour — proven against a live pair of hulls,
+where the same ship at the same instant saw nothing from her deck and a sail 15.9 miles off
+from her crosstrees.
+
+One trap worth recording. The default visibility was first set to the conventional ten
+nautical miles, which sits *inside* a thirty-metre masthead's horizon of eleven and a
+third — so the air would have bound before the curve ever did, and going aloft would have
+bought nothing. A sensible-looking default silently deleting the feature it constrains is
+the ordinary way this kind of model dies. Clear-weather visibility is therefore set beyond
+any reachable horizon, and weather makes it bind later, on purpose.
+
+Detection levels are `CONTACT → VESSEL → CLASSIFIED → IDENTIFIED`, and what a lookout is
+told is bounded by the level rather than by what the target is. The engine knows her name
+at every range; saying it would make closing to identify pointless.
+
 Contacts progress `UNKNOWN -> CONTACT -> VESSEL -> CLASSIFIED -> IDENTIFIED`, carrying
 bearing, estimated range and confidence rather than truth.
 

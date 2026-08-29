@@ -6,6 +6,8 @@ Tests for the helm commands.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest
 
+from .base import EmptySeaMixin
+
 from ..commands import (
     CmdAllStop,
     CmdHelm,
@@ -20,7 +22,7 @@ from ..position import WorldPosition
 from ..typeclasses import ShipRoom, Vessel
 
 
-class HelmTestCase(BaseEvenniaCommandTest):
+class HelmTestCase(EmptySeaMixin, BaseEvenniaCommandTest):
     """A character standing on the deck of a vessel under way."""
 
     def setUp(self):

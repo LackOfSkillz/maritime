@@ -19,14 +19,23 @@ nothing else.
 
 from evennia.commands.command import Command
 
-from .formatting import RAW, format_position
+from .formatting import RAW, format_position, format_range
 from .grounding import SHOAL_WARNING_CLEARANCE
 from .messaging import spell_bearing
+from .observation import (
+    CLASSIFIED,
+    DEFAULT_HEIGHT_OF_EYE,
+    IDENTIFIED,
+    VESSEL,
+    bearing_in_points,
+    horizon_distance,
+)
 from .motion import HelmOrders
 from .sailing import SAIL_PLANS, relative_wind_angle, sail_plan
 from .position import normalize_bearing
 from .resolver import get_world_position
 from .typeclasses import Vessel
+from .vessel import WEATHER_DECKS
 
 # One knot is one nautical mile per hour, and a nautical mile is 1852 metres.
 METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
@@ -276,6 +285,79 @@ class CmdPosition(MaritimeCommand):
             f"   ordered {ms_to_knots(orders.speed):.1f} kt",
         ]
         self.caller.msg("\n".join(lines))
+
+
+class CmdLookout(MaritimeCommand):
+    """
+    Report what can be seen from where you stand.
+
+    Usage:
+      lookout
+
+    What the sea holds, nearest first: where to look, how far off, and as much as
+    can be told at that range. How far you can see depends on how high you are
+    standing, so the answer from a masthead is not the answer from the deck.
+
+    """
+
+    key = "lookout"
+    aliases = ("sightings",)
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        room = getattr(self.caller, "location", None)
+        exposure = getattr(room, "exposure", None)
+        if exposure not in WEATHER_DECKS:
+            self.caller.msg("You cannot see the sea from in here.")
+            return
+
+        height = getattr(room, "height_of_eye", DEFAULT_HEIGHT_OF_EYE)
+        seen = vessel.contacts(height)
+        if not seen:
+            self.caller.msg(
+                f"Nothing in sight. The horizon is {format_range(horizon_distance(height))} off."
+            )
+            return
+
+        lines = ["The lookout reports:"]
+        for sighting in seen:
+            where = bearing_in_points(sighting.relative).capitalize()
+            lines.append(
+                f"  {where:<34}{format_range(sighting.distance):>12}   "
+                f"{describe_contact(sighting)}"
+            )
+        self.caller.msg("\n".join(lines))
+
+
+def describe_contact(sighting):
+    """
+    Say as much about a contact as the range allows.
+
+    Args:
+        sighting (Sighting): What was seen.
+
+    Returns:
+        text (str): What the observer can honestly say it is.
+
+    Notes:
+        Bounded by the detection level rather than by what the target actually
+        is. A hull at the edge of vision is a shape on the water even if the
+        engine knows her name, and reporting the name anyway would make closing
+        to identify pointless.
+
+    """
+    if sighting.level == IDENTIFIED:
+        return f"the {sighting.target.key}"
+    if sighting.level == CLASSIFIED:
+        plan = sighting.target.sail_plan
+        return "a vessel under sail" if plan.area > 0.0 else "a vessel, sails furled"
+    if sighting.level == VESSEL:
+        return "a sail"
+    return "something on the water"
 
 
 class CmdMaritimeStatus(MaritimeCommand):

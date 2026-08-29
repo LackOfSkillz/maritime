@@ -37,6 +37,11 @@ BELOW_WATERLINE = "below_waterline"
 
 EXPOSURES = (OPEN, SEMI_EXPOSED, INTERIOR, BELOW_WATERLINE)
 
+# Exposures open to the sky: where someone can watch the sea go by, feel the
+# weather, and be seen doing it. Below deck you feel the motion but you do not
+# watch the water, which is what makes an open deck worth standing on.
+WEATHER_DECKS = (OPEN, SEMI_EXPOSED)
+
 # Deck level of the main deck. Everything else is relative to it.
 MAIN_DECK = 0
 

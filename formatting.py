@@ -21,11 +21,17 @@ it was meant to fix.
 """
 
 from . import config
-from .position import WorldPosition
+from .position import METRES_PER_NAUTICAL_MILE, WorldPosition
 from .resolver import NoWorldPosition
 
-# One minute of latitude, by definition. The whole conversion rests on this.
-METRES_PER_MINUTE = 1852.0
+# Small numbers of cables, said rather than counted.
+_CABLE_NAMES = ("", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+
+# One minute of latitude, by definition - and therefore one nautical mile. The
+# whole conversion rests on this, so it is defined once, in the spatial layer,
+# and named here for what it means when you are reading a position rather than a
+# distance.
+METRES_PER_MINUTE = METRES_PER_NAUTICAL_MILE
 MINUTES_PER_DEGREE = 60.0
 
 # Presentation styles. `nautical` is what a player should see; `raw` is for staff
@@ -123,3 +129,40 @@ def format_position(position, style=None):
     if position.z < 0.0:
         line = f"{line}, {abs(position.z):.1f} m below the surface"
     return line
+
+
+def format_range(metres, style=None):
+    """
+    Say a distance the way it would be reported at sea.
+
+    Args:
+        metres (float): Distance in metres.
+        style (str, optional): `NAUTICAL` or `RAW`. Defaults to the configured
+            style.
+
+    Returns:
+        text (str): e.g. `"4.2 miles"`, `"three cables"`, `"1830 m"`.
+
+    Notes:
+        Cables under a mile, miles above it. A cable is a tenth of a nautical
+        mile and about a ship's-length unit of thought - close enough that
+        "three cables" is a decision and "555 metres" is a measurement. Ranges
+        at sea are estimates, and spelling the small ones in words keeps them
+        from reading as though somebody had a rangefinder.
+
+    """
+    if style is None:
+        style = config.get_setting("POSITION_STYLE", NAUTICAL)
+    if style == RAW:
+        return f"{metres:.0f} m"
+
+    miles = metres / METRES_PER_NAUTICAL_MILE
+    if miles >= 1.0:
+        return f"{miles:.1f} miles"
+
+    cables = int(round(miles * 10.0))
+    if cables <= 0:
+        return "alongside"
+    if cables < len(_CABLE_NAMES):
+        return f"{_CABLE_NAMES[cables]} cable{'s' if cables != 1 else ''}"
+    return f"{cables} cables"

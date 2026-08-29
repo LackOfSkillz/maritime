@@ -6,6 +6,8 @@ Tests for the script that drives the simulation.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
+from .base import EmptySeaMixin
+
 from ..clock import ManualTimeProvider
 from ..cmdsets import HelmCmdSet
 from ..motion import HelmOrders, MotionLimits
@@ -15,7 +17,7 @@ from ..simulation import ACTIVE, DORMANT
 from ..typeclasses import Vessel
 
 
-class DriverTestCase(BaseEvenniaTest):
+class DriverTestCase(EmptySeaMixin, BaseEvenniaTest):
     """A driver and a vessel to drive."""
 
     def setUp(self):
@@ -159,7 +161,7 @@ class TestDriverConvenience(DriverTestCase):
         self.assertEqual(self.driver.service.tier_of(another), ACTIVE)
 
 
-class TestHelmCmdSet(BaseEvenniaTest):
+class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
     """The command set itself."""
 
     def test_has_the_helm_commands(self):
@@ -176,6 +178,7 @@ class TestHelmCmdSet(BaseEvenniaTest):
                 "sail",
                 "wind",
                 "sound",
+                "lookout",
                 "drop anchor",
                 "weigh anchor",
                 "@maritime",

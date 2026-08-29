@@ -8,6 +8,8 @@ from django.test import override_settings
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
+from .base import EmptySeaMixin
+
 from ..motion import HelmOrders, MotionLimits
 from ..position import EAST, NORTH, SOUTH, WEST, WorldPosition
 from ..typeclasses import Vessel
@@ -260,7 +262,7 @@ class TestLeeway(BaseEvenniaTestCase):
         self.assertLess(leeway_angle(315.0, NORTHERLY, WORKING, 3.0), 0.0)
 
 
-class TestVesselUnderSail(BaseEvenniaTest):
+class TestVesselUnderSail(EmptySeaMixin, BaseEvenniaTest):
     """A hull actually driven by wind."""
 
     def setUp(self):
@@ -360,7 +362,7 @@ class TestSteerageFloor(BaseEvenniaTestCase):
         self.assertGreater(steerage_floor(NORTHERLY, FULL), steerage_floor(NORTHERLY, STORM))
 
 
-class TestInIronsRecovery(BaseEvenniaTest):
+class TestInIronsRecovery(EmptySeaMixin, BaseEvenniaTest):
     """Being trapped must be hard, not permanent."""
 
     def setUp(self):
@@ -397,7 +399,7 @@ class TestInIronsRecovery(BaseEvenniaTest):
         self.assertAlmostEqual(self.hull.heading, 3.0, places=3)
 
 
-class TestAnchoring(BaseEvenniaTest):
+class TestAnchoring(EmptySeaMixin, BaseEvenniaTest):
     """Bringing up and getting under way."""
 
     def setUp(self):

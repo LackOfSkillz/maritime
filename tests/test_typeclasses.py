@@ -9,13 +9,15 @@ the settings-only one.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
+from .base import EmptySeaMixin
+
 from ..position import WorldPosition
 from ..resolver import NoWorldPosition, get_world_position
 from ..typeclasses import ShipRoom, Vessel
 from ..vessel import BELOW_WATERLINE, INTERIOR, MAIN_DECK, OPEN
 
 
-class VesselTestCase(BaseEvenniaTest):
+class VesselTestCase(EmptySeaMixin, BaseEvenniaTest):
     """Shared setup: one hull with one compartment aboard."""
 
     def setUp(self):

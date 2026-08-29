@@ -4,15 +4,16 @@ Contribution by Gary Mix, 2026
 
 A maritime simulation system for Evennia. Vessels occupy continuous world coordinates
 rather than moving between ocean rooms — they gather way, come round, sail with the wind
-on their own polar curves, make leeway, anchor, and carry characters in ordinary Evennia
-rooms while under way. The sea has a bottom, the bottom has depth, and the tide moves the
-surface over it. Genre-neutral, and usable with core Evennia alone.
+on their own polar curves, make leeway, anchor, run aground, and sight each other across a
+horizon that depends on how high the lookout is standing. They carry characters in ordinary
+Evennia rooms while under way. The sea has a bottom, the bottom has depth, and the tide
+moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 
 ## Status
 
-**Early development.** The foundations, spatial model, vessels, simulation and sailing are
-working and tested; ports, navigation, weather, crew, combat and damage are not built yet.
-Nothing here is API-stable.
+**Early development.** The foundations, spatial model, vessels, simulation, sailing,
+grounding and observation are working and tested; ports, charts, weather, crew, combat and
+damage are not built yet. Nothing here is API-stable.
 
 What works today:
 
@@ -39,9 +40,24 @@ Test Sloop
   Speed      6.6 kt   ordered 0.0 kt
 ```
 
+Standing on the deck, two metres above the water:
+
+```text
+> lookout
+Nothing in sight. The horizon is 2.9 miles off.
+```
+
+Twenty-eight metres up her mast, the same ship at the same instant:
+
+```text
+> lookout
+The lookout reports:
+  On the starboard beam               15.9 miles   a sail
+```
+
 ## Design
 
-Five ideas do most of the work. `docs/architecture.md` has the rest.
+Six ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -64,6 +80,12 @@ returning structured results, and nothing in the simulation knows the word "agro
 watch the sea go by, below you feel her heel and hear water on the planking. Point
 `MARITIME_NARRATOR` at a `VesselNarrator` subclass, override one method, and every line
 the system speaks changes without a line of physics moving.
+
+**Seeing is a height problem, not a range problem.** A hull is hidden by the curve of the
+water, so how far you can see depends on how high your eye is — and how far you can see a
+*particular* ship depends on how high she is too, because her masthead is over your horizon
+looking back. Height of eye comes from the compartment you are standing in, so a masthead
+is worth building rather than worth mentioning.
 
 **One scheduler, bounded and fair.** Not a ticker per vessel: Evennia's `TickerHandler`
 keys subscriptions on callback and interval but not arguments, so a fleet subscribing one
@@ -106,6 +128,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_WIND_SPEED` | `0.0` | Wind speed in metres per second |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
+| `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
 | `MARITIME_DEFAULT_DEPTH` | `200.0` | Depth of the default flat sea, in metres |
 
 ## Usage
@@ -122,6 +145,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
 | `position` | Latitude, longitude, course and speed |
 | `sound` | Water under the keel, and a shoal warning |
+| `lookout` | What is in sight from where you are standing |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
 
 ## Examples
@@ -181,19 +205,41 @@ class Terse(VesselNarrator):
 MARITIME_NARRATOR = "world.ships.Terse"
 ```
 
+What a lookout can tell is bounded by the range, not by what the engine knows:
+
+```python
+from evennia.contrib.full_systems.maritime import (
+    horizon_distance, geographic_range, detection_limit, detection_level,
+)
+
+horizon_distance(2.0)                    # a deck:      2.9 nautical miles
+horizon_distance(30.0)                   # a masthead: 11.3 nautical miles
+geographic_range(2.0, 30.0)              # her mast is over your horizon: 14.3
+
+limit = detection_limit(2.0, 30.0)       # ...unless the air runs out first
+detection_level(0.9 * limit, limit)      # 'contact'    - something on the water
+detection_level(0.1 * limit, limit)      # 'identified' - you know the ship
+```
+
 ## Testing
 
 ```bash
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 680 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 770 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
-- No ports, docking, navigation, charts, weather, crew, cargo, combat or damage yet.
-- One global wind. A weather provider replaces it later; call sites will not change.
+- No ports, docking, charts, weather, crew, cargo, combat or damage yet.
+- One global wind and one global visibility. A weather provider replaces both later; call
+  sites will not change.
+- Ranges reported to players are true ranges. A lookout should be giving an estimate, and
+  will once dead reckoning and navigational error land — `Sighting` carries the true
+  distance and says so.
+- Every vessel scans every tick, against a linear index. Fine for a harbour, and the reason
+  the index interface exists separately from what is behind it.
 - Grounding samples the vessel centre point only. A hull can step over a reef
   narrower than one tick of movement; swept hull-footprint testing lands with the
   water column phase.
@@ -204,7 +250,8 @@ would take half an hour of wall time runs in milliseconds.
   lands when there is real traffic to measure it against.
 - Narration is addressed to compartments, not to people. A ship can tell the deck one
   thing and the hold another, but cannot yet tell the captain and a deck hand standing
-  side by side two different things.
+  side by side two different things. The ship's own cry uses her highest weather deck, so
+  she calls a sighting the masthead can see even when nobody is up there.
 
 ## License
 

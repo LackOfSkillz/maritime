@@ -31,6 +31,7 @@ from evennia.utils.utils import class_from_module
 
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
 from .messaging import VesselNarrator
+from .observation import DEFAULT_VISIBILITY
 from .clock import MaritimeTimeProvider
 from .rng import RNGContext
 
@@ -181,3 +182,19 @@ def narrator_class():
 
     """
     return load_class(get_setting("NARRATOR", DEFAULT_NARRATOR), expected=VesselNarrator)
+
+
+def visibility():
+    """
+    How far the air lets you see, in metres.
+
+    Returns:
+        visibility (float): Metres. Defaults to a clear day.
+
+    Notes:
+        One global figure, exactly as the wind is one global vector. A weather
+        provider replaces both later and no call site changes, which is the only
+        reason a constant is acceptable here in the meantime.
+
+    """
+    return float(get_setting("VISIBILITY", DEFAULT_VISIBILITY))

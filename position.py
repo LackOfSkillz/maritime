@@ -36,6 +36,11 @@ DEFAULT_REGION = "default"
 
 FULL_CIRCLE = 360.0
 
+# One nautical mile, which is one minute of latitude - the same quantity, and the
+# reason a distance and a position can be read off the same scale. Exact by
+# definition since 1929, not a rounding.
+METRES_PER_NAUTICAL_MILE = 1852.0
+
 # Compass bearings, for readable tests and content.
 NORTH = 0.0
 EAST = 90.0

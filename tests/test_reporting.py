@@ -6,6 +6,8 @@ Tests for what a ship's company is told while she is under way.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
+from .base import EmptySeaMixin
+
 from django.test import override_settings
 
 from ..messaging import (
@@ -20,7 +22,7 @@ from ..typeclasses import ShipRoom, Vessel
 from ..vessel import BELOW_WATERLINE, OPEN
 
 
-class TestSpellBearing(BaseEvenniaTest):
+class TestSpellBearing(EmptySeaMixin, BaseEvenniaTest):
     """Courses are spoken digit by digit."""
 
     def test_pads_to_three_figures(self):
@@ -47,7 +49,7 @@ class TestSpellBearing(BaseEvenniaTest):
         self.assertNotEqual(spell_bearing(90.0), "90")
 
 
-class TestCompassPoint(BaseEvenniaTest):
+class TestCompassPoint(EmptySeaMixin, BaseEvenniaTest):
     """Describing a heading the way a person would say it."""
 
     def test_cardinals(self):
@@ -70,7 +72,7 @@ class TestCompassPoint(BaseEvenniaTest):
         self.assertEqual(compass_point(450.0), "east")
 
 
-class ReportingTestCase(BaseEvenniaTest):
+class ReportingTestCase(EmptySeaMixin, BaseEvenniaTest):
     """A sloop with an open deck and a hold below."""
 
     def setUp(self):
@@ -236,7 +238,7 @@ class NotANarrator:
         self.vessel = vessel
 
 
-class TestNarratorSeam(BaseEvenniaTest):
+class TestNarratorSeam(EmptySeaMixin, BaseEvenniaTest):
     """
     The prose is replaceable without touching the simulation.
 
@@ -293,7 +295,7 @@ class TestNarratorSeam(BaseEvenniaTest):
             VesselNarrator(self.hull).phrase_for("no_such_event")
 
 
-class TestDelivery(BaseEvenniaTest):
+class TestDelivery(EmptySeaMixin, BaseEvenniaTest):
     """Who hears what."""
 
     def setUp(self):

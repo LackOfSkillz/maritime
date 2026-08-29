@@ -23,7 +23,7 @@ from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
-from .formatting import NAUTICAL, RAW, format_position
+from .formatting import NAUTICAL, RAW, format_position, format_range
 from .messaging import (
     AT_SPEED,
     COMING_ROUND,
@@ -47,6 +47,21 @@ from .grounding import (
     refloats_on_tide,
 )
 from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .observation import (
+    CLASSIFIED,
+    CONTACT,
+    DETECTION_LEVELS,
+    IDENTIFIED,
+    Sighting,
+    bearing_in_points,
+    detection_level,
+    detection_limit,
+    geographic_range,
+    horizon_distance,
+    scan,
+    sight,
+)
+from .traffic import VesselTraffic, traffic
 from .position import (
     DEFAULT_REGION,
     WorldPosition,
@@ -166,6 +181,7 @@ __all__ = (
     "CmdPosition",
     # presentation
     "format_position",
+    "format_range",
     "NAUTICAL",
     "RAW",
     "VesselNarrator",
@@ -192,6 +208,21 @@ __all__ = (
     "relative_wind_angle",
     "achievable_speed",
     "leeway_angle",
+    # observation
+    "horizon_distance",
+    "geographic_range",
+    "detection_limit",
+    "detection_level",
+    "bearing_in_points",
+    "sight",
+    "scan",
+    "Sighting",
+    "DETECTION_LEVELS",
+    "CONTACT",
+    "CLASSIFIED",
+    "IDENTIFIED",
+    "traffic",
+    "VesselTraffic",
     # grounding
     "keel_clearance",
     "check_grounding",

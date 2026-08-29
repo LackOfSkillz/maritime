@@ -26,13 +26,9 @@ hand differently, without reimplementing when to speak.
 """
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
+from .observation import CLASSIFIED, IDENTIFIED, bearing_in_points
 from .position import bearing_difference
-from .vessel import OPEN, SEMI_EXPOSED
-
-# Exposures from which someone can see the sea go by. Below deck you feel the
-# motion but you do not watch the water, which is what makes an open deck worth
-# standing on.
-WEATHER_DECKS = (OPEN, SEMI_EXPOSED)
+from .vessel import WEATHER_DECKS
 
 # Compass points, for describing a heading to someone who is not reading an
 # instrument. Sixteen points is what a helmsman would actually call.
@@ -63,6 +59,9 @@ STEADY = "steady"
 AT_SPEED = "at_speed"
 WAY_OFF = "way_off"
 RUN_AGROUND = "run_aground"
+SIGHTED = "sighted"
+CONTACT_LOST = "contact_lost"
+CONTACT_CLOSER = "contact_closer"
 HULL_HOLED = "hull_holed"
 SHOALING = "shoaling"
 
@@ -208,6 +207,21 @@ class VesselNarrator:
                 f"The hull grinds and settles. She is aground on {bottom}.",
             )
 
+        if event == SIGHTED:
+            where = bearing_in_points(detail["relative"])
+            return (
+                f'The lookout cries, "Sail ho! {where.capitalize()}!"',
+                'The cry of "Sail ho!" carries down from the deck.',
+            )
+
+        if event == CONTACT_LOST:
+            return "The sail you were watching dips below the horizon and is gone.", None
+
+        if event == CONTACT_CLOSER:
+            if detail["level"] == IDENTIFIED:
+                return f"You can read her now. She is the {detail['name']}.", None
+            return "She is close enough now to make out her rig.", None
+
         if event == SHOALING:
             call = (
                 f"The leadsman calls the depth: {detail['clearance']:.1f} metres "
@@ -276,6 +290,48 @@ class VesselNarrator:
             return
         vessel.ndb.reported_shoaling = True
         self.deliver(*self.phrase_for(SHOALING, clearance=contact.clearance))
+
+    def sightings(self, seen):
+        """
+        Tell the ship what the lookout can see.
+
+        Args:
+            seen (tuple): `Sighting` objects, nearest first.
+
+        Notes:
+            Transitions again, and for the same reason: a sail on the horizon is
+            news once. Reporting every contact every tick would bury the one that
+            just appeared under twenty repetitions of the three that did not.
+
+            Three things are worth a cry - a sail where there was none, one that
+            has dropped below the horizon, and one that has come close enough to
+            tell something new about. The third is why the detection ladder has
+            rungs at all.
+
+        """
+        vessel = self.vessel
+        was = dict(vessel.ndb.contacts or {})
+        now = {}
+
+        for sighting in seen:
+            key = sighting.target.id
+            now[key] = sighting.level
+            if key not in was:
+                self.deliver(*self.phrase_for(SIGHTED, relative=sighting.relative))
+            elif sighting.level != was[key] and sighting.level in (CLASSIFIED, IDENTIFIED):
+                self.deliver(
+                    *self.phrase_for(
+                        CONTACT_CLOSER,
+                        level=sighting.level,
+                        name=sighting.target.key,
+                    )
+                )
+
+        for key in was:
+            if key not in now:
+                self.deliver(*self.phrase_for(CONTACT_LOST))
+
+        vessel.ndb.contacts = now
 
     # --- transitions --------------------------------------------------------
 

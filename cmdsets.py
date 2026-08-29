@@ -17,6 +17,7 @@ from .commands import (
     CmdAllStop,
     CmdWeighAnchor,
     CmdHelm,
+    CmdLookout,
     CmdMaritimeStatus,
     CmdPosition,
     CmdAnchor,
@@ -43,6 +44,7 @@ class HelmCmdSet(CmdSet):
     def at_cmdset_creation(self):
         """Populate the set."""
         self.add(CmdHelm())
+        self.add(CmdLookout())
         self.add(CmdSpeed())
         self.add(CmdAllStop())
         self.add(CmdPosition())

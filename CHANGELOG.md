@@ -13,6 +13,31 @@ combat and damage are not.
 
 ### Feat
 
+- Add observation. Detection at sea is a height problem before it is a range
+  problem: a hull is hidden by the curve of the water, so how far you can see is
+  decided by how high your eye is, and how far you can see *a particular thing*
+  by how high that thing is as well. `observation.py` implements the horizon
+  (`2.07·√h` nautical miles, the figure a navigator uses, refraction already
+  folded in), geographic range as the sum of two horizons, and a detection limit
+  that is the lesser of that and what the air allows.
+- Height of eye comes from the compartment an observer is standing in, so a
+  masthead is worth building rather than worth mentioning. Proved live: one ship,
+  one instant, nothing in sight from her deck and a sail 15.9 miles off from her
+  crosstrees.
+- Add `traffic.py`, the register of who is on the water. The first thing here
+  that is not about a single vessel, and the first user of the spatial indexes,
+  which had been written and never called.
+- Add `lookout`, which reports what can be seen from where you stand - where to
+  look, how far off, and only as much as the range allows. Contacts run
+  `CONTACT → VESSEL → CLASSIFIED → IDENTIFIED`; the engine knows her name at any
+  range and does not say it, because otherwise closing to identify is pointless.
+- Sightings are cried as they happen: a new sail, one lost below the horizon, and
+  one close enough to tell something new about. A ship at anchor or aground still
+  keeps a watch.
+- Add `format_range`, which reports distance in cables under a mile and miles
+  above it, because ranges at sea are estimates and "three cables" reads as one
+  where "555 metres" does not.
+
 - Split the speaking layer out of the `Vessel` typeclass into `messaging.py`, and
   make it a configured seam. Law 11 said the domain returns data and a separate
   layer renders it; the prose was in fact welded into the typeclass, so the
@@ -67,6 +92,11 @@ combat and damage are not.
   by, below you feel her heel and hear water on the planking.
 
 ### Fix
+
+- A deleted vessel now leaves the traffic register. It is memory rather than a
+  foreign key, so nothing removed her when her row went, and a hull that sank and
+  was deleted would have stayed visible on the horizon indefinitely. Found by
+  test pollution, which is the same defect wearing a different hat.
 
 - Remove two unused imports from the grounding tests. Caught by CI rather than
   locally, because the local check before that push was the discipline script
