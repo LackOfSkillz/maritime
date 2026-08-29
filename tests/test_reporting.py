@@ -81,7 +81,7 @@ class ReportingTestCase(EmptySeaMixin, BaseEvenniaTest):
         self.deck = create.create_object(ShipRoom, key="Main Deck")
         self.hold = create.create_object(ShipRoom, key="Cargo Hold")
         for room, level, exposure in ((self.deck, 0, OPEN), (self.hold, -1, BELOW_WATERLINE)):
-            room.db.vessel = self.hull
+            room.vessel = self.hull
             room.deck_level = level
             room.exposure = exposure
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
@@ -252,7 +252,7 @@ class TestNarratorSeam(EmptySeaMixin, BaseEvenniaTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.deck.exposure = OPEN
         self.heard = []
         self.deck.msg_contents = lambda text, **kwargs: self.heard.append(text)
@@ -302,10 +302,10 @@ class TestDelivery(EmptySeaMixin, BaseEvenniaTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.deck.exposure = OPEN
         self.hold = create.create_object(ShipRoom, key="Hold")
-        self.hold.db.vessel = self.hull
+        self.hold.vessel = self.hull
         self.hold.exposure = BELOW_WATERLINE
         self.topside, self.below = [], []
         self.deck.msg_contents = lambda text, **kwargs: self.topside.append(text)

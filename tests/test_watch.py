@@ -84,7 +84,7 @@ class WatchTestCase(EmptySeaMixin, BaseEvenniaTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.deck.exposure = OPEN
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
         self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=2.0, turn_rate=8.0)
@@ -164,7 +164,7 @@ class TestHeightOfEye(WatchTestCase):
 
     def test_a_masthead_raises_her_eye(self):
         top = create.create_object(ShipRoom, key="Masthead")
-        top.db.vessel = self.hull
+        top.vessel = self.hull
         top.exposure = OPEN
         top.height_of_eye = 28.0
         self.assertEqual(self.hull.height_of_eye, 28.0)
@@ -176,7 +176,7 @@ class TestHeightOfEye(WatchTestCase):
 
         """
         hold = create.create_object(ShipRoom, key="Hold")
-        hold.db.vessel = self.hull
+        hold.vessel = self.hull
         hold.exposure = BELOW_WATERLINE
         hold.height_of_eye = 99.0
         self.assertEqual(self.hull.height_of_eye, self.deck.height_of_eye)
@@ -318,7 +318,7 @@ class TestCmdLookout(EmptySeaMixin, BaseEvenniaCommandTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.deck.exposure = OPEN
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
         self.hull.heading = EAST
@@ -346,7 +346,7 @@ class TestCmdLookout(EmptySeaMixin, BaseEvenniaCommandTest):
 
     def test_you_cannot_see_out_from_below(self):
         hold = create.create_object(ShipRoom, key="Hold")
-        hold.db.vessel = self.hull
+        hold.vessel = self.hull
         hold.exposure = BELOW_WATERLINE
         self.char1.location = hold
         output = self.call(CmdLookout(), "")

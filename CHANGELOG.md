@@ -13,6 +13,22 @@ combat and damage are not.
 
 ### Feat
 
+- Add ports, and with them the first true vertical slice. A berth has a position,
+  a line to lie along, and dimensions - length, beam and the depth of water
+  alongside - so a hull that has been fitted out until she draws another half
+  metre may no longer fit her home berth. Coming alongside is checked in the
+  order a ship discovers it: berth free, ship fits, near enough, slow enough,
+  lying along the quay.
+- The gangway is two ordinary Evennia exits, made when the lines go ashore and
+  deleted when they are let go. Being ordinary exits they can be followed,
+  blocked, watched and locked like any other, which is Law 7 doing its job rather
+  than a docking system reimplementing movement.
+- Add `PortRoom`, quayside room space that also stands somewhere on the water -
+  the one place the two coordinate systems meet. Add `dock` and `cast off`, and
+  `Vessel.length` and `Vessel.beam`, which berth fitting needs now and hull
+  footprints will need later.
+- A vessel now keeps her own list of compartments rather than querying for them.
+
 - Add currents, the last named deliverable outstanding from the sailing phase.
   A vessel is now carried by the water in addition to whatever she makes through
   it, so her heading and her track are different questions and only the second
@@ -133,6 +149,28 @@ combat and damage are not.
   by, below you feel her heel and hear water on the planking.
 
 ### Fix
+
+- A vessel could not find her own compartments after `ShipRoom` moved module.
+  Evennia stores a typeclass as a dotted path and the manager filters on that
+  *string*, so `ShipRoom.objects.all()` returned nothing for every room created
+  before the move - while the rooms themselves loaded perfectly. A ship with
+  compartments behaved exactly like a ship with none: no lookout height, no
+  messaging, no gangway. The re-export kept them resolving and could not keep
+  them queryable. Vessels now hold their own compartment list, which fixes it,
+  removes a full table scan that ran every tick, and does not care what string
+  is in the row. `Vessel.reattach_compartments()` rebuilds the list by type for
+  anyone upgrading.
+- Set a compartment's ship with `room.vessel = hull`, not `room.db.vessel`. The
+  link has two sides now and only the property maintains both.
+- A vessel stopped dead and head to wind could never come round. Backing a
+  headsail turns a stationary ship - that is the entire manoeuvre - but the
+  recovery was written as a raised turn *rate*, and turn rate is scaled by speed
+  because it models a rudder. Multiplied by zero speed it gave zero turn. Docking
+  at a north-facing berth in a northerly parked a ship permanently. `advance()`
+  now takes a `turn_floor` that is not speed-scaled, which is the honest way to
+  represent anything that turns a hull without water over the rudder: a backed
+  sail, a sweep, a warp, a tug. Found by sailing the vertical slice; no unit test
+  had ever started a vessel at exactly zero.
 
 - Tests now assert the neutral world they describe rather than inheriting the
   dev game's. Twice now a game has configured something - a seabed, then a

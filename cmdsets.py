@@ -21,6 +21,8 @@ from .commands import (
     CmdMaritimeStatus,
     CmdPosition,
     CmdAnchor,
+    CmdCastOff,
+    CmdDock,
     CmdCurrent,
     CmdSail,
     CmdSound,
@@ -51,6 +53,8 @@ class HelmCmdSet(CmdSet):
         self.add(CmdPosition())
         self.add(CmdSail())
         self.add(CmdAnchor())
+        self.add(CmdDock())
+        self.add(CmdCastOff())
         self.add(CmdWeighAnchor())
         self.add(CmdWind())
         self.add(CmdCurrent())

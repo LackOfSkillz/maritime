@@ -107,13 +107,15 @@ class MotionState:
             raise ValueError(f"Speed must be finite and non-negative, got {self.speed!r}.")
 
 
-def turn_rate_at_speed(limits, speed):
+def turn_rate_at_speed(limits, speed, floor=0.0):
     """
     How fast a hull can turn at a given speed.
 
     Args:
         limits (MotionLimits): The hull's capabilities.
         speed (float): Current speed in metres per second.
+        floor (float, optional): Degrees per second available regardless of
+            speed.
 
     Returns:
         rate (float): Degrees per second available right now.
@@ -128,13 +130,22 @@ def turn_rate_at_speed(limits, speed):
         the curve flattens off, but it captures the part that matters: slow ships
         steer badly.
 
+        **The floor is not scaled**, and that is the whole reason it exists. Some
+        things turn a ship without any water flowing past the rudder at all: a
+        backed headsail, a sweep over the quarter, a warp to a bollard, a tug on
+        the bow. Feeding those through the speed scaling multiplies them by zero
+        at exactly the moment they are the only thing that would work - a hull
+        stopped dead and pointing the wrong way, which is the definition of being
+        in irons and the one situation the mechanism is for.
+
     """
+    floor = max(floor, 0.0)
     if limits.max_speed <= 0.0:
-        return 0.0
-    return limits.turn_rate * min(1.0, speed / limits.max_speed)
+        return floor
+    return max(limits.turn_rate * min(1.0, speed / limits.max_speed), floor)
 
 
-def _step(state, orders, limits, elapsed):
+def _step(state, orders, limits, elapsed, turn_floor=0.0):
     """
     Advance one sub-step.
 
@@ -160,7 +171,7 @@ def _step(state, orders, limits, elapsed):
     else:
         speed = max(target_speed, state.speed - speed_change)
 
-    available_turn = turn_rate_at_speed(limits, speed) * elapsed
+    available_turn = turn_rate_at_speed(limits, speed, turn_floor) * elapsed
     wanted_turn = bearing_difference(state.heading, orders.heading)
     if abs(wanted_turn) <= available_turn:
         heading = orders.heading
@@ -174,7 +185,7 @@ def _step(state, orders, limits, elapsed):
     return replace(state, position=position, heading=heading, speed=speed)
 
 
-def advance(state, orders, limits, elapsed, step=SIMULATION_STEP):
+def advance(state, orders, limits, elapsed, step=SIMULATION_STEP, turn_floor=0.0):
     """
     Advance a vessel through a stretch of game time.
 
@@ -184,6 +195,8 @@ def advance(state, orders, limits, elapsed, step=SIMULATION_STEP):
         limits (MotionLimits): What she is capable of.
         elapsed (float): Game seconds to advance.
         step (float, optional): Sub-step size in game seconds.
+        turn_floor (float, optional): Degrees per second of turning available
+            regardless of speed - a backed sail, a sweep, a warp, a tug.
 
     Returns:
         state (MotionState): Where she ends up.
@@ -213,7 +226,7 @@ def advance(state, orders, limits, elapsed, step=SIMULATION_STEP):
 
     current = state
     for _ in range(whole_steps):
-        current = _step(current, orders, limits, step)
+        current = _step(current, orders, limits, step, turn_floor)
     if remainder > 0.0:
-        current = _step(current, orders, limits, remainder)
+        current = _step(current, orders, limits, remainder, turn_floor)
     return current

@@ -435,3 +435,69 @@ class TestAnchoring(EmptySeaMixin, BaseEvenniaTest):
         for _ in range(20):
             self.hull.at_maritime_tick(5.0)
         self.assertNotEqual(self.hull.maritime_position, WorldPosition(0.0, 0.0))
+
+
+class TestInIronsFromADeadStop(EmptySeaMixin, BaseEvenniaTest):
+    """
+    Coming round with no way on at all.
+
+    The case a live vertical slice found and the unit tests had missed. Backing a
+    headsail turns a ship that is stopped dead - that is the entire manoeuvre -
+    but the recovery was first written as a raised turn *rate*, and turn rate is
+    scaled by speed because it models a rudder. Multiplied by zero speed it gave
+    zero turn, so a hull that came to rest head to wind was stuck there for good.
+    Docking at a north-facing berth in a northerly did exactly that.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Sloop")
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.hull.motion_limits = MotionLimits(max_speed=5.0, acceleration=0.12, turn_rate=3.0)
+        self.hull.heading = NORTH
+        self.hull.speed = 0.0
+        self.hull.sail_plan = FULL
+        self.hull.orders = HelmOrders(heading=115.0, speed=0.0)
+
+    def test_she_makes_no_way_head_to_wind(self):
+        """The trap itself, which is correct and should stay."""
+        with override_settings(MARITIME_WIND_BEARING=0.0, MARITIME_WIND_SPEED=9.0):
+            self.assertAlmostEqual(self.hull.sailing_speed(), 0.0)
+
+    def test_she_can_still_come_round(self):
+        with override_settings(
+            MARITIME_WIND_BEARING=0.0,
+            MARITIME_WIND_SPEED=9.0,
+            MARITIME_DEFAULT_DEPTH=100.0,
+        ):
+            for _ in range(10):
+                self.hull.at_maritime_tick(5.0)
+        self.assertGreater(self.hull.heading, 20.0)
+
+    def test_and_then_she_sails(self):
+        """Off the wind, drawing again, and away - the recovery completed."""
+        with override_settings(
+            MARITIME_WIND_BEARING=0.0,
+            MARITIME_WIND_SPEED=9.0,
+            MARITIME_DEFAULT_DEPTH=100.0,
+        ):
+            for _ in range(40):
+                self.hull.at_maritime_tick(5.0)
+        self.assertGreater(self.hull.speed, 1.0)
+
+    def test_with_no_canvas_she_stays_helpless(self):
+        """
+        Nothing to back. A ship with her sails furled and no way on genuinely
+        cannot steer, and that must remain true or the trap is not a trap.
+
+        """
+        self.hull.sail_plan = FURLED
+        with override_settings(
+            MARITIME_WIND_BEARING=0.0,
+            MARITIME_WIND_SPEED=9.0,
+            MARITIME_DEFAULT_DEPTH=100.0,
+        ):
+            for _ in range(10):
+                self.hull.at_maritime_tick(5.0)
+        self.assertAlmostEqual(self.hull.heading, NORTH)

@@ -24,7 +24,7 @@ class VesselTestCase(EmptySeaMixin, BaseEvenniaTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.cabin = create.create_object(ShipRoom, key="Cabin")
-        self.cabin.db.vessel = self.hull
+        self.cabin.vessel = self.hull
         self.at_sea = WorldPosition(18422.0, 9912.0)
 
 
@@ -224,15 +224,15 @@ class TestVesselInterior(VesselTestCase):
     def test_excludes_other_vessels_rooms(self):
         other_hull = create.create_object(Vessel, key="Other Sloop")
         other_room = create.create_object(ShipRoom, key="Other Cabin")
-        other_room.db.vessel = other_hull
+        other_room.vessel = other_hull
         self.assertNotIn(other_room, self.hull.ship_rooms)
 
     def test_orders_rooms_lowest_deck_first(self):
         hold = create.create_object(ShipRoom, key="Cargo Hold")
-        hold.db.vessel = self.hull
+        hold.vessel = self.hull
         hold.deck_level = -1
         bilge = create.create_object(ShipRoom, key="Bilge")
-        bilge.db.vessel = self.hull
+        bilge.vessel = self.hull
         bilge.deck_level = -2
         bilge.exposure = BELOW_WATERLINE
         levels = [room.deck_level for room in self.hull.ship_rooms]

@@ -488,6 +488,22 @@ is not a physical state the sea recognises.
 
 ## 11. Ports, schedules and services
 
+**A berth has dimensions.** A quay is a length of stone with a depth of water alongside it,
+and a ship longer than the berth or drawing more than the water there cannot use it. That
+is what makes a berth a place rather than a teleport pad with a nautical name, and it is
+where the fit-out tradeoff becomes physical: add capacity, gain draft, lose your home berth.
+
+**Coming alongside has preconditions, checked in the order a ship discovers them.** Free,
+then fits, then near enough, slow enough, and lying along the quay. There is no point
+telling a captain his approach is too fast for a berth his ship was never going to fit.
+Arriving at a stone quay with way still on is a collision, not a mooring, so the speed
+threshold is walking pace - the last of a real approach was warped, poled or towed.
+
+**The gangway is an ordinary exit.** Two of them, created when the lines go ashore and
+deleted when they are let go. Because it is an ordinary exit it can be followed, blocked,
+watched and locked like any other, and none of that needed designing - which is Law 7 doing
+its job rather than a docking system reimplementing movement.
+
 Docking creates a real traversal relationship, which undocking removes. A berth has a depth;
 a deep-draught vessel at low water may have to wait or anchor off.
 
@@ -667,7 +683,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 4 | Simulation service | partial | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore. The budget is a batch count, not a measured millisecond budget |
 | 5 | Basic safe movement | partial | Movement, helm, grounding, reload survival. Centre-point testing, not swept |
 | 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
-| 7 | Ports | — | Berths, dock, undock, gangway, castoff |
+| 7 | Ports | done | Sized berths, approach preconditions, gangway as a real exit, `dock` and `cast off` |
 | 8 | Observation | partial | Horizon, height of eye, contacts, `lookout`. Dynamic exterior descriptions are not built |
 | 9 | Navigation | — | Soundings exist. Charts, estimated position, dead-reckoning error and route planning do not |
 | 10 | Minimal crew automation | — | Hold a heading, manage sail, follow a route, approach a destination |
@@ -713,9 +729,15 @@ walk onto the sloop → cast off → make sail → sail continuous water
 No Wilderness, no combat, no pirates, no passenger economy. The player is in ordinary
 Evennia rooms throughout, and at no point does open water require `east east north east`.
 
-Reached so far: boarding, casting off, making sail, continuous movement, grounding on real
-terrain, sighting another vessel over the horizon, and a current that sets her off the course
-she is steering. Outstanding: harbours at both ends.
+**Reached.** Walked aboard at Harbour A, cast off, made sail, sailed continuous water,
+sounded nine and a quarter fathoms in the channel south of a rock ledge that would have
+opened her, came alongside at Harbour B — made fast at fishmarket steps, starboard side
+to — and walked ashore. No ocean rooms were traversed, the wind decided the passage, the
+current set her off her course, the seabed decided the route, and the player was in
+ordinary Evennia rooms throughout.
+
+Two defects surfaced during that passage that no unit test had caught, both recorded below
+and both fixed. A slice is worth running for that reason and not for the screenshot.
 
 **First-voyage acceptance**, from the plan, and the arithmetic the whole clock design exists
 to make true: 20 nautical miles at 8 knots is 2.5 game hours, which at DireMud's 4:1 is
@@ -734,8 +756,8 @@ marked.
 
 ```text
 sailing-basic ✓        sailing-upwind ✓       current-drift ✓
-grounding-shoal ✓      grounding-reef ✓       safe-channel
-dock-undock            reload-underway ✓      route-following
+grounding-shoal ✓      grounding-reef ✓       safe-channel ✓
+dock-undock ✓          reload-underway ✓      route-following
 scheduler-fairness ✓   strategic-advance      materialize-dematerialize
 contact-detection ✓    navigation-error       storm-delay
 collision              broadside              flooding

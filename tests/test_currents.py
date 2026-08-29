@@ -211,7 +211,7 @@ class DriftingTestCase(EmptySeaMixin, BaseEvenniaTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.deck.exposure = OPEN
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
         self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=100.0, turn_rate=8.0)
@@ -366,7 +366,7 @@ class TestCmdCurrent(EmptySeaMixin, BaseEvenniaCommandTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.deck.exposure = OPEN
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
         self.hull.heading = EAST

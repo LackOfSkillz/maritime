@@ -115,7 +115,16 @@ from .vessel import (
     VesselCapacity,
     VesselTemplate,
 )
-from .rooms import ShipRoom
+from .ports import (
+    ALONGSIDE_SPEED,
+    APPROACH_RANGE,
+    Berth,
+    DockingResult,
+    alongside_side,
+    can_dock,
+    nearest_berth,
+)
+from .rooms import PortRoom, ShipRoom, berths_near, rig_gangway, unrig_gangway
 from .scheduler import FairQueue
 from .sailing import (
     FULL,
@@ -185,6 +194,18 @@ __all__ = (
     "MaritimeDriver",
     "Vessel",
     "ShipRoom",
+    "PortRoom",
+    # ports
+    "Berth",
+    "DockingResult",
+    "can_dock",
+    "nearest_berth",
+    "alongside_side",
+    "berths_near",
+    "rig_gangway",
+    "unrig_gangway",
+    "APPROACH_RANGE",
+    "ALONGSIDE_SPEED",
     "MaritimeSimulationService",
     "FairQueue",
     "TIERS",

@@ -182,6 +182,8 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "lookout",
                 "drop anchor",
                 "weigh anchor",
+                "dock",
+                "cast off",
                 "@maritime",
             },
         )

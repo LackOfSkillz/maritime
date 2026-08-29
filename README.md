@@ -13,8 +13,12 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 ## Status
 
 **Early development.** The foundations, spatial model, vessels, simulation, sailing,
-currents, grounding and observation are working and tested; ports, charts, weather, crew,
+currents, grounding, observation and ports are working and tested; charts, weather, crew,
 combat and damage are not built yet. Nothing here is API-stable.
+
+The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
+sail continuous water, sound your way through a channel past a rock ledge, come alongside
+at another quay and walk ashore — without traversing a single ocean room.
 
 What works today:
 
@@ -64,6 +68,21 @@ The current sets 1-8-0, drift 0.8 knots.
 She heads 0-9-0 and makes good 0-9-7 at 6.6 knots.
 ```
 
+Arriving is walking down a real gangway, not a teleport:
+
+```text
+> dock
+You call out, "Take her alongside!"
+The mate answers, "Alongside, aye sir."
+Lines go ashore fore and aft. She is made fast at fishmarket steps, starboard side to.
+The gangway comes down onto the quay.
+
+> ashore
+Harbour B - Fishmarket Steps
+Steps run down from a fishmarket to a stub of quay, slick underfoot and smelling of it.
+Exits: gangway
+```
+
 And the lead is cast the way a lead line is actually read:
 
 ```text
@@ -74,7 +93,7 @@ The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
 
 ## Design
 
-Eight ideas do most of the work. `docs/architecture.md` has the rest.
+Nine ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -111,6 +130,11 @@ in leagues and her water in fathoms at the same moment — and every distance sc
 back to cables under a mile, because no scheme has a useful word for a tenth of its own
 unit and they all borrowed the cable instead. A game in another genre changes one line and
 gets kilometres.
+
+**A physical relationship creates a traversal.** Docking does not teleport anybody. Lines
+go ashore, a gangway is rigged as two ordinary Evennia exits, and it is deleted when the
+lines are let go — so walking ashore is walking, and can be followed, blocked, watched and
+locked like any other movement without a docking system having to reimplement any of it.
 
 **Seeing is a height problem, not a range problem.** A hull is hidden by the curve of the
 water, so how far you can see depends on how high your eye is — and how far you can see a
@@ -180,6 +204,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `speed <knots>` | Order a speed, for vessels not under sail |
 | `allstop` | Take the way off her |
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
+| `dock` / `cast off` | Come alongside a berth, and let go |
 | `position` | Latitude, longitude, course and speed |
 | `sound` | Water under the keel, and a shoal warning |
 | `lookout` | What is in sight from where you are standing |
@@ -258,6 +283,21 @@ detection_level(0.9 * limit, limit)      # 'contact'    - something on the water
 detection_level(0.1 * limit, limit)      # 'identified' - you know the ship
 ```
 
+A berth is a place with dimensions, and that is what makes it a decision:
+
+```python
+from evennia.contrib.full_systems.maritime import Berth, WorldPosition, can_dock
+
+berth = Berth(
+    key="fishmarket steps", position=WorldPosition(3800.0, -800.0), heading=90.0,
+    max_length=24.0, max_beam=8.0, max_draft=4.0,
+)
+
+can_dock(WorldPosition(3790.0, -800.0), 0.2, 270.0, 18.0, 5.4, 2.2, berth)   # alongside
+can_dock(WorldPosition(3790.0, -800.0), 4.0, 270.0, 18.0, 5.4, 2.2, berth)   # 'too_fast'
+can_dock(WorldPosition(3790.0, -800.0), 0.2, 270.0, 18.0, 5.4, 5.0, berth)   # 'too_deep'
+```
+
 You do not steer where you are going — you steer to counteract what the water is doing:
 
 ```python
@@ -290,12 +330,14 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 840 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 900 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
-- No ports, docking, charts, weather, crew, cargo, combat or damage yet.
+- No charts, weather, crew, cargo, combat or damage yet.
+- A port is a quay with berths. Anchorages, pilots, tugs, cargo handling and repair
+  facilities are all later phases.
 - One global wind and one global visibility. A weather provider replaces both later; call
   sites will not change.
 - No sea state. It is a documented input to sailing and stability and is not yet one.

@@ -12,9 +12,12 @@ still importable from `typeclasses` - see the note there.
 
 """
 
-from evennia.objects.objects import DefaultRoom
+from evennia.objects.objects import DefaultExit, DefaultRoom
+from evennia.utils import create
 
 from .observation import DEFAULT_HEIGHT_OF_EYE
+from .ports import APPROACH_RANGE
+from .position import WorldPosition
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
 
 
@@ -35,6 +38,36 @@ class ShipRoom(DefaultRoom):
         self.db.deck_level = MAIN_DECK
         self.db.exposure = INTERIOR
         self.db.height_of_eye = DEFAULT_HEIGHT_OF_EYE
+
+    @property
+    def vessel(self):
+        """
+        The hull this compartment belongs to.
+
+        Returns:
+            vessel (Vessel or None): Her ship.
+
+        """
+        return self.db.vessel
+
+    @vessel.setter
+    def vessel(self, vessel):
+        """
+        Args:
+            vessel (Vessel or None): The hull to attach to, or None to detach.
+
+        Notes:
+            Maintains both sides of the link. The vessel keeps the list of her own
+            compartments, so assigning `db.vessel` directly attaches nothing -
+            use this.
+
+        """
+        previous = self.db.vessel
+        if previous and previous.pk:
+            previous.detach(self)
+        self.db.vessel = vessel
+        if vessel:
+            vessel.attach(self)
 
     @property
     def maritime_position_source(self):
@@ -131,3 +164,236 @@ class ShipRoom(DefaultRoom):
 
     def __repr__(self):
         return f"<ShipRoom {self.key} deck {self.deck_level}>"
+
+
+class PortRoom(DefaultRoom):
+    """
+    A quayside: ordinary room space that also stands somewhere on the water.
+
+    Unlike a `ShipRoom`, this holds a position of its own. It is the one place
+    where the two coordinate systems meet - walk in off the street and you are in
+    a normal room; look out and you are at a set of real coordinates that a ship
+    can be near.
+
+    Notes:
+        Inland rooms legitimately have no maritime position and that is not an
+        error. A port is the exception, and the resolver finds it through the
+        ordinary `location` link, so nothing standing on the quay needs to know
+        it is special.
+
+    """
+
+    def at_object_creation(self):
+        """Set up a newly created quayside."""
+        super().at_object_creation()
+        self.db.maritime_position = None
+        self.db.berths = []
+
+    @property
+    def maritime_position(self):
+        """
+        Where this quay stands.
+
+        Returns:
+            position (WorldPosition or None): Her coordinates, or None if the
+                port has not been placed yet.
+
+        """
+        return self.db.maritime_position
+
+    @maritime_position.setter
+    def maritime_position(self, position):
+        """
+        Args:
+            position (WorldPosition): Where the quay is.
+
+        Raises:
+            TypeError: If it is not a `WorldPosition`.
+
+        """
+        if not isinstance(position, WorldPosition):
+            raise TypeError(f"Expected a WorldPosition, got {type(position).__name__}.")
+        self.db.maritime_position = position
+
+    @property
+    def berths(self):
+        """
+        Every berth at this quay.
+
+        Returns:
+            berths (tuple): `Berth` objects.
+
+        """
+        return tuple(self.db.berths or ())
+
+    def add_berth(self, berth):
+        """
+        Add a berth to this quay.
+
+        Args:
+            berth (Berth): The berth.
+
+        Returns:
+            room (PortRoom): This room, for chaining.
+
+        Raises:
+            ValueError: If a berth of that key is already here. Two berths with
+                one name is a booking system that cannot say where a ship is.
+
+        Notes:
+            Reads the whole list, appends and writes it back once. Mutating the
+            stored list in place would commit on every touch - see Law 10.
+
+        """
+        existing = list(self.db.berths or ())
+        if any(other.key == berth.key for other in existing):
+            raise ValueError(f"{self.key} already has a berth called {berth.key!r}.")
+        existing.append(berth)
+        self.db.berths = existing
+        return self
+
+    def berth_named(self, key):
+        """
+        Args:
+            key (str): The berth's identifier.
+
+        Returns:
+            berth (Berth or None): The berth, if this quay has one by that name.
+
+        """
+        for berth in self.berths:
+            if berth.key.lower() == str(key).lower():
+                return berth
+        return None
+
+    def occupant_of(self, berth):
+        """
+        Whoever is lying in a berth.
+
+        Args:
+            berth (Berth): The berth.
+
+        Returns:
+            vessel (Vessel or None): The hull made fast there, if any.
+
+        """
+        for vessel in self.db.moored or ():
+            if vessel and vessel.berth_key == berth.key:
+                return vessel
+        return None
+
+    def moor(self, vessel):
+        """
+        Record a vessel as lying here.
+
+        Args:
+            vessel (Vessel): The hull.
+
+        Returns:
+            room (PortRoom): This room, for chaining.
+
+        """
+        moored = [other for other in (self.db.moored or ()) if other and other != vessel]
+        moored.append(vessel)
+        self.db.moored = moored
+        return self
+
+    def cast_off(self, vessel):
+        """
+        Record a vessel as gone.
+
+        Args:
+            vessel (Vessel): The hull.
+
+        Returns:
+            room (PortRoom): This room, for chaining.
+
+        """
+        self.db.moored = [other for other in (self.db.moored or ()) if other and other != vessel]
+        return self
+
+    def __repr__(self):
+        return f"<PortRoom {self.key} at {self.maritime_position}>"
+
+
+def rig_gangway(deck, quay):
+    """
+    Put a gangway between a ship's deck and a quay.
+
+    Args:
+        deck (ShipRoom): The compartment the gangway lands on aboard.
+        quay (PortRoom): The quayside it reaches.
+
+    Returns:
+        exits (tuple): The two exits created, ship-to-shore first.
+
+    Notes:
+        Two ordinary Evennia exits, and deliberately nothing cleverer. This is
+        Law 7: a physical relationship creates a traversal, so walking ashore is
+        walking, with all the ordinary consequences - it can be followed, blocked,
+        watched and locked like any other exit, and none of that needed
+        designing.
+
+    """
+    ashore = create.create_object(
+        DefaultExit, key="gangway", aliases=["ashore"], location=deck, destination=quay
+    )
+    aboard = create.create_object(
+        DefaultExit, key="gangway", aliases=["aboard"], location=quay, destination=deck
+    )
+    return ashore, aboard
+
+
+def unrig_gangway(exits):
+    """
+    Take the gangway away.
+
+    Args:
+        exits (iterable): Exits to remove.
+
+    Returns:
+        removed (int): How many were actually deleted.
+
+    Notes:
+        Tolerant of exits that have already gone. A gangway can be destroyed by
+        anything that deletes rooms, and refusing to cast off because one end has
+        already vanished would strand a ship at a quay that no longer exists.
+
+    """
+    removed = 0
+    for exit_object in tuple(exits or ()):
+        if exit_object and exit_object.pk:
+            exit_object.delete()
+            removed += 1
+    return removed
+
+
+def berths_near(position, radius=APPROACH_RANGE):
+    """
+    Berths a vessel at this position could try for.
+
+    Args:
+        position (WorldPosition): Where she is.
+        radius (float, optional): How far to look, in metres.
+
+    Returns:
+        berths (tuple): `(port, berth)` pairs, nearest berth first.
+
+    Notes:
+        A linear pass over every quay in the world. Fine for the number of ports
+        a game has, and it would not be for the number of vessels - but ports do
+        not move, so when this wants an index it will be a much simpler one than
+        the vessel register.
+
+    """
+    found = []
+    for port in PortRoom.objects.all():
+        where = port.maritime_position
+        if where is None or where.region != position.region:
+            continue
+        for berth in port.berths:
+            distance = position.horizontal_distance_to(berth.position)
+            if distance <= radius:
+                found.append((distance, port, berth))
+    found.sort(key=lambda item: item[0])
+    return tuple((port, berth) for _distance, port, berth in found)

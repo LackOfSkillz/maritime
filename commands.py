@@ -22,6 +22,17 @@ from evennia.commands.command import Command
 from .formatting import RAW, format_depth, format_position, format_range
 from .grounding import SHOAL_WARNING_CLEARANCE
 from .messaging import leadsman_call, spell_bearing
+from .ports import (
+    BADLY_ALIGNED,
+    OCCUPIED,
+    TOO_BEAMY,
+    TOO_DEEP,
+    TOO_FAR,
+    TOO_FAST,
+    TOO_LONG,
+    can_dock,
+)
+from .rooms import berths_near, rig_gangway
 from .observation import (
     CLASSIFIED,
     DEFAULT_HEIGHT_OF_EYE,
@@ -533,6 +544,168 @@ class CmdCurrent(MaritimeCommand):
             f"{spell_bearing(course)} at "
             f"{ms_to_knots(made):.1f} knots."
         )
+
+
+#: What to tell a captain when a berth will not have her. Keyed by the reason code
+#: the domain returned, so adding a precondition means adding a line here and the
+#: command needs no new branch.
+BERTH_REFUSALS = {
+    TOO_FAR: "The berth is {distance} off. Work her in closer before you put lines ashore.",
+    TOO_FAST: "She still has way on. Take it off her before you go alongside.",
+    BADLY_ALIGNED: "She is lying across the berth. Bring her round parallel to the quay.",
+    TOO_LONG: "She is too long for that berth.",
+    TOO_BEAMY: "She is too broad in the beam for that berth.",
+    TOO_DEEP: "She draws too much for the water alongside there.",
+    OCCUPIED: "There is a ship lying there already.",
+}
+
+
+class CmdDock(MaritimeCommand):
+    """
+    Bring her alongside and make fast.
+
+    Usage:
+      dock
+      dock <berth>
+
+    Puts lines ashore and lowers the gangway, after which the quay is one step
+    off the deck like any other exit. She must be near enough for the lines to
+    reach, slow enough not to break the quay, lying roughly along it, and small
+    enough to fit the berth.
+
+    With no argument she takes the nearest berth, and says why if it will not
+    have her.
+
+    """
+
+    key = "dock"
+    aliases = ("moor", "berth")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        if vessel.docked:
+            self.caller.msg("She is already made fast.")
+            return
+
+        position = vessel.maritime_position
+        if position is None:
+            self.caller.msg("She is not afloat anywhere near a quay.")
+            return
+
+        found = berths_near(position)
+        if not found:
+            self.caller.msg("There is no berth within reach of her lines.")
+            return
+
+        if self.args.strip():
+            wanted = self.args.strip().lower()
+            found = [pair for pair in found if pair[1].key.lower() == wanted]
+            if not found:
+                self.caller.msg(f"No berth called '{self.args.strip()}' within reach.")
+                return
+
+        port, berth = found[0]
+        result = can_dock(
+            position,
+            vessel.speed,
+            vessel.heading,
+            vessel.length,
+            vessel.beam,
+            vessel.draft,
+            berth,
+            occupied=port.occupant_of(berth) is not None,
+        )
+        if not result:
+            refusal = BERTH_REFUSALS.get(result.code, "She cannot lie there.")
+            self.caller.msg(refusal.format(distance=format_range(result.distance)))
+            return
+
+        deck = self.landing_deck(vessel)
+        if deck is None:
+            self.caller.msg("She has no open deck for a gangway to land on.")
+            return
+
+        self.caller.msg('You call out, "Take her alongside!"')
+        self.announce(f'{self.caller.key} calls out, "Take her alongside!"')
+        self.aboard(vessel, 'The mate answers, "Alongside, aye sir."')
+
+        gangway = rig_gangway(deck, port)
+        vessel.make_fast(port, berth, gangway)
+
+        self.aboard(
+            vessel,
+            f"Lines go ashore fore and aft. She is made fast at {berth.key}, "
+            f"{result.side} side to.",
+        )
+        self.aboard(vessel, "The gangway comes down onto the quay.")
+        port.msg_contents(f"{vessel.key} comes alongside, and her gangway comes down.")
+
+    def landing_deck(self, vessel):
+        """
+        The deck a gangway would land on.
+
+        Args:
+            vessel (Vessel): The hull.
+
+        Returns:
+            room (ShipRoom or None): Her lowest weather deck, or None if she has
+                no deck open to the sky.
+
+        Notes:
+            The lowest, not the highest. A gangway reaches a quay from the main
+            deck; running it to the masthead because that is where the lookout
+            stands would be a remarkable sight.
+
+        """
+        decks = [room for room in vessel.ship_rooms if room.exposure in WEATHER_DECKS]
+        if not decks:
+            return None
+        return min(decks, key=lambda room: room.height_of_eye)
+
+
+class CmdCastOff(MaritimeCommand):
+    """
+    Let go the lines and get under way.
+
+    Usage:
+      cast off
+
+    Takes the gangway up and lets go fore and aft. The quay stops being one step
+    off the deck, and she answers her helm again.
+
+    """
+
+    key = "cast off"
+    aliases = ("castoff", "undock", "unmoor")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        if not vessel.docked:
+            self.caller.msg("She is not made fast to anything.")
+            return
+
+        port = vessel.docked_at
+        self.caller.msg('You call out, "Single up, and stand by to let go!"')
+        self.announce(f'{self.caller.key} calls out, "Single up, and stand by to let go!"')
+        self.aboard(vessel, 'The mate answers, "Singled up, aye sir."')
+
+        vessel.let_go()
+
+        self.aboard(
+            vessel,
+            "The gangway comes up. Lines are let go fore and aft, and she swings "
+            "clear of the quay.",
+        )
+        if port:
+            port.msg_contents(f"{vessel.key} takes in her gangway and casts off.")
 
 
 class CmdAnchor(MaritimeCommand):

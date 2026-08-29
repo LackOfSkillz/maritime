@@ -29,7 +29,7 @@ class HelmTestCase(EmptySeaMixin, BaseEvenniaCommandTest):
         super().setUp()
         self.hull = create.create_object(Vessel, key="Test Sloop")
         self.deck = create.create_object(ShipRoom, key="Main Deck")
-        self.deck.db.vessel = self.hull
+        self.deck.vessel = self.hull
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
         self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=1.0, turn_rate=6.0)
         self.char1.location = self.deck

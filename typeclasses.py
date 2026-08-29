@@ -46,7 +46,7 @@ from .traffic import traffic
 # has this module's name written into its database. Dropping the name here would not
 # fail at startup; it would produce rooms that fail to resolve their typeclass one at
 # a time as they are loaded, which is a considerably worse way to find out.
-from .rooms import ShipRoom
+from .rooms import ShipRoom, unrig_gangway  # noqa: F401
 from .vessel import WEATHER_DECKS
 
 
@@ -74,6 +74,12 @@ class Vessel(DefaultObject):
         self.db.aground = False
         self.db.draft = 2.0
         self.db.air_draft = 12.0
+        self.db.length = 0.0
+        self.db.beam = 0.0
+        self.db.docked_at = None
+        self.db.berth_key = None
+        self.db.gangway = []
+        self.db.compartments = []
         self.db.polar_curve = PolarCurve()
 
     # --- position -----------------------------------------------------------
@@ -460,6 +466,131 @@ class Vessel(DefaultObject):
         candidates = environment.vessels_within_sight(position, height_of_eye, exclude=self)
         return environment.contacts_from(position, self.heading, height_of_eye, candidates)
 
+    @property
+    def length(self):
+        """
+        How long she is.
+
+        Returns:
+            length (float): Metres.
+
+        Notes:
+            Berth fitting today, hull footprint and swept grounding later. The
+            same number answers both, which is why it lives on the hull rather
+            than in the port code that first needed it.
+
+        """
+        return float(self.db.length or 0.0)
+
+    @length.setter
+    def length(self, metres):
+        """
+        Args:
+            metres (float): Her length.
+
+        """
+        self.db.length = float(metres)
+
+    @property
+    def beam(self):
+        """
+        How wide she is.
+
+        Returns:
+            beam (float): Metres.
+
+        """
+        return float(self.db.beam or 0.0)
+
+    @beam.setter
+    def beam(self, metres):
+        """
+        Args:
+            metres (float): Her beam.
+
+        """
+        self.db.beam = float(metres)
+
+    @property
+    def docked_at(self):
+        """
+        The quay she is lying at.
+
+        Returns:
+            port (PortRoom or None): Her berth's port, or None if she is at sea.
+
+        """
+        return self.db.docked_at
+
+    @property
+    def berth_key(self):
+        """
+        Which berth she is lying in.
+
+        Returns:
+            key (str or None): The berth's identifier, or None if she is at sea.
+
+        """
+        return self.db.berth_key
+
+    @property
+    def docked(self):
+        """
+        Whether she is made fast to a quay.
+
+        Returns:
+            docked (bool): True if her lines are ashore.
+
+        """
+        return self.db.docked_at is not None
+
+    def make_fast(self, port, berth, gangway=()):
+        """
+        Record her as lying in a berth.
+
+        Args:
+            port (PortRoom): The quay.
+            berth (Berth): The berth she is in.
+            gangway (iterable, optional): The exits rigged to her.
+
+        Returns:
+            vessel (Vessel): This hull, for chaining.
+
+        Notes:
+            Persists immediately rather than waiting for a checkpoint. Docking is
+            a critical transition: a ship that reloads having lost the fact that
+            she is made fast comes back adrift at a quay with a gangway to
+            nowhere.
+
+        """
+        self.db.docked_at = port
+        self.db.berth_key = berth.key
+        self.db.gangway = list(gangway)
+        self.ndb.speed = 0.0
+        self.maritime_position = berth.position
+        self.heading = berth.heading
+        self.checkpoint()
+        port.moor(self)
+        return self
+
+    def let_go(self):
+        """
+        Record her as cast off, and take the gangway away.
+
+        Returns:
+            removed (int): How many gangway exits were removed.
+
+        """
+        port = self.db.docked_at
+        removed = unrig_gangway(self.db.gangway)
+        if port:
+            port.cast_off(self)
+        self.db.docked_at = None
+        self.db.berth_key = None
+        self.db.gangway = []
+        self.checkpoint()
+        return removed
+
     # --- rig ----------------------------------------------------------------
 
     @property
@@ -551,6 +682,13 @@ class Vessel(DefaultObject):
         traffic().note(self, position)
         self.narrator.sightings(self.contacts())
 
+        if self.docked:
+            # Made fast. Lines ashore hold her against wind, sail and helm alike,
+            # and getting under way is an act with a name.
+            if self.speed:
+                self.ndb.speed = 0.0
+                self.ndb.maritime_dirty = True
+            return False
         if self.aground:
             # Held by the ground. Canvas and helm will not shift her; getting off
             # is a separate act, which is the point of running aground.
@@ -574,20 +712,13 @@ class Vessel(DefaultObject):
         if under_sail:
             orders = HelmOrders(heading=orders.heading, speed=self.sailing_speed())
 
-        limits = self.motion_limits
-        if under_sail:
-            # A crew with canvas aloft can back a sail to shove her bow round,
-            # so she is never wholly without steering.
-            floor = steerage_floor(wind, self.sail_plan)
-            if floor > 0.0 and before.speed < limits.max_speed:
-                needed = floor * limits.max_speed / max(before.speed, 1e-9)
-                limits = MotionLimits(
-                    max_speed=limits.max_speed,
-                    acceleration=limits.acceleration,
-                    turn_rate=max(limits.turn_rate, min(needed, limits.turn_rate * 20.0)),
-                )
-
-        after = advance(before, orders, limits, elapsed)
+        # A crew with canvas aloft can back a headsail to shove her bow round, so
+        # she is never wholly without steering. This goes in as a turn floor
+        # rather than as a raised turn rate: the rate is scaled by speed, being a
+        # rudder, and a backed sail is not - which matters precisely when she is
+        # stopped dead and pointing the wrong way.
+        floor = steerage_floor(wind, self.sail_plan) if under_sail else 0.0
+        after = advance(before, orders, self.motion_limits, elapsed, turn_floor=floor)
 
         if under_sail and after.speed > 0.0:
             slip = leeway_angle(after.heading, wind, self.sail_plan, after.speed)
@@ -697,6 +828,72 @@ class Vessel(DefaultObject):
 
     # --- interior -----------------------------------------------------------
 
+    def attach(self, room):
+        """
+        Record a compartment as belonging to this hull.
+
+        Args:
+            room (ShipRoom): The compartment.
+
+        Returns:
+            vessel (Vessel): This hull, for chaining.
+
+        Notes:
+            Called by `ShipRoom.vessel`; there is no reason to call it directly.
+
+        """
+        rooms = [other for other in (self.db.compartments or ()) if other and other != room]
+        rooms.append(room)
+        self.db.compartments = rooms
+        return self
+
+    def detach(self, room):
+        """
+        Forget a compartment.
+
+        Args:
+            room (ShipRoom): The compartment.
+
+        Returns:
+            vessel (Vessel): This hull, for chaining.
+
+        """
+        self.db.compartments = [
+            other for other in (self.db.compartments or ()) if other and other != room
+        ]
+        return self
+
+    def reattach_compartments(self):
+        """
+        Rebuild the compartment list by looking for rooms that name this hull.
+
+        Returns:
+            count (int): How many compartments were found.
+
+        Notes:
+            The repair path, and the upgrade path. Compartments used to be found
+            by asking the typeclass manager for every `ShipRoom` and filtering,
+            which is a full table scan on every call and - worse - depends on the
+            *string* Evennia stored in each row. Moving the class to another
+            module left that string naming the old one, so the manager returned
+            nothing at all while the rooms themselves loaded perfectly: a ship
+            with compartments behaving exactly like a ship with none.
+
+            This scans by type rather than by path, so it repairs both that and
+            any game that set `db.vessel` directly before the link had two sides.
+            Run once per vessel after upgrading.
+
+        """
+        from evennia import ObjectDB
+
+        found = [
+            room
+            for room in ObjectDB.objects.all()
+            if isinstance(room, ShipRoom) and room.db.vessel == self
+        ]
+        self.db.compartments = found
+        return len(found)
+
     @property
     def ship_rooms(self):
         """
@@ -707,11 +904,16 @@ class Vessel(DefaultObject):
                 from the lowest deck upward.
 
         Notes:
-            Lowest first, matching the deck-plan ordering, because that is the
-            order flooding will care about.
+            Read from a list the vessel keeps, not from a query. This is asked on
+            every tick, and the query it replaced was a full pass over every ship
+            room in the world - and one that silently returned nothing for rooms
+            created before the class moved module.
+
+            Lowest deck first, matching the deck-plan ordering, because that is
+            the order flooding will care about.
 
         """
-        rooms = [room for room in ShipRoom.objects.all() if room.db.vessel == self]
+        rooms = [room for room in (self.db.compartments or ()) if room and room.pk]
         return tuple(sorted(rooms, key=lambda room: room.deck_level))
 
     def __repr__(self):
