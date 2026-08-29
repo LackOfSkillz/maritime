@@ -12,6 +12,13 @@ simulation exists yet.
 
 ### Feat
 
+- Add the `Vessel` and `ShipRoom` typeclasses. A compartment holds no position; it
+  names its vessel, and the resolver walks through to whatever the hull reports, so
+  moving a ship moves everyone aboard at once with no bookkeeping. Position lives
+  in memory and is checkpointed on reload, on shutdown and on demand rather than
+  written on every change: each `.db` assignment is a pickle and a commit, and a
+  vessel under way updates constantly. An unchanged vessel skips the write
+  entirely, so a fleet at anchor costs nothing to checkpoint.
 - Add vessel templates, capacity and deck plans. A ship class is data, not a
   subclass - changing a sloop's beam is editing a number, so no `Sloop` class
   exists anywhere in the contrib and a game can define its own hulls importing
