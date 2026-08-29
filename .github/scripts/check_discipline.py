@@ -14,9 +14,9 @@ rules specific to this contrib, which no off-the-shelf tool knows about:
        (CLAUDE.md section 3).
     5. The domain layer returns structured results and never emits prose
        (CLAUDE.md section 8, and Law 11 in docs/architecture.md).
-    6. No module imports this package by its absolute path, so the contrib works
-       both inside the Evennia tree and as a standalone drop-in (CLAUDE.md
-       section 2).
+    6. No module imports this package by its absolute path, and no string literal
+       spells it out either, so the contrib works both inside the Evennia tree and
+       as a standalone drop-in (CLAUDE.md section 2).
 
 Run from the repository root:
 
@@ -252,6 +252,70 @@ def check_location_independence(failures):
                 )
 
 
+def _docstring_nodes(tree):
+    """
+    Collect the string nodes that are docstrings, so they can be exempted.
+
+    Args:
+        tree (ast.Module): Parsed module.
+
+    Returns:
+        nodes (set): ids of `ast.Constant` nodes serving as docstrings.
+
+    """
+    found = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        body = getattr(node, "body", None)
+        if not body:
+            continue
+        first = body[0]
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+            if isinstance(first.value.value, str):
+                found.add(id(first.value))
+    return found
+
+
+def check_no_hardcoded_self_path(failures):
+    """
+    No string literal may spell out this package's absolute import path.
+
+    Dotted-path defaults and dynamic lookups must be derived from `__package__`.
+    A literal `evennia.contrib.full_systems.maritime...` resolves only while the
+    contrib sits in the Evennia tree and breaks the moment it is dropped into a
+    game somewhere else - the standalone case this project explicitly supports.
+
+    Docstrings are exempt: documentation legitimately shows users the in-tree
+    import path they will actually type.
+
+    This is a static property, which is why it lives here rather than in a test.
+    A test comparing the default against `__package__` passes either way while
+    the contrib is in-tree, so it cannot fail in the situation it guards.
+
+    Args:
+        failures (list): Accumulator for failure messages.
+
+    """
+    self_path = "evennia.contrib.full_systems.maritime"
+    for path in iter_source_files():
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        exempt = _docstring_nodes(tree)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            if id(node) in exempt or self_path not in node.value:
+                continue
+            failures.append(
+                f"{relative(path)}:{node.lineno}: hardcodes this package's absolute "
+                "path in a string. Derive it from __package__ so the contrib also "
+                "works standalone."
+            )
+
+
 def check_changelog(failures):
     """
     A changelog must exist and have somewhere to record unreleased work.
@@ -334,6 +398,7 @@ def main():
         ("dependencies", check_dependencies),
         ("domain purity", check_no_prose_in_domain),
         ("location independence", check_location_independence),
+        ("no hardcoded self-path", check_no_hardcoded_self_path),
         ("changelog", check_changelog),
         ("readme format", check_readme),
     )
