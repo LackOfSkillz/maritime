@@ -29,6 +29,7 @@ from django.conf import settings
 
 from evennia.utils.utils import class_from_module
 
+from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
 from .clock import MaritimeTimeProvider
 from .rng import RNGContext
 
@@ -38,6 +39,7 @@ SETTING_PREFIX = "MARITIME_"
 
 # Derived, never hardcoded - see the module docstring.
 DEFAULT_TIME_PROVIDER = f"{__package__}.clock.GameTimeProvider"
+DEFAULT_MAP_PROVIDER = f"{__package__}.bathymetry.FlatSeaMapProvider"
 
 
 def get_setting(name, default=None):
@@ -139,3 +141,22 @@ def rng_context():
 
     """
     return RNGContext(seed=rng_seed())
+
+
+def map_provider():
+    """
+    Build the configured map provider.
+
+    Returns:
+        provider (MaritimeMapProvider): The world's terrain. Defaults to a
+            featureless sea deep enough that nothing grounds, so a game gets
+            vessels sailing before it needs bathymetry.
+
+    Raises:
+        TypeError: If the configured class is not a map provider.
+
+    """
+    path = get_setting("MAP_PROVIDER")
+    if not path:
+        return FlatSeaMapProvider(depth=float(get_setting("DEFAULT_DEPTH", 200.0)))
+    return load_class(path, expected=MaritimeMapProvider)()

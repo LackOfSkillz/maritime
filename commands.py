@@ -20,6 +20,7 @@ nothing else.
 from evennia.commands.command import Command
 
 from .formatting import RAW, format_position
+from .grounding import SHOAL_WARNING_CLEARANCE
 from .motion import HelmOrders
 from .sailing import SAIL_PLANS, relative_wind_angle, sail_plan
 from .position import normalize_bearing
@@ -494,4 +495,50 @@ class CmdWeighAnchor(MaritimeCommand):
             vessel,
             "The capstan turns and the cable comes in dripping. "
             'The mate calls, "Anchor\'s aweigh, sir!"',
+        )
+
+
+class CmdSound(MaritimeCommand):
+    """
+    Take a sounding.
+
+    Usage:
+      sound
+
+    Reports the water under the keel - not the depth of the sea, but how much of
+    it is between the hull and the ground. That is the number that matters, and
+    it already accounts for her draft and the state of the tide.
+
+    In poor visibility a run of soundings is also a position line: a depth
+    profile along a track is a signature, and a navigator who knows the chart can
+    read where she is from it.
+    """
+
+    key = "sound"
+    aliases = ("depth", "leadline")
+
+    def at_helm(self, vessel):
+        """Report the clearance under the keel."""
+        clearance = vessel.keel_clearance()
+        if clearance is None:
+            self.caller.msg("She is not afloat anywhere the lead would reach.")
+            return
+
+        self.announce(f"{self.caller.key} orders a cast of the lead.")
+
+        if clearance <= 0.0:
+            self.aboard(vessel, 'The leadsman calls, "No bottom under her - she is on it, sir!"')
+            return
+
+        if clearance < SHOAL_WARNING_CLEARANCE:
+            self.aboard(
+                vessel,
+                f"The leadsman calls the depth: {clearance:.1f} metres under her keel. "
+                "Shoal water, sir.",
+            )
+            return
+
+        self.aboard(
+            vessel,
+            f"The leadsman calls the depth: {clearance:.1f} metres under her keel.",
         )

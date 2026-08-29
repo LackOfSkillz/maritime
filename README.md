@@ -102,6 +102,8 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_ORIGIN_EASTING` | `0.0` | As above, for longitude |
 | `MARITIME_WIND_BEARING` | `0.0` | Bearing the wind blows *from* |
 | `MARITIME_WIND_SPEED` | `0.0` | Wind speed in metres per second |
+| `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
+| `MARITIME_DEFAULT_DEPTH` | `200.0` | Depth of the default flat sea, in metres |
 
 ## Usage
 
@@ -116,6 +118,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `allstop` | Take the way off her |
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
 | `position` | Latitude, longitude, course and speed |
+| `sound` | Water under the keel, and a shoal warning |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
 
 ## Examples
@@ -163,14 +166,16 @@ SLOOP = VesselTemplate(
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 590 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 670 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
 - No ports, docking, navigation, charts, weather, crew, cargo, combat or damage yet.
 - One global wind. A weather provider replaces it later; call sites will not change.
-- Grounding is not implemented, so a vessel will sail across dry land quite happily.
+- Grounding samples the vessel centre point only. A hull can step over a reef
+  narrower than one tick of movement; swept hull-footprint testing lands with the
+  water column phase.
 - The world is a plane. Longitude does not narrow towards the poles, deliberately —
   a cosine correction would make the displayed position disagree with the distance
   actually sailed.

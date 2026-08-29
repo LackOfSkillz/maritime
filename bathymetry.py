@@ -33,6 +33,23 @@ from .position import WorldPosition
 # Sea level. Depths are measured against this, and tides move the surface around it.
 DATUM = 0.0
 
+# What the seabed is made of. This decides what happens when a hull finds it: mud
+# and sand hold a vessel and often give her back on the next tide, while reef and
+# rock hole her. Games may add their own.
+MUD = "mud"
+SAND = "sand"
+GRAVEL = "gravel"
+WEED = "weed"
+REEF = "reef"
+ROCK = "rock"
+UNKNOWN = "unknown"
+
+BOTTOM_TYPES = (MUD, SAND, GRAVEL, WEED, REEF, ROCK, UNKNOWN)
+
+# Bottoms that take a hull rather than hold it. Touching these at speed is a
+# different event from grounding on sand.
+FOUL_GROUND = (REEF, ROCK)
+
 
 class MaritimeTideProvider:
     """
@@ -126,6 +143,24 @@ class MaritimeMapProvider:
 
         """
         raise NotImplementedError("A map provider must implement terrain_z_at().")
+
+    def bottom_type_at(self, position):
+        """
+        What the seabed is made of at a point.
+
+        Args:
+            position (WorldPosition): Where to sample.
+
+        Returns:
+            bottom (str): One of the bottom types.
+
+        Notes:
+            Sand by default, because it is the forgiving answer and a map that
+            has not been surveyed should not silently be strewn with reefs. A
+            game supplies real ground by overriding this.
+
+        """
+        return SAND
 
     def sea_surface_z_at(self, position, game_time):
         """
@@ -268,6 +303,15 @@ class FlatSeaMapProvider(MaritimeMapProvider):
 
 __all__ = (
     "DATUM",
+    "BOTTOM_TYPES",
+    "FOUL_GROUND",
+    "MUD",
+    "SAND",
+    "GRAVEL",
+    "WEED",
+    "REEF",
+    "ROCK",
+    "UNKNOWN",
     "MaritimeTideProvider",
     "FlatTideProvider",
     "MaritimeMapProvider",

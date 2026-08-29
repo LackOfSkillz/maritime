@@ -175,6 +175,7 @@ class TestHelmCmdSet(BaseEvenniaTest):
                 "position",
                 "sail",
                 "wind",
+                "sound",
                 "drop anchor",
                 "weigh anchor",
                 "@maritime",

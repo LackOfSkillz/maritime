@@ -26,6 +26,7 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject, DefaultRoom
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .grounding import HOLED, SHOAL_WARNING_CLEARANCE, check_grounding, keel_clearance
 from .sailing import (
     FURLED,
     steerage_floor,
@@ -101,6 +102,8 @@ class Vessel(DefaultObject):
         self.db.motion_limits = MotionLimits()
         self.db.sail_plan_key = FURLED.key
         self.db.anchored = False
+        self.db.aground = False
+        self.db.draft = 2.0
         self.db.polar_curve = PolarCurve()
 
     # --- position -----------------------------------------------------------
@@ -270,6 +273,79 @@ class Vessel(DefaultObject):
         """
         self.db.anchored = bool(value)
 
+    @property
+    def draft(self):
+        """
+        How deep she sits.
+
+        Returns:
+            draft (float): Metres.
+
+        Notes:
+            The light draft for now. Cargo, flooding and heel will make the
+            working figure a derived one, which is why grounding takes it as an
+            argument rather than reading a template.
+
+        """
+        return float(self.db.draft or 0.0)
+
+    @draft.setter
+    def draft(self, metres):
+        """
+        Args:
+            metres (float): How deep she sits.
+
+        """
+        self.db.draft = float(metres)
+
+    @property
+    def aground(self):
+        """
+        Whether the hull is in the ground.
+
+        Returns:
+            aground (bool): True if she has found the bottom.
+
+        """
+        return bool(self.db.aground)
+
+    @aground.setter
+    def aground(self, value):
+        """
+        Args:
+            value (bool): Whether she is aground.
+
+        """
+        self.db.aground = bool(value)
+
+    def map_here(self):
+        """
+        The world's terrain.
+
+        Returns:
+            provider (MaritimeMapProvider): The configured map.
+
+        """
+        from . import config
+
+        return config.map_provider()
+
+    def keel_clearance(self):
+        """
+        How much water she has under her.
+
+        Returns:
+            clearance (float or None): Metres between keel and ground, or None if
+                she has not been launched.
+
+        """
+        position = self.maritime_position
+        if position is None:
+            return None
+        from . import config
+
+        return keel_clearance(position, self.draft, self.map_here(), config.time_provider().now())
+
     # --- rig ----------------------------------------------------------------
 
     @property
@@ -375,6 +451,13 @@ class Vessel(DefaultObject):
         position = self.maritime_position
         if position is None:
             return False
+        if self.aground:
+            # Held by the ground. Canvas and helm will not shift her; getting off
+            # is a separate act, which is the point of running aground.
+            if self.speed:
+                self.ndb.speed = 0.0
+                self.ndb.maritime_dirty = True
+            return False
         if self.anchored:
             # She is held by the ground. Canvas and helm make no difference until
             # the anchor is weighed - which is the whole point of letting it go.
@@ -420,12 +503,85 @@ class Vessel(DefaultObject):
         if after == before:
             return False
 
-        self.ndb.maritime_position = after.position
+        from . import config
+
+        world = self.map_here()
+        now = config.time_provider().now()
+
+        # A surface vessel floats. Her elevation is decided by the water, not by
+        # anything she does, so it is set rather than integrated - which is why
+        # she cannot be sailed down to the seabed by assigning a negative z.
+        floating = after.position.with_z(world.sea_surface_z_at(after.position, now))
+        after = MotionState(position=floating, heading=after.heading, speed=after.speed)
+
+        contact = check_grounding(floating, self.draft, after.speed, world, now)
+
+        self.ndb.maritime_position = floating
         self.ndb.heading = after.heading
-        self.ndb.speed = after.speed
         self.ndb.maritime_dirty = True
+
+        if not contact:
+            self.ndb.speed = 0.0
+            self.aground = True
+            self._report_grounding(contact)
+            return True
+
+        self.ndb.speed = after.speed
         self._report_underway(before, after)
+        self._report_soundings(contact)
         return True
+
+    def _report_grounding(self, contact):
+        """
+        Tell the ship she has found the bottom.
+
+        Args:
+            contact (GroundingResult): What she struck and how hard.
+
+        """
+        if contact.severity == HOLED:
+            topside = (
+                "A grinding crash runs the length of her. She stops dead, canted "
+                "over, and the sound of water is suddenly very loud."
+            )
+            below = "The hull screams against rock, and water bursts in through the seams."
+        else:
+            topside = (
+                f"She slides to a halt with a long shudder, aground on "
+                f"{contact.bottom}. The deck tilts, and stays tilted."
+            )
+            below = f"The hull grinds and settles. She is aground on {contact.bottom}."
+
+        for room in self.ship_rooms:
+            room.msg_contents(topside if room.exposure in _WEATHER_DECKS else below)
+
+    def _report_soundings(self, contact):
+        """
+        Warn the ship when the water shoals beneath her.
+
+        Args:
+            contact (GroundingResult): The clearance she currently has.
+
+        Notes:
+            A vessel that grounds without warning is an accident; one that grounds
+            after the leadsman has called diminishing water is a decision, and
+            only the second is worth playing. Warned once on entering shallow
+            water, not every tick, for the same reason turns are.
+
+        """
+        if contact.clearance >= SHOAL_WARNING_CLEARANCE:
+            self.ndb.reported_shoaling = False
+            return
+        if self.ndb.reported_shoaling:
+            return
+        self.ndb.reported_shoaling = True
+
+        call = (
+            f"The leadsman calls the depth: {contact.clearance:.1f} metres "
+            f"under her keel, and shoaling."
+        )
+        for room in self.ship_rooms:
+            room.msg_contents(call)
 
     def _report_underway(self, before, after):
         """

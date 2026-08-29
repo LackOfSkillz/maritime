@@ -12,6 +12,18 @@ simulation exists yet.
 
 ### Feat
 
+- Add grounding. A hull finds the bottom when terrain intersects her envelope -
+  keel clearance is the water surface less her draft, less the ground beneath -
+  so shoals and reefs need no special representation beyond the terrain already
+  having the right shape. Clearance is a continuous value, not a yes-or-no,
+  because knowing you have four metres and losing one a mile is what lets a
+  navigator decide; discovering you have grounded does not. Bottom type decides
+  what it costs: sand holds her and the tide usually gives her back, rock struck
+  with way on opens her. Adds `sound`, a shoal warning from the leadsman, and
+  `MARITIME_MAP_PROVIDER` so a game supplies its own seabed.
+- A surface vessel's elevation is now set by the water rather than integrated, so
+  she cannot be sailed to the seabed by assigning a negative z. That was
+  previously possible and silently meaningless.
 - Add sailing. Wind, a data-driven polar curve, sail plans and leeway, so speed
   stops being something you order and becomes something you negotiate: a vessel
   makes what the wind on her heading allows, which head to wind is nothing at all.

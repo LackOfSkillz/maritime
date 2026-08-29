@@ -24,6 +24,16 @@ from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
 from .formatting import NAUTICAL, RAW, format_position
+from .grounding import (
+    AGROUND,
+    HOLED,
+    TOUCHED,
+    GroundingResult,
+    check_grounding,
+    is_shoaling,
+    keel_clearance,
+    refloats_on_tide,
+)
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .position import (
     DEFAULT_REGION,
@@ -160,6 +170,15 @@ __all__ = (
     "relative_wind_angle",
     "achievable_speed",
     "leeway_angle",
+    # grounding
+    "keel_clearance",
+    "check_grounding",
+    "is_shoaling",
+    "refloats_on_tide",
+    "GroundingResult",
+    "TOUCHED",
+    "AGROUND",
+    "HOLED",
     # motion
     "MotionState",
     "MotionLimits",
