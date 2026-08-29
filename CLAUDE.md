@@ -25,6 +25,26 @@ The folder name is the import path. Users will write
 
 Design rationale lives in `docs/architecture.md`. Read it before adding a system.
 
+### Two homes, not one
+
+This package targets **both** of these, and neither is a consolation prize:
+
+1. An Evennia contrib, merged upstream and living in the Evennia tree.
+2. A standalone open-source repository a developer clones and drops into their own game.
+
+Upstream merging is not guaranteed for anyone — accepting a contrib means the Evennia project
+takes on maintaining it, and that is a real cost for them to weigh. Whichever way that lands,
+the code has to be equally usable, so the second path is a design constraint rather than a
+fallback.
+
+Concretely: **never import this package by its absolute path.** Use relative imports
+internally (`from .domain import vessel`). An absolute self-import hardcodes home number one
+and breaks home number two. CI enforces this.
+
+The same reasoning applies to anything that resolves a module by string — dynamic imports,
+settings-style dotted paths, plugin lookups. Derive them from `__package__`, never from a
+hardcoded literal.
+
 ---
 
 ## 2. Package layout (mandated by Evennia)
@@ -253,7 +273,62 @@ a million will not finish.
 
 ---
 
-## 8. General engineering standards
+## 8. Documentation is part of the work, not a write-up afterwards
+
+This contrib will be read far more often than it is written — by reviewers, by developers
+deciding whether to adopt it, and by us in a year. Document meticulously.
+
+**Every module** opens with a docstring saying what it is and *why it exists*. Every class,
+function and method has one. Where a decision looks arbitrary, record the reason: the next
+reader cannot tell a deliberate choice from an accident without being told.
+
+Three tiers, each with a different job:
+
+| Where | Audience | Job |
+| --- | --- | --- |
+| `README.md` | someone deciding whether to use it | what it is, how to install, how to start |
+| `docs/architecture.md` | someone extending it | how it is built and why it is built that way |
+| Docstrings | someone reading the code | what this does, its arguments, its return, its traps |
+
+Rules that are easy to break:
+
+- **Document the constraint, not just the behaviour.** "Returns keel clearance in metres" is
+  half a docstring. "Negative means aground" is the other half.
+- **Record why, especially for anything non-obvious.** A reader who does not know the reason
+  will eventually delete it as redundant.
+- **Documentation ships with the change**, in the same commit. Not a later pass.
+- **Update docs when behaviour changes.** A stale docstring is worse than none — it is
+  actively believed.
+- **Keep examples generic** — `Test Sloop`, `Harbor A`, `Harbor B`. Never real game lore.
+
+---
+
+## 9. The tutorial zone is a deliverable
+
+The contrib ships a small, runnable demonstration world. It is not optional polish, and it is
+not written last.
+
+Its purpose is threefold, and the third is why it matters most:
+
+1. **It teaches.** A developer evaluating this should be able to sail a vessel from one
+   harbour to another within minutes of installing, without reading the architecture doc.
+2. **It demonstrates.** Features that cannot be shown in the tutorial zone are features
+   nobody will discover.
+3. **It is an integration test.** The tutorial zone exercises the real system end to end.
+   If it breaks, something genuinely broke — which makes it the most honest test in the
+   suite.
+
+Requirements:
+
+- Minimal and genre-neutral. Two harbours, one vessel, one wind, one current, one hazard.
+  Enough to prove the system, not enough to impose a setting.
+- Generic names throughout. No lore from any particular game.
+- Installable and runnable from the README's instructions alone, with no prior knowledge.
+- Kept working. A broken tutorial zone is a failing build, not a cosmetic issue.
+
+---
+
+## 10. General engineering standards
 
 These are not stylistic preferences. Treat violations as defects.
 
@@ -271,7 +346,7 @@ These are not stylistic preferences. Treat violations as defects.
 
 ---
 
-## 9. Dependencies
+## 11. Dependencies
 
 > "The contribution should preferably work in isolation from other contribs (only make use of
 > core Evennia) so it can easily be dropped into use."
@@ -284,7 +359,7 @@ These are not stylistic preferences. Treat violations as defects.
 
 ---
 
-## 10. Genre-agnostic by default
+## 12. Genre-agnostic by default
 
 > "Try to make your contribution as genre-agnostic as possible and assume your code will be
 > applied to a very different game than you had in mind when creating it."
@@ -295,7 +370,7 @@ what happens to an offline character, tidal range, how damage maps to their comb
 
 ---
 
-## 11. Licensing
+## 13. Licensing
 
 All contributions are released under the **same license as Evennia** (BSD 3-Clause). See
 `LICENSE`.
@@ -306,7 +381,7 @@ not at submission time, when it is no longer reconstructible.
 
 ---
 
-## 12. Git hygiene
+## 14. Git hygiene
 
 - Commit subjects are written for a stranger reading the log, because a stranger will.
 - One logical change per commit. No churn commits, no "fix fix fix" chains.
@@ -318,7 +393,7 @@ not at submission time, when it is no longer reconstructible.
 
 ---
 
-## 13. Submission process — for reference, not to act on
+## 15. Submission process — for reference, not to act on
 
 - A contrib is submitted as a **pull request** to Evennia.
 - PRs are reviewed and may go through several iterations. Merging is not guaranteed —
@@ -330,7 +405,7 @@ Do not initiate any of this. Gary decides when and whether to submit.
 
 ---
 
-## 14. The rules are enforced, not just written down
+## 16. The rules are enforced, not just written down
 
 Most of this document is checked mechanically. A rule that only lives in prose decays; a rule
 with a check behind it does not.
@@ -341,17 +416,17 @@ with a check behind it does not.
 | --- | --- |
 | `black --check --line-length 100` | section 5 formatting |
 | `flake8 --max-line-length 100` | section 5 lint |
-| `.github/scripts/check_discipline.py` | sections 3, 6, 8, 9 |
+| `.github/scripts/check_discipline.py` | sections 2, 3, 6, 10, 11 |
 | `evennia test` on 3.12 and 3.13 | section 4 |
 
 `check_discipline.py` covers the rules no off-the-shelf tool knows about:
 
 1. **File length** — no source file over 1000 lines (section 6).
 2. **Dependencies** — standard library, `evennia`, `twisted`, `django` and relative imports
-   only. Any other import root fails the build (section 9).
+   only. Any other import root fails the build (section 11).
 3. **Domain purity** — a `.msg(` outside `messaging/`, `commands/`, `cmdsets/` or
    `typeclasses/` fails. Domain code returns structured results; it does not speak (section
-   8).
+   10).
 4. **README shape** — title, credit line and `## Installation` must be present, because
    Evennia generates the public documentation page from this file (section 3).
 
@@ -369,7 +444,7 @@ turns an unrelated upstream release into a red build on an untouched branch.
 
 ---
 
-## 15. Before you claim you are done
+## 17. Before you claim you are done
 
 Run the tests. Run the discipline checks. Read the output. Confirm the change is inside this
 folder and nothing leaked into the Evennia clone.

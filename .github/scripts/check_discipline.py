@@ -12,6 +12,9 @@ rules specific to this contrib, which no off-the-shelf tool knows about:
        (CLAUDE.md section 3).
     4. The domain layer returns structured results and never emits prose
        (CLAUDE.md section 8, and Law 11 in docs/architecture.md).
+    5. No module imports this package by its absolute path, so the contrib works
+       both inside the Evennia tree and as a standalone drop-in (CLAUDE.md
+       section 2).
 
 Run from the repository root:
 
@@ -179,6 +182,43 @@ def check_no_prose_in_domain(failures):
                 )
 
 
+def check_location_independence(failures):
+    """
+    No module may import this package by its absolute path.
+
+    The contrib has two possible homes: inside the Evennia tree at
+    `evennia.contrib.full_systems.maritime`, or dropped into a game standalone
+    under some other path. An absolute self-import hardcodes the first and breaks
+    the second. Relative imports work in both.
+
+    Checked against the parsed import statements rather than the file text, so
+    documentation examples in docstrings are not flagged.
+
+    Args:
+        failures (list): Accumulator for failure messages.
+
+    """
+    self_path = "evennia.contrib.full_systems.maritime"
+    for path in iter_source_files():
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError:
+            # Already reported by the dependency check.
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and not node.level and node.module:
+                target = node.module
+            elif isinstance(node, ast.Import):
+                target = " ".join(alias.name for alias in node.names)
+            else:
+                continue
+            if self_path in target:
+                failures.append(
+                    f"{relative(path)}:{node.lineno}: imports this package by absolute path. "
+                    "Use a relative import, so the contrib also works standalone."
+                )
+
+
 def check_readme(failures):
     """
     README.md must keep the shape Evennia's documentation generator parses.
@@ -229,6 +269,7 @@ def main():
         ("file length", check_file_length),
         ("dependencies", check_dependencies),
         ("domain purity", check_no_prose_in_domain),
+        ("location independence", check_location_independence),
         ("readme format", check_readme),
     )
 
