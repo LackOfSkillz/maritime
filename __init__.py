@@ -11,6 +11,7 @@ Commonly used names are re-exported here, so games can import them directly:
 
 """
 
+from . import config  # noqa: F401
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
 from .results import (
@@ -23,6 +24,8 @@ from .results import (
 from .rng import AI, COMBAT, DAMAGE, NAVIGATION, WEATHER, RNGContext
 
 __all__ = (
+    # configuration
+    "config",
     # time
     "MaritimeTimeProvider",
     "GameTimeProvider",

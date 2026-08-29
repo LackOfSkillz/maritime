@@ -12,6 +12,13 @@ simulation exists.
 
 ### Feat
 
+- Add settings resolution. Games configure maritime from their own `settings.py`
+  using `MARITIME_`-prefixed names, never by editing contrib source.
+  `MARITIME_TIME_PROVIDER` takes a dotted path so a game can substitute its own
+  clock, and `MARITIME_RNG_SEED` pins the master seed for a reproducible run.
+  A configured class that is the wrong type fails at load with a message naming
+  the setting, rather than surfacing later as a missing attribute. Defaults are
+  derived from `__package__`, so they resolve wherever the package actually lives.
 - Add domain events and `EventBus`. The simulation announces what happened without
   knowing who listens; messaging, AI, quests, economy, logging and tests subscribe.
   Subscribing to a base event type also receives its subtypes, so a logger can take
