@@ -245,6 +245,25 @@ combat and damage are not.
 
 ### Docs
 
+- Carry the north-star roadmap into `docs/architecture.md`. The doc described the
+  design well and said almost nothing about the plan: twenty-six phases, the
+  vertical-slice gate, the named scenario suite, the invariant list, the
+  performance goals and the open questions were all in the specification and none
+  of them were in the repository. Each phase now carries its real status, and
+  every `partial` names what is missing - a phase marked complete while a named
+  deliverable is absent is how a plan stops being a plan.
+- Record what the doc describes and the code does not: navigational tiling, hull
+  footprints and swept grounding detection, domain event emission, and the narrow
+  public API. Each is marked unbuilt where it is described rather than only in a
+  limitations list somebody has to go and find.
+- State plainly that currents are not implemented. They are an input to the
+  documented sailing model and a method on the documented map provider
+  interface, and they are neither - so a passage takes the same time whichever
+  way the water is moving, and three of the six first-voyage acceptance tests
+  cannot be written. Sailing is marked partial accordingly.
+- Note that the fourteenth law, which governs the repository rather than the
+  simulation, lives in `CLAUDE.md` where it is actually checkable.
+
 - Add `CHANGELOG.md` and record the changelog and commit-message discipline in
   `CLAUDE.md`.
 - Add `docs/architecture.md`: the architectural laws, the shared elevation datum

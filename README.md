@@ -263,6 +263,11 @@ would take half an hour of wall time runs in milliseconds.
 - No ports, docking, charts, weather, crew, cargo, combat or damage yet.
 - One global wind and one global visibility. A weather provider replaces both later; call
   sites will not change.
+- **No currents.** A vessel's track is her heading; nothing sets her off it but leeway. The
+  map provider's interface has a place for them and the sailing model has a slot for them,
+  and neither is filled — so a passage takes the same time whichever way the water is
+  moving.
+- No sea state. It is a documented input to sailing and stability and is not yet one.
 - Ranges reported to players are true ranges. A lookout should be giving an estimate, and
   will once dead reckoning and navigational error land — `Sighting` carries the true
   distance and says so.

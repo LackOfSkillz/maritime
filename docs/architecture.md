@@ -35,6 +35,11 @@ The ocean is simulated. Rooms are how characters experience parts of it.
 
 These are enforcement rules, not aspirations. Code review checks against them.
 
+A fourteenth law governs how the repository itself is built rather than how the simulation
+behaves — that this ships as a clean contrib, with no cleanup pass ever owed. It lives in
+`CLAUDE.md`, where the discipline it demands is actually checkable, and it is not restated
+here.
+
 ### Law 1 — One world clock
 
 The maritime system consumes elapsed **game time** from a `TimeProvider` supplied by the
@@ -243,6 +248,18 @@ Both generate *candidates* only. Continuous coordinates resolve real geometry.
 
 ---
 
+### 4.6 Navigational data is tiled
+
+Terrain, coastline, reefs, shoals, rocks and channels are held per tile, and a vessel
+queries only the tiles its movement envelope touches. The alternative — searching every
+hazard in the world for every vessel every step — is the shape of an O(n·m) sweep that
+looks fine with one ship and a reef and stops being fine with a fleet and a coastline.
+
+Not built. The map provider currently answers point queries against whatever the game
+supplies, which is correct and does not change when tiles land behind it.
+
+---
+
 ## 5. Grounding
 
 Grounding is not a special case. It is terrain intersecting the vessel envelope.
@@ -264,6 +281,24 @@ for load, flooding and heel, which is why it is derived rather than stored.
 Bottom type decides consequences: mud and sand hold and often release on the next tide; reef
 and rock hole the hull. Refloating on a rising tide works only because tide and terrain share
 one model.
+
+---
+
+### 5.1 A hull is not a point
+
+A vessel has length, beam, draft and a heading, and those define a footprint. A large ship
+can have her bow over a reef while her centre is still in deep water, and testing the centre
+alone says she is safe.
+
+Worse, a moving vessel has to test the **swept** footprint between where she was and where
+she is proposing to be. Sampling only the endpoints lets a fast hull step clean over a shoal
+narrower than one tick of movement — and the faster she goes, the more of the seabed she can
+ignore, which is precisely backwards.
+
+Not built. Grounding currently samples the vessel's centre point at the end of the step.
+This is the largest known gap between what this document describes and what the code does;
+it is recorded in the README's limitations and lands with the water column phase. The
+interface does not change when it does.
 
 ---
 
@@ -347,6 +382,13 @@ class PropulsionSystem:
 
 Sail, oar, motor, steam, tow — and whatever a given game invents.
 
+**Current is in that input list and is not implemented.** A current is a vector added to
+propulsion to give world velocity, and its absence is not cosmetic: it is what makes a track
+differ from a heading, what makes a passage time depend on when you left as well as how hard
+you sailed, and what turns a safe channel into a set towards a lee shore. Three of the six
+first-voyage acceptance tests cannot be written without it. Nothing else waits on it, which
+is exactly why it is easy to keep not doing.
+
 ---
 
 ## 9. Navigation and observation
@@ -420,6 +462,13 @@ works with six players online is a system most players never see.
 roles are separate concepts, and authority is evaluated *per capability* rather than held in
 a single slot. Modelling it as one current-holder field produces a mate who "has command" and
 cannot do most of what command implies.
+
+---
+
+**Command has a succession.** Captain, first mate, officer of the watch, authorised crew,
+then voyage automation. A captain who logs out must not freeze the ship — a vessel at sea
+with nobody at the helm is a hazard to everyone else on the water, and "the owner is offline"
+is not a physical state the sea recognises.
 
 ---
 
@@ -550,3 +599,197 @@ What is explicitly not done: generalising the spatial indexes, movement integrat
 physics. A surface-horizon index and a 3D index for free-flying entities are different data
 structures, and guessing at the query patterns of a system that does not exist is how
 premature abstraction happens. Generalise after implementation proves the seam, not before.
+
+---
+
+## 16. Domain events
+
+The simulation emits events; messaging, AI, quests, economy, logging, reputation and tests
+consume them. The list is long on purpose — an event that nothing listens to costs nothing,
+and one that does not exist has to be retrofitted through every caller that needed it.
+
+```text
+VesselCreated      VesselLaunched     VesselDeparted     VesselArrived
+VesselDetected     VesselDocked       VesselGrounded     VesselCollided
+WeaponFired        ProjectileHit      HullBreached       FloodingStarted
+FireStarted        BoardingStarted    PersonOverboard    VesselCaptured
+VesselSunk         WreckCreated       ServiceExecuted    ServiceFailed
+```
+
+The event primitives exist (`events.py`); the vessel lifecycle does not emit them yet.
+
+---
+
+## 17. Public API
+
+The long-term stable surface stays narrow. Outside systems reach the simulation through it
+and never mutate internal state directly.
+
+```python
+maritime.create_vessel()      maritime.get_vessel()
+maritime.get_world_position() maritime.issue_order()
+maritime.plot_course()        maritime.get_contacts()
+maritime.dock()               maritime.undock()
+maritime.apply_damage()       maritime.begin_boarding()
+```
+
+Nothing here is API-stable yet, and the package exports considerably more than this while
+the shape is still being found.
+
+---
+
+## 18. Roadmap
+
+Phases from the north-star specification, with what is actually true of the code. Status is
+`done`, `partial` or `—`, and `partial` always says what is missing, because a phase marked
+complete while a named deliverable is absent is how a plan stops being a plan.
+
+| # | Phase | Status | Notes |
+| --- | --- | --- | --- |
+| 0 | Foundation | done | Package, clock, `TimeProvider`, RNG streams, results, events, config, test harness |
+| 1 | Coordinates and navigational surface | done | `WorldPosition`, distance, bearing, terrain Z, derived depth, map provider, resolver |
+| 2 | Hazard geometry and spatial foundation | partial | Both indexes done. Map tiles, hull footprint and swept envelope are not |
+| 3 | Vessel foundation | done | `Vessel`, `VesselTemplate`, `ShipRoom`, creation, persistence |
+| 4 | Simulation service | partial | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore. The budget is a batch count, not a measured millisecond budget |
+| 5 | Basic safe movement | partial | Movement, helm, grounding, reload survival. Centre-point testing, not swept |
+| 6 | Sailing | partial | Wind, relative wind, polar curve, sail plans, leeway, anchoring. **Current is not implemented** |
+| 7 | Ports | — | Berths, dock, undock, gangway, castoff |
+| 8 | Observation | partial | Horizon, height of eye, contacts, `lookout`. Dynamic exterior descriptions are not built |
+| 9 | Navigation | — | Soundings exist. Charts, estimated position, dead-reckoning error and route planning do not |
+| 10 | Minimal crew automation | — | Hold a heading, manage sail, follow a route, approach a destination |
+| 11 | Strategic representation | — | Strategic records, analytical travel, materialisation, benchmarks at 100/500/1000 |
+| 12 | Weather and sea state | — | Replaces the single global wind and the single global visibility |
+| 13 | Sparse ocean projection | — | Swimmers and floating entities, studied from Wilderness and written maritime-native |
+| 14 | Crew and authority | — | Roles, staffing, skill hooks, command succession |
+| 15 | Tactical geometry | — | Range, bearing, closure, aspect, arcs. The tactical-pacing decision point |
+| 16 | Weapons | — | Generic mount, reload, projectile travel, impact |
+| 17 | Damage | — | Hull sections, breaches, flooding, fire, repair, sinking, occupant transition |
+| 18 | Boarding and capture | — | Grapples, relative-speed constraints, temporary exits, control transfer |
+| 19 | Strategic maritime world | — | Merchants, patrols, pirates, fishing, strategic encounters |
+| 20 | Standing orders | — | Conditions, priorities, conflict resolution, replanning |
+| 21 | Passenger services | — | Timetables, cycle validation, fares, contracts, manifest, purser, disembarkation |
+| 22 | Cargo economy | — | Contracts, holds, weight and volume, loading, trade |
+| 23 | Service expansion | — | Pilots, tugs, provisioning, repairs, shipyards |
+| 24 | Ownership and customisation | — | Purchase, sale, upgrades, refits, interiors, cosmetics, player homes |
+| 25 | Wrecks and salvage | — | Wreck lifecycle, drift, survivors, floating cargo, tow, salvage |
+
+**Two deliberate departures from the plan's order.**
+
+Observation was built before ports. The spatial indexes had been written in Phase 2 and had
+never had a caller, and observation was what needed them; ports need authored harbour
+geometry that the test world does not yet have. Building the phase the code was ready for
+beat building the one with a dependency outstanding.
+
+Grounding was pulled forward into Phase 5, where the plan already put it — movement is not
+finished until the seabed can stop it, and shipping "the ship moves" without that would have
+meant calling a phase done that could sail through an island.
+
+---
+
+## 19. The first vertical slice
+
+The gate that says the architecture works. Not a feature list — one continuous act:
+
+```text
+walk onto the sloop → cast off → make sail → sail continuous water
+→ read the seabed rising ahead → ground on the shoal, or hold the channel
+→ raise Harbour B → dock → walk ashore
+```
+
+No Wilderness, no combat, no pirates, no passenger economy. The player is in ordinary
+Evennia rooms throughout, and at no point does open water require `east east north east`.
+
+Reached so far: boarding, casting off, making sail, continuous movement, grounding on real
+terrain, and sighting another vessel over the horizon. Outstanding: harbours at both ends,
+and the current that makes the passage time depend on more than the wind.
+
+**First-voyage acceptance**, from the plan, and the arithmetic the whole clock design exists
+to make true: 20 nautical miles at 8 knots is 2.5 game hours, which at DireMud's 4:1 is
+37.5 real minutes — and runs in milliseconds under `ManualTimeProvider`. The tests must show
+a neutral current arriving on time, a favourable one early, an adverse one late, poor sail
+later still, the shoal crossing grounding her and the channel not.
+
+Three of those six cannot be written until currents exist.
+
+---
+
+## 20. Scenario suite
+
+Named scenarios, each a runnable integration test rather than a unit test. Built ones are
+marked.
+
+```text
+sailing-basic ✓        sailing-upwind ✓       current-drift
+grounding-shoal ✓      grounding-reef ✓       safe-channel
+dock-undock            reload-underway ✓      route-following
+scheduler-fairness ✓   strategic-advance      materialize-dematerialize
+contact-detection ✓    navigation-error       storm-delay
+collision              broadside              flooding
+fire                   boarding               capture
+passenger-arrival      passenger-diversion    passenger-capture
+service-partial-failure
+```
+
+---
+
+## 21. Invariants
+
+Things that must never be true, whatever else changes. Each one is a bug class rather than a
+rule of the fiction.
+
+```text
+positions are finite; velocity is never NaN
+depth derives from surface minus terrain, never from a stored depth field
+a sunken vessel cannot sail
+a docked vessel cannot translate freely
+a destroyed component cannot operate normally
+flooding is never negative
+a boarding link requires two valid vessels
+a gangway requires a valid docking relationship
+the strategic scheduler cannot starve a vessel
+execute() always revalidates its preconditions
+passenger discharge never unloads hold cargo
+ship rooms are never deleted beneath unresolved occupants
+ordinary land rooms need not have maritime coordinates
+```
+
+---
+
+## 22. Performance goals
+
+The architecture should plausibly carry hundreds to thousands of strategic vessels, dozens
+of active ones, and several simultaneous tactical interactions — without thousands of live
+rooms, thousands of tickers, a database write per second, O(n²) vessel comparisons, or a
+synchronous full-fleet sweep.
+
+Real limits come from benchmarks, not from this paragraph. Measured so far: 250 vessels at a
+batch of 10 gives a full fair sweep in 25 passes with every vessel updated exactly once.
+
+Two known O(n²) shapes are live and deliberate: the spatial indexes are linear scans, and
+every vessel scans for contacts every tick. Both are fine at harbour scale and both sit
+behind interfaces that do not change when the structures do.
+
+---
+
+## 23. Open questions
+
+Unresolved on purpose. Recording them beats settling them badly.
+
+**Tactical pacing.** Does close-quarters play stay at the host game's time ratio, or slow?
+At 4:1 a player may not have the reaction time for close manoeuvring, collision avoidance or
+a boarding approach. World travel stays tied to world time regardless; only tactical pacing
+is in question.
+
+**LOGOUT-001.** What Evennia actually does when a character disconnects — does an unpuppeted
+character stay in its room, does reconnect restore location, what happens if that room is
+gone, which hooks fire. A prerequisite spike for passenger persistence, and cheaper to
+answer than to guess.
+
+**Offline loss policy.** What becomes of an offline player aboard a vessel that founders.
+Game policy, not engine behaviour, but the engine has to expose the seam.
+
+**Reactor budget.** The actual millisecond budget that is safe on a production server. The
+current batch size is a stand-in for a measurement nobody has taken.
+
+**Long-downtime catch-up.** How much strategic time to reconcile after a prolonged outage.
+Capped at an hour today, which is a placeholder and not an answer.
