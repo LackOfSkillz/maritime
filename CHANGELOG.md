@@ -13,6 +13,29 @@ combat and damage are not.
 
 ### Feat
 
+- Add currents, the last named deliverable outstanding from the sailing phase.
+  A vessel is now carried by the water in addition to whatever she makes through
+  it, so her heading and her track are different questions and only the second
+  one gets her anywhere. `currents.py` carries set and drift, course and speed
+  made good, and `course_to_steer` - the navigator's triangle, which genuinely
+  has no answer when the stream is stronger than the vessel and returns None
+  rather than a heading that quietly does not work.
+- A current is named for where it goes and a wind for where it comes from. Both
+  conventions are kept. Normalising one to match the other is how a bearing ends
+  up reversed deep inside a passage calculation.
+- `speed` remains speed *through the water*, which is what a chip log measures,
+  and the over-ground figures are derived. The current therefore never has to be
+  subtracted back out of anything, and the difference between the two is
+  reportable - which is most of what navigation is.
+- Add `current`, reporting set, drift, and the course she is making good as
+  against the one she is steering. Add `MARITIME_CURRENT_PROVIDER` for a tidal
+  stream, and `MARITIME_CURRENT_SET` / `MARITIME_CURRENT_DRIFT` for a game that
+  wants one steady set without writing a class.
+- Add `environment.py`: wind, current, visibility, clearance and what is in sight,
+  as functions of a position rather than methods on a hull. A swimmer, a raft and
+  a wreck are subject to the same weather and the same water, and none of them
+  are vessels.
+
 - Distances and depths are now reported in units a game chooses, defaulting to
   the ones the subject matter used. `MARITIME_DISTANCE_UNITS` takes `leagues`
   (the default: cables, sea miles, then leagues), `nautical`, `metric` or `raw`;
@@ -110,6 +133,19 @@ combat and damage are not.
   by, below you feel her heel and hear water on the planking.
 
 ### Fix
+
+- Tests now assert the neutral world they describe rather than inheriting the
+  dev game's. Twice now a game has configured something - a seabed, then a
+  current - and tests that had never mentioned it started quietly measuring it
+  instead of the flat, still, empty sea they claim to test. `EmptySeaMixin` now
+  neutralises ground, stream and wind alongside clearing the traffic register,
+  so the next thing a game configures cannot do it a third time.
+
+- A vessel stemming the tide exactly no longer reports a nonsense course. The two
+  velocities cancel to a residual of about 1e-16 rather than to zero, and asking
+  `atan2` for the direction of that residual returned a confident, meaningless
+  bearing - a ship reported as making good due south while sitting motionless.
+  A nanometre a second is not a course.
 
 - A deleted vessel now leaves the traffic register. It is memory rather than a
   foreign key, so nothing removed her when her row went, and a hull that sank and

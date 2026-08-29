@@ -382,12 +382,26 @@ class PropulsionSystem:
 
 Sail, oar, motor, steam, tow — and whatever a given game invents.
 
-**Current is in that input list and is not implemented.** A current is a vector added to
-propulsion to give world velocity, and its absence is not cosmetic: it is what makes a track
-differ from a heading, what makes a passage time depend on when you left as well as how hard
-you sailed, and what turns a safe channel into a set towards a lee shore. Three of the six
-first-voyage acceptance tests cannot be written without it. Nothing else waits on it, which
-is exactly why it is easy to keep not doing.
+**A heading is not a track.** The water is moving too, and what an observer ashore sees is
+the sum of the two. `currents.py` carries set and drift, the course and speed made good, and
+the navigator's triangle that answers what to steer to make a wanted track good — which
+genuinely has no answer when the stream is stronger than the vessel, and says so rather than
+returning a heading that quietly does not work.
+
+**A current is named for where it goes; a wind for where it comes from.** A northerly wind
+blows *from* the north, a north-setting current flows *towards* it. Both conventions are
+kept, because normalising one to match the other is how a bearing ends up reversed deep
+inside a passage calculation, and because those are the words.
+
+**Speed is speed through the water.** A chip log measures the water going past the hull, so
+a vessel set three knots sideways still logs what her sails are making. Keeping `speed`
+through-water and deriving the over-ground figures means the current never has to be
+subtracted back out of anything — and it makes the difference between the two reportable,
+which is the whole of navigation.
+
+Set and drift come from a provider, so a tidal stream that reverses twice a day replaces a
+steady set without any call site changing. A game that wants one steady stream sets
+`MARITIME_CURRENT_SET` and `MARITIME_CURRENT_DRIFT` and writes no code.
 
 ---
 
@@ -652,7 +666,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 3 | Vessel foundation | done | `Vessel`, `VesselTemplate`, `ShipRoom`, creation, persistence |
 | 4 | Simulation service | partial | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore. The budget is a batch count, not a measured millisecond budget |
 | 5 | Basic safe movement | partial | Movement, helm, grounding, reload survival. Centre-point testing, not swept |
-| 6 | Sailing | partial | Wind, relative wind, polar curve, sail plans, leeway, anchoring. **Current is not implemented** |
+| 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
 | 7 | Ports | — | Berths, dock, undock, gangway, castoff |
 | 8 | Observation | partial | Horizon, height of eye, contacts, `lookout`. Dynamic exterior descriptions are not built |
 | 9 | Navigation | — | Soundings exist. Charts, estimated position, dead-reckoning error and route planning do not |
@@ -700,8 +714,8 @@ No Wilderness, no combat, no pirates, no passenger economy. The player is in ord
 Evennia rooms throughout, and at no point does open water require `east east north east`.
 
 Reached so far: boarding, casting off, making sail, continuous movement, grounding on real
-terrain, and sighting another vessel over the horizon. Outstanding: harbours at both ends,
-and the current that makes the passage time depend on more than the wind.
+terrain, sighting another vessel over the horizon, and a current that sets her off the course
+she is steering. Outstanding: harbours at both ends.
 
 **First-voyage acceptance**, from the plan, and the arithmetic the whole clock design exists
 to make true: 20 nautical miles at 8 knots is 2.5 game hours, which at DireMud's 4:1 is
@@ -709,7 +723,7 @@ to make true: 20 nautical miles at 8 knots is 2.5 game hours, which at DireMud's
 a neutral current arriving on time, a favourable one early, an adverse one late, poor sail
 later still, the shoal crossing grounding her and the channel not.
 
-Three of those six cannot be written until currents exist.
+Five of the six are written. The last needs a channel, which needs a harbour to lead to.
 
 ---
 
@@ -719,7 +733,7 @@ Named scenarios, each a runnable integration test rather than a unit test. Built
 marked.
 
 ```text
-sailing-basic ✓        sailing-upwind ✓       current-drift
+sailing-basic ✓        sailing-upwind ✓       current-drift ✓
 grounding-shoal ✓      grounding-reef ✓       safe-channel
 dock-undock            reload-underway ✓      route-following
 scheduler-fairness ✓   strategic-advance      materialize-dematerialize

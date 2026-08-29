@@ -177,6 +177,7 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "position",
                 "sail",
                 "wind",
+                "current",
                 "sound",
                 "lookout",
                 "drop anchor",

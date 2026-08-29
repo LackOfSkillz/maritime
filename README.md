@@ -4,16 +4,17 @@ Contribution by Gary Mix, 2026
 
 A maritime simulation system for Evennia. Vessels occupy continuous world coordinates
 rather than moving between ocean rooms — they gather way, come round, sail with the wind
-on their own polar curves, make leeway, anchor, run aground, and sight each other across a
-horizon that depends on how high the lookout is standing. They carry characters in ordinary
+on their own polar curves, make leeway, anchor, run aground, get set off course by a
+current, and sight each other across a horizon that depends on how high the lookout is
+standing. They carry characters in ordinary
 Evennia rooms while under way. The sea has a bottom, the bottom has depth, and the tide
 moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 
 ## Status
 
 **Early development.** The foundations, spatial model, vessels, simulation, sailing,
-grounding and observation are working and tested; ports, charts, weather, crew, combat and
-damage are not built yet. Nothing here is API-stable.
+currents, grounding and observation are working and tested; ports, charts, weather, crew,
+combat and damage are not built yet. Nothing here is API-stable.
 
 What works today:
 
@@ -55,6 +56,14 @@ The lookout reports:
   On the starboard beam              5.3 leagues   a sail
 ```
 
+The water is moving too, so where she points and where she goes are different questions:
+
+```text
+> current
+The current sets 1-8-0, drift 0.8 knots.
+She heads 0-9-0 and makes good 0-9-7 at 6.6 knots.
+```
+
 And the lead is cast the way a lead line is actually read:
 
 ```text
@@ -65,7 +74,7 @@ The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
 
 ## Design
 
-Seven ideas do most of the work. `docs/architecture.md` has the rest.
+Eight ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -88,6 +97,13 @@ returning structured results, and nothing in the simulation knows the word "agro
 watch the sea go by, below you feel her heel and hear water on the planking. Point
 `MARITIME_NARRATOR` at a `VesselNarrator` subclass, override one method, and every line
 the system speaks changes without a line of physics moving.
+
+**A heading is not a track.** The water moves as well, and an observer ashore sees the sum
+of the two. `speed` is speed *through the water* — what a chip log measures — and the
+over-ground course and speed are derived, so a current never has to be subtracted back out
+of anything. A current is named for where it goes and a wind for where it comes from; both
+are kept, because normalising one to match the other is how a bearing ends up reversed deep
+inside a passage calculation.
 
 **Units are display; metres are the truth.** Nothing inside the simulation knows what a
 league is. What a player is shown is two settings, not one, because a ship reckoned her run
@@ -141,6 +157,9 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_ORIGIN_EASTING` | `0.0` | As above, for longitude |
 | `MARITIME_WIND_BEARING` | `0.0` | Bearing the wind blows *from* |
 | `MARITIME_WIND_SPEED` | `0.0` | Wind speed in metres per second |
+| `MARITIME_CURRENT_SET` | `0.0` | Bearing the water flows *towards* |
+| `MARITIME_CURRENT_DRIFT` | `0.0` | How fast it flows, in metres per second |
+| `MARITIME_CURRENT_PROVIDER` | slack water | Dotted path, for a tidal stream |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
@@ -157,6 +176,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `helm <bearing>` | Steer a course. Spoken and answered as at sea |
 | `sail <plan>` | `furled`, `storm`, `reefed`, `working`, `full` |
 | `wind` | Where the wind is from and how she lies to it |
+| `current` | Set and drift, and the course she is making good |
 | `speed <knots>` | Order a speed, for vessels not under sail |
 | `allstop` | Take the way off her |
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
@@ -238,6 +258,21 @@ detection_level(0.9 * limit, limit)      # 'contact'    - something on the water
 detection_level(0.1 * limit, limit)      # 'identified' - you know the ship
 ```
 
+You do not steer where you are going — you steer to counteract what the water is doing:
+
+```python
+from evennia.contrib.full_systems.maritime import (
+    CurrentVector, made_good, course_to_steer,
+)
+
+stream = CurrentVector(set=0.0, drift=2.0)     # two metres a second, setting north
+
+made_good(90.0, 5.0, stream)                   # heading east: a track north of east,
+                                               # and faster than she is sailing
+course_to_steer(90.0, 5.0, stream)             # what to steer to actually make east good
+course_to_steer(90.0, 1.0, stream)             # None - she cannot outrun the stream
+```
+
 Soundings are called, not printed:
 
 ```python
@@ -255,7 +290,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 800 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 840 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -263,11 +298,9 @@ would take half an hour of wall time runs in milliseconds.
 - No ports, docking, charts, weather, crew, cargo, combat or damage yet.
 - One global wind and one global visibility. A weather provider replaces both later; call
   sites will not change.
-- **No currents.** A vessel's track is her heading; nothing sets her off it but leeway. The
-  map provider's interface has a place for them and the sailing model has a slot for them,
-  and neither is filled — so a passage takes the same time whichever way the water is
-  moving.
 - No sea state. It is a documented input to sailing and stability and is not yet one.
+- One global current, like the wind. A provider replaces it with a tidal stream later;
+  call sites will not change.
 - Ranges reported to players are true ranges. A lookout should be giving an estimate, and
   will once dead reckoning and navigational error land — `Sighting` carries the true
   distance and says so.

@@ -20,6 +20,16 @@ from .bathymetry import (
     MaritimeTideProvider,
 )
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
+from .currents import (
+    STILL,
+    CurrentVector,
+    FlatCurrentProvider,
+    MaritimeCurrentProvider,
+    carried,
+    course_to_steer,
+    drift_offset,
+    made_good,
+)
 from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
@@ -227,6 +237,15 @@ __all__ = (
     "RUN_AGROUND",
     "HULL_HOLED",
     "SHOALING",
+    # currents
+    "CurrentVector",
+    "MaritimeCurrentProvider",
+    "FlatCurrentProvider",
+    "STILL",
+    "carried",
+    "drift_offset",
+    "made_good",
+    "course_to_steer",
     # sailing
     "WindVector",
     "PolarCurve",

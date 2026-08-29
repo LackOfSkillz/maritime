@@ -32,7 +32,7 @@ from .observation import (
 )
 from .motion import HelmOrders
 from .sailing import SAIL_PLANS, relative_wind_angle, sail_plan
-from .position import normalize_bearing
+from .position import bearing_difference, normalize_bearing
 from .resolver import get_world_position
 from .typeclasses import Vessel
 from .vessel import WEATHER_DECKS
@@ -486,6 +486,52 @@ class CmdWind(MaritimeCommand):
         self.caller.msg(
             f"The wind is {ms_to_knots(wind.speed):.0f} knots "
             f"from {spell_bearing(wind.bearing)}. {lying}"
+        )
+
+
+class CmdCurrent(MaritimeCommand):
+    """
+    Report the set and drift of the current.
+
+    Usage:
+      current
+
+    Where the water is going and how fast, and what it is doing to her: the
+    course and speed she is making good, as against the course she is steering
+    and the speed she is sailing.
+
+    A current is named for where it goes. The wind is named for where it comes
+    from. Both are correct and neither is going to change.
+
+    """
+
+    key = "current"
+    aliases = ("set", "drift")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        current = vessel.current_here()
+        if not current.running:
+            self.caller.msg("Slack water. She goes where she points.")
+            return
+
+        drift = f"{ms_to_knots(current.drift):.1f} knots"
+        self.caller.msg(f"The current sets {spell_bearing(current.set)}, drift {drift}.")
+
+        track = vessel.made_good()
+        if track is None:
+            return
+        course, made = track
+        if abs(bearing_difference(vessel.heading, course)) < 0.5:
+            return
+        self.caller.msg(
+            f"She heads {spell_bearing(vessel.heading)} and makes good "
+            f"{spell_bearing(course)} at "
+            f"{ms_to_knots(made):.1f} knots."
         )
 
 

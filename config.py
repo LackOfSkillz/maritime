@@ -30,6 +30,7 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
+from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
 from .messaging import VesselNarrator
 from .observation import DEFAULT_VISIBILITY
 from .clock import MaritimeTimeProvider
@@ -43,6 +44,7 @@ SETTING_PREFIX = "MARITIME_"
 DEFAULT_TIME_PROVIDER = f"{__package__}.clock.GameTimeProvider"
 DEFAULT_MAP_PROVIDER = f"{__package__}.bathymetry.FlatSeaMapProvider"
 DEFAULT_NARRATOR = f"{__package__}.messaging.VesselNarrator"
+DEFAULT_CURRENT_PROVIDER = f"{__package__}.currents.FlatCurrentProvider"
 
 
 def get_setting(name, default=None):
@@ -198,3 +200,32 @@ def visibility():
 
     """
     return float(get_setting("VISIBILITY", DEFAULT_VISIBILITY))
+
+
+def current_provider():
+    """
+    Build the configured current provider.
+
+    Returns:
+        provider (MaritimeCurrentProvider): Where the water is going.
+
+    Raises:
+        TypeError: If the configured class is not a current provider.
+
+    Notes:
+        With no `MARITIME_CURRENT_PROVIDER` set, returns a flat provider carrying
+        `MARITIME_CURRENT_SET` and `MARITIME_CURRENT_DRIFT` - which default to
+        slack water, so a game that has never heard of currents is unaffected.
+        The two-setting shortcut mirrors the wind exactly, because a game wanting
+        one steady stream should not have to write a class to get it.
+
+    """
+    path = get_setting("CURRENT_PROVIDER")
+    if not path:
+        return FlatCurrentProvider(
+            CurrentVector(
+                set=float(get_setting("CURRENT_SET", 0.0)),
+                drift=float(get_setting("CURRENT_DRIFT", 0.0)),
+            )
+        )
+    return load_class(path, expected=MaritimeCurrentProvider)()

@@ -26,19 +26,19 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject, DefaultRoom
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
-from .grounding import check_grounding, keel_clearance
-from .observation import DEFAULT_HEIGHT_OF_EYE, detection_limit, scan
+from .currents import STILL
+from .grounding import check_grounding
+from .observation import DEFAULT_HEIGHT_OF_EYE
 from .sailing import (
     FURLED,
     steerage_floor,
     PolarCurve,
-    WindVector,
     achievable_speed,
     leeway_angle,
     sail_plan,
 )
 from .position import WorldPosition, normalize_bearing
-from .traffic import MAX_TARGET_HEIGHT, traffic
+from .traffic import traffic
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK, WEATHER_DECKS
 
 
@@ -292,6 +292,34 @@ class Vessel(DefaultObject):
 
         return config.map_provider()
 
+    def wind_here(self):
+        """
+        The wind where this vessel is.
+
+        Returns:
+            wind (WindVector): The local wind.
+
+        """
+        from . import environment
+
+        return environment.wind_at(self.maritime_position)
+
+    def current_here(self):
+        """
+        The current where this vessel is.
+
+        Returns:
+            current (CurrentVector): Set and drift, or slack water if she has not
+                been launched.
+
+        """
+        from . import config, environment
+
+        position = self.maritime_position
+        if position is None:
+            return STILL
+        return environment.current_at(position, config.time_provider().now())
+
     def keel_clearance(self):
         """
         How much water she has under her.
@@ -301,12 +329,37 @@ class Vessel(DefaultObject):
                 she has not been launched.
 
         """
+        from . import config, environment
+
         position = self.maritime_position
         if position is None:
             return None
-        from . import config
+        return environment.clearance_at(position, self.draft, config.time_provider().now())
 
-        return keel_clearance(position, self.draft, self.map_here(), config.time_provider().now())
+    def made_good(self):
+        """
+        Where she is actually going, and how fast.
+
+        Returns:
+            track (tuple or None): `(course, speed)` over the ground, or None if
+                she has not been launched.
+
+        Notes:
+            Not the same as heading and speed, and the difference is the whole
+            reason currents exist. `speed` is speed through the water - what a
+            log line measures - so a vessel set sideways by a stream is making
+            good a course she is not pointing at, at a speed she is not sailing.
+
+        """
+        from . import config, environment
+
+        position = self.maritime_position
+        if position is None:
+            return None
+        _current, course, made = environment.set_and_drift(
+            position, self.heading, self.speed, config.time_provider().now()
+        )
+        return course, made
 
     @property
     def narrator(self):
@@ -389,21 +442,15 @@ class Vessel(DefaultObject):
             at the same range get different answers, which is the entire point.
 
         """
+        from . import environment
+
         position = self.maritime_position
         if position is None:
             return ()
         if height_of_eye is None:
             height_of_eye = self.height_of_eye
-        from . import config
-
-        seeing = config.visibility()
-        radius = detection_limit(height_of_eye, MAX_TARGET_HEIGHT, seeing)
-        candidates = [
-            (other, other.maritime_position, other.air_draft)
-            for other in traffic().near(position, radius)
-            if other is not self and other.maritime_position is not None
-        ]
-        return scan(position, self.heading, height_of_eye, candidates, seeing)
+        candidates = environment.vessels_within_sight(position, height_of_eye, exclude=self)
+        return environment.contacts_from(position, self.heading, height_of_eye, candidates)
 
     # --- rig ----------------------------------------------------------------
 
@@ -447,26 +494,6 @@ class Vessel(DefaultObject):
 
         """
         self.db.polar_curve = curve
-
-    def wind_here(self):
-        """
-        The wind where this vessel is.
-
-        Returns:
-            wind (WindVector): The local wind.
-
-        Notes:
-            A single world wind for now, from `MARITIME_WIND_BEARING` and
-            `MARITIME_WIND_SPEED`. A weather provider replaces this later; the
-            call site does not change when it does.
-
-        """
-        from . import config
-
-        return WindVector(
-            bearing=float(config.get_setting("WIND_BEARING", 0.0)),
-            speed=float(config.get_setting("WIND_SPEED", 0.0)),
-        )
 
     def sailing_speed(self):
         """
@@ -568,10 +595,20 @@ class Vessel(DefaultObject):
         if after == before:
             return False
 
-        from . import config
+        from . import config, environment
 
         world = self.map_here()
         now = config.time_provider().now()
+
+        # The water is moving too. She is carried in addition to whatever she is
+        # making through it, which is why her speed is untouched here - a log
+        # line measures the water going past the hull, not the ground going past
+        # the ship.
+        after = MotionState(
+            position=environment.carried_from(after.position, now, elapsed),
+            heading=after.heading,
+            speed=after.speed,
+        )
 
         # A surface vessel floats. Her elevation is decided by the water, not by
         # anything she does, so it is set rather than integrated - which is why
