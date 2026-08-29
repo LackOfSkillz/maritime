@@ -25,7 +25,8 @@ side effect of assignment.
 
 from evennia.objects.objects import DefaultObject, DefaultRoom
 
-from .position import WorldPosition
+from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .position import WorldPosition, normalize_bearing
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
 
 
@@ -45,6 +46,9 @@ class Vessel(DefaultObject):
         self.db.template_key = None
         self.db.maritime_position = None
         self.db.heading = 0.0
+        self.db.speed = 0.0
+        self.db.orders = HelmOrders()
+        self.db.motion_limits = MotionLimits()
 
     # --- position -----------------------------------------------------------
 
@@ -103,10 +107,128 @@ class Vessel(DefaultObject):
             degrees (float): New heading. Wrapped into [0, 360).
 
         """
-        from .position import normalize_bearing
-
         self.ndb.heading = normalize_bearing(float(degrees))
         self.ndb.maritime_dirty = True
+
+    @property
+    def speed(self):
+        """
+        How fast she is actually going.
+
+        Returns:
+            speed (float): Metres per second. Not necessarily what was ordered.
+
+        """
+        live = self.ndb.speed
+        return live if live is not None else (self.db.speed or 0.0)
+
+    @speed.setter
+    def speed(self, metres_per_second):
+        """
+        Args:
+            metres_per_second (float): The new speed.
+
+        Raises:
+            ValueError: If negative. Ships do not travel astern; order a
+                reciprocal heading instead.
+
+        """
+        value = float(metres_per_second)
+        if value < 0.0:
+            raise ValueError(f"Speed cannot be negative, got {value!r}.")
+        self.ndb.speed = value
+        self.ndb.maritime_dirty = True
+
+    # --- orders -------------------------------------------------------------
+
+    @property
+    def orders(self):
+        """
+        What the helm has been told to do.
+
+        Returns:
+            orders (HelmOrders): The standing order. Targets, not instructions -
+                the hull works towards them at whatever rate she can manage.
+
+        """
+        return self.db.orders or HelmOrders()
+
+    @orders.setter
+    def orders(self, orders):
+        """
+        Args:
+            orders (HelmOrders): The new standing order.
+
+        Raises:
+            TypeError: If given anything else.
+
+        Notes:
+            Written straight to the database rather than held in memory. An order
+            is given occasionally by a person, unlike position which changes many
+            times a minute, so there is nothing to batch.
+
+        """
+        if not isinstance(orders, HelmOrders):
+            raise TypeError(f"Expected HelmOrders, got {type(orders).__name__}.")
+        self.db.orders = orders
+
+    @property
+    def motion_limits(self):
+        """
+        What this hull is physically capable of.
+
+        Returns:
+            limits (MotionLimits): Speed, acceleration and turn rate.
+
+        """
+        return self.db.motion_limits or MotionLimits()
+
+    @motion_limits.setter
+    def motion_limits(self, limits):
+        """
+        Args:
+            limits (MotionLimits): The hull's capabilities.
+
+        Raises:
+            TypeError: If given anything else.
+
+        """
+        if not isinstance(limits, MotionLimits):
+            raise TypeError(f"Expected MotionLimits, got {type(limits).__name__}.")
+        self.db.motion_limits = limits
+
+    # --- simulation ---------------------------------------------------------
+
+    def at_maritime_tick(self, elapsed):
+        """
+        Advance this vessel through a stretch of game time.
+
+        Args:
+            elapsed (float): Game seconds since her last update.
+
+        Returns:
+            moved (bool): True if she went anywhere.
+
+        Notes:
+            Called by the simulation service, never directly. A vessel with no
+            position is not under way - she has not been launched - so there is
+            nothing to advance.
+
+        """
+        position = self.maritime_position
+        if position is None:
+            return False
+
+        before = MotionState(position=position, heading=self.heading, speed=self.speed)
+        after = advance(before, self.orders, self.motion_limits, elapsed)
+        if after == before:
+            return False
+
+        self.ndb.maritime_position = after.position
+        self.ndb.heading = after.heading
+        self.ndb.speed = after.speed
+        self.ndb.maritime_dirty = True
+        return True
 
     # --- persistence --------------------------------------------------------
 
@@ -129,6 +251,8 @@ class Vessel(DefaultObject):
             self.db.maritime_position = self.ndb.maritime_position
         if self.ndb.heading is not None:
             self.db.heading = self.ndb.heading
+        if self.ndb.speed is not None:
+            self.db.speed = self.ndb.speed
         self.ndb.maritime_dirty = False
         return True
 

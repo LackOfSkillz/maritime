@@ -236,3 +236,107 @@ class TestVesselInterior(VesselTestCase):
         levels = [room.deck_level for room in self.hull.ship_rooms]
         self.assertEqual(levels, sorted(levels))
         self.assertEqual(levels[0], -2)
+
+
+class TestVesselUnderWay(VesselTestCase):
+    """The vessel driven by the simulation service."""
+
+    def setUp(self):
+        super().setUp()
+        from ..motion import HelmOrders, MotionLimits
+
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=1.0, turn_rate=6.0)
+        self.hull.orders = HelmOrders(heading=0.0, speed=10.0)
+
+    def test_starts_stopped(self):
+        self.assertEqual(self.hull.speed, 0.0)
+
+    def test_a_tick_gets_her_under_way(self):
+        self.hull.at_maritime_tick(5.0)
+        self.assertGreater(self.hull.speed, 0.0)
+
+    def test_a_tick_moves_her(self):
+        self.hull.at_maritime_tick(10.0)
+        self.assertGreater(self.hull.maritime_position.y, 0.0)
+
+    def test_reports_whether_she_moved(self):
+        self.assertTrue(self.hull.at_maritime_tick(5.0))
+
+    def test_a_stopped_vessel_under_no_orders_does_not_move(self):
+        from ..motion import HelmOrders
+
+        self.hull.orders = HelmOrders(speed=0.0)
+        self.assertFalse(self.hull.at_maritime_tick(10.0))
+
+    def test_an_unlaunched_vessel_does_not_move(self):
+        """No position means she has not been launched."""
+        idle = create.create_object(Vessel, key="On The Stocks")
+        self.assertFalse(idle.at_maritime_tick(10.0))
+
+    def test_ticking_does_not_touch_the_database(self):
+        """Movement is the hot path; it must not write per tick."""
+        self.hull.checkpoint()
+        self.hull.at_maritime_tick(10.0)
+        self.assertEqual(self.hull.db.maritime_position, WorldPosition(0.0, 0.0))
+
+    def test_checkpoint_saves_the_new_position(self):
+        self.hull.at_maritime_tick(10.0)
+        self.hull.checkpoint()
+        self.assertGreater(self.hull.db.maritime_position.y, 0.0)
+
+    def test_checkpoint_saves_speed(self):
+        self.hull.at_maritime_tick(10.0)
+        self.hull.checkpoint()
+        self.assertGreater(self.hull.db.speed, 0.0)
+
+    def test_she_comes_round_onto_a_new_order(self):
+        from ..motion import HelmOrders
+
+        for _ in range(20):
+            self.hull.at_maritime_tick(5.0)
+        self.hull.orders = HelmOrders(heading=90.0, speed=10.0)
+        before = self.hull.heading
+        self.hull.at_maritime_tick(5.0)
+        self.assertNotEqual(self.hull.heading, before)
+
+    def test_orders_reject_the_wrong_type(self):
+        with self.assertRaises(TypeError):
+            self.hull.orders = "full ahead"
+
+    def test_limits_reject_the_wrong_type(self):
+        with self.assertRaises(TypeError):
+            self.hull.motion_limits = 10.0
+
+    def test_negative_speed_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.hull.speed = -1.0
+
+    def test_everyone_aboard_travels_with_her(self):
+        """The point of the whole arrangement, now that she actually moves."""
+        self.char1.location = self.cabin
+        self.hull.at_maritime_tick(20.0)
+        self.assertEqual(get_world_position(self.char1), self.hull.maritime_position)
+        self.assertGreater(get_world_position(self.char1).y, 0.0)
+
+
+class TestVesselUnderService(VesselTestCase):
+    """Driven by the scheduler rather than called directly."""
+
+    def test_the_service_moves_her(self):
+        from ..clock import ManualTimeProvider
+        from ..motion import HelmOrders, MotionLimits
+        from ..simulation import ACTIVE, MaritimeSimulationService
+
+        clock = ManualTimeProvider()
+        service = MaritimeSimulationService(clock)
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=1.0, turn_rate=6.0)
+        self.hull.orders = HelmOrders(heading=90.0, speed=10.0)
+        service.register(self.hull, tier=ACTIVE)
+
+        clock.advance(seconds=60.0)
+        service.tick()
+
+        self.assertGreater(self.hull.maritime_position.x, 0.0)
+        self.assertGreater(self.hull.speed, 0.0)

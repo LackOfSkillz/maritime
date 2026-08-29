@@ -201,7 +201,11 @@ def check_no_prose_in_domain(failures):
 
     """
     for path in iter_source_files():
-        parts = set(path.relative_to(REPO_ROOT).parts)
+        relative_path = path.relative_to(REPO_ROOT)
+        # Match a directory (commands/helm.py) or a module (commands.py). Only
+        # matching directories would flag a single-module messaging layer, which
+        # is the shape a small contrib actually has.
+        parts = set(relative_path.parts) | {relative_path.stem}
         if parts.intersection(MESSAGING_PACKAGES):
             continue
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):

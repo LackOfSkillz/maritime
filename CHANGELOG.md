@@ -12,6 +12,12 @@ simulation exists yet.
 
 ### Feat
 
+- Wire motion into the vessel and add helm commands: `helm`, `speed`, `allstop`
+  and `position`. A vessel under way is advanced by the simulation service, and
+  movement never touches the database - it updates in memory and is checkpointed,
+  as position changes many times a minute. Commands take and report knots while
+  the domain works in metres per second throughout, so display units stay out of
+  the physics and a game preferring other units changes one file.
 - Add the vessel motion model. Orders are targets, not instructions: the helm asks
   for a heading and the hull swings towards it at whatever her rudder and speed
   allow, which is most of what makes handling a ship feel unlike driving a cursor.
