@@ -1,0 +1,4 @@
+# Normalise to LF in the repository. Evennia is developed on Linux and this
+# contrib is written on Windows; without this, commits carry CRLF and every
+# upstream diff looks like a whole-file rewrite.
+* text=auto eol=lf
