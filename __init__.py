@@ -21,7 +21,13 @@ from .bathymetry import (
 )
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .events import Delivery, Event, EventBus
-from .position import DEFAULT_REGION, WorldPosition, normalize_bearing
+from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .position import (
+    DEFAULT_REGION,
+    WorldPosition,
+    bearing_difference,
+    normalize_bearing,
+)
 from .resolver import (
     NoWorldPosition,
     get_world_position,
@@ -109,6 +115,12 @@ __all__ = (
     "INTERIOR",
     "BELOW_WATERLINE",
     "normalize_bearing",
+    "bearing_difference",
+    # motion
+    "MotionState",
+    "MotionLimits",
+    "HelmOrders",
+    "advance",
     "DEFAULT_REGION",
     # events
     "Event",

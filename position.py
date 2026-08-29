@@ -62,6 +62,31 @@ def normalize_bearing(degrees):
     return degrees % FULL_CIRCLE
 
 
+def bearing_difference(from_bearing, to_bearing):
+    """
+    The shortest turn from one bearing to another.
+
+    Args:
+        from_bearing (float): Current bearing in degrees.
+        to_bearing (float): Desired bearing in degrees.
+
+    Returns:
+        difference (float): Signed degrees to turn, in [-180, 180]. Positive turns
+            to starboard (clockwise), negative to port.
+
+    Notes:
+        Shortest way round, so turning from 350 to 010 is +20 rather than -340.
+        Naive subtraction gives the long way and a vessel ordered a few degrees
+        across north would swing almost the whole compass to get there.
+
+        Exactly opposite bearings return -180. Both directions are equally short,
+        so the choice is arbitrary; picking one keeps the result deterministic,
+        which matters for reproducing a manoeuvre from a seed.
+
+    """
+    return (to_bearing - from_bearing + 180.0) % FULL_CIRCLE - 180.0
+
+
 @dataclass(frozen=True)
 class WorldPosition:
     """

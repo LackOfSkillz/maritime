@@ -12,6 +12,17 @@ simulation exists yet.
 
 ### Feat
 
+- Add the vessel motion model. Orders are targets, not instructions: the helm asks
+  for a heading and the hull swings towards it at whatever her rudder and speed
+  allow, which is most of what makes handling a ship feel unlike driving a cursor.
+  Turn rate scales with speed, so a vessel dead in the water cannot steer at all
+  and losing way is a real problem rather than an inconvenience. Motion integrates
+  in fixed sub-steps, so a turning vessel carves an arc instead of pivoting on the
+  spot and running the distance on her new heading - and the track comes out the
+  same whether the scheduler ran once or sixty times, so a laggy server does not
+  quietly put ships somewhere else. Adds `bearing_difference`, which turns the
+  short way round: naive subtraction sends a vessel almost all the way round the
+  compass to make a twenty-degree alteration across north.
 - Add the simulation service and its fair scheduler. One service drives everything
   rather than a ticker per vessel - partly for cost, partly because Evennia's
   TickerHandler keys subscriptions on callback, interval and idstring but not on
