@@ -319,6 +319,20 @@ combat and damage are not.
 
 ### Chore
 
+- Move `ShipRoom` out of `typeclasses.py` into `rooms.py`. A compartment is not
+  a vessel, and this is where deck plans, stations, flooding order and
+  compartment damage all land. `typeclasses.py` drops from 825 lines to 718.
+- `ShipRoom` is deliberately re-exported from `typeclasses`. Evennia writes a
+  typeclass to the row as a dotted path, so every compartment already created in
+  every game that has run this contrib carries the old module name in its
+  database. Dropping the name would not fail at startup - it would produce rooms
+  that fail to resolve their typeclass one at a time as they are loaded, which is
+  a considerably worse way to find out. Verified against three live rooms whose
+  rows still say `typeclasses.ShipRoom`: they resolve to the class in `rooms`,
+  `isinstance` holds, and their attributes and commands are intact.
+- Export `Vessel` and `ShipRoom` from the package. The two typeclasses a game
+  actually installs were reachable only by module path.
+
 - Move the CI actions to `checkout@v5` and `setup-python@v6`. The v4/v5 pair
   targets Node 20, which the runners now force onto Node 24 with a deprecation
   annotation on every build - a warning that is about to become a failure.

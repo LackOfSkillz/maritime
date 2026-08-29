@@ -115,6 +115,7 @@ from .vessel import (
     VesselCapacity,
     VesselTemplate,
 )
+from .rooms import ShipRoom
 from .scheduler import FairQueue
 from .sailing import (
     FULL,
@@ -132,6 +133,7 @@ from .sailing import (
     sail_plan,
 )
 from .scripts import MaritimeDriver
+from .typeclasses import Vessel
 from .simulation import (
     ACTIVE,
     DORMANT,
@@ -181,6 +183,8 @@ __all__ = (
     "ProximityIndex",
     # simulation
     "MaritimeDriver",
+    "Vessel",
+    "ShipRoom",
     "MaritimeSimulationService",
     "FairQueue",
     "TIERS",
