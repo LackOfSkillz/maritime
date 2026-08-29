@@ -397,3 +397,108 @@ def berths_near(position, radius=APPROACH_RANGE):
                 found.append((distance, port, berth))
     found.sort(key=lambda item: item[0])
     return tuple((port, berth) for _distance, port, berth in found)
+
+
+class Compartmented:
+    """
+    A vessel's own compartments.
+
+    Notes:
+        The link has two sides. `ShipRoom.vessel` maintains both, and this holds
+        the list - which is what makes finding a ship's rooms a read rather than
+        a query about typeclass path strings.
+
+    """
+
+    def at_object_creation(self):
+        """Set up this part of a newly created vessel."""
+        super().at_object_creation()
+        self.db.compartments = []
+
+    def attach(self, room):
+        """
+        Record a compartment as belonging to this hull.
+
+        Args:
+            room (ShipRoom): The compartment.
+
+        Returns:
+            vessel (Vessel): This hull, for chaining.
+
+        Notes:
+            Called by `ShipRoom.vessel`; there is no reason to call it directly.
+
+        """
+        rooms = [other for other in (self.db.compartments or ()) if other and other != room]
+        rooms.append(room)
+        self.db.compartments = rooms
+        return self
+
+    def detach(self, room):
+        """
+        Forget a compartment.
+
+        Args:
+            room (ShipRoom): The compartment.
+
+        Returns:
+            vessel (Vessel): This hull, for chaining.
+
+        """
+        self.db.compartments = [
+            other for other in (self.db.compartments or ()) if other and other != room
+        ]
+        return self
+
+    def reattach_compartments(self):
+        """
+        Rebuild the compartment list by looking for rooms that name this hull.
+
+        Returns:
+            count (int): How many compartments were found.
+
+        Notes:
+            The repair path, and the upgrade path. Compartments used to be found
+            by asking the typeclass manager for every `ShipRoom` and filtering,
+            which is a full table scan on every call and - worse - depends on the
+            *string* Evennia stored in each row. Moving the class to another
+            module left that string naming the old one, so the manager returned
+            nothing at all while the rooms themselves loaded perfectly: a ship
+            with compartments behaving exactly like a ship with none.
+
+            This scans by type rather than by path, so it repairs both that and
+            any game that set `db.vessel` directly before the link had two sides.
+            Run once per vessel after upgrading.
+
+        """
+        from evennia import ObjectDB
+
+        found = [
+            room
+            for room in ObjectDB.objects.all()
+            if isinstance(room, ShipRoom) and room.db.vessel == self
+        ]
+        self.db.compartments = found
+        return len(found)
+
+    @property
+    def ship_rooms(self):
+        """
+        Every compartment belonging to this vessel.
+
+        Returns:
+            rooms (tuple): The `ShipRoom` objects that name this vessel, ordered
+                from the lowest deck upward.
+
+        Notes:
+            Read from a list the vessel keeps, not from a query. This is asked on
+            every tick, and the query it replaced was a full pass over every ship
+            room in the world - and one that silently returned nothing for rooms
+            created before the class moved module.
+
+            Lowest deck first, matching the deck-plan ordering, because that is
+            the order flooding will care about.
+
+        """
+        rooms = [room for room in (self.db.compartments or ()) if room and room.pk]
+        return tuple(sorted(rooms, key=lambda room: room.deck_level))

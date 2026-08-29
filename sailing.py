@@ -339,3 +339,78 @@ def leeway_angle(heading, wind, plan, speed, max_leeway=12.0):
     # The wind sets her away from itself: to starboard if it is on her port bow.
     to_starboard = bearing_difference(heading, wind.bearing) < 0.0
     return magnitude if to_starboard else -magnitude
+
+
+class Rigged:
+    """
+    A vessel's canvas, and what it will do for her.
+
+    """
+
+    def at_object_creation(self):
+        """Set up this part of a newly created vessel."""
+        super().at_object_creation()
+        self.db.sail_plan_key = FURLED.key
+        self.db.polar_curve = PolarCurve()
+
+    @property
+    def sail_plan(self):
+        """
+        How much canvas is set.
+
+        Returns:
+            plan (SailPlan): The current sail plan. Bare poles by default - a
+                vessel does not put to sea with sail already set.
+
+        """
+        return sail_plan(self.db.sail_plan_key or FURLED.key) or FURLED
+
+    @sail_plan.setter
+    def sail_plan(self, plan):
+        """
+        Args:
+            plan (SailPlan): The plan to set.
+
+        """
+        self.db.sail_plan_key = plan.key
+
+    @property
+    def polar_curve(self):
+        """
+        How this rig drives at each angle off the wind.
+
+        Returns:
+            curve (PolarCurve): The hull's performance data.
+
+        """
+        return self.db.polar_curve or PolarCurve()
+
+    @polar_curve.setter
+    def polar_curve(self, curve):
+        """
+        Args:
+            curve (PolarCurve): The rig's polar data.
+
+        """
+        self.db.polar_curve = curve
+
+    def sailing_speed(self):
+        """
+        The best speed she can make as she is currently set.
+
+        Returns:
+            speed (float): Metres per second.
+
+        Notes:
+            Replaces the ordered speed when under sail. A sailing vessel is not
+            asked how fast to go; she goes as fast as the wind on this heading
+            allows, which on some headings is not at all.
+
+        """
+        return achievable_speed(
+            self.heading,
+            self.wind_here(),
+            self.sail_plan,
+            self.polar_curve,
+            self.motion_limits,
+        )

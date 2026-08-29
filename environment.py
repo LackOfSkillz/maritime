@@ -17,7 +17,7 @@ one module instead of reading settings wherever a value happens to be needed.
 """
 
 from . import config
-from .currents import carried, made_good
+from .currents import STILL, carried, made_good
 from .grounding import keel_clearance
 from .observation import detection_limit, scan
 from .sailing import WindVector
@@ -177,3 +177,96 @@ def vessels_within_sight(position, height_of_eye, exclude=None):
         for vessel in traffic().near(position, radius)
         if vessel is not exclude and vessel.maritime_position is not None
     )
+
+
+class Situated:
+    """
+    What the world is doing where a vessel happens to be.
+
+    Notes:
+        Thin by design. Each of these is one call into this module's functions,
+        which take a position and know nothing about hulls - so a swimmer or a
+        drifting boat can ask the same questions without being a vessel.
+
+    """
+
+    def map_here(self):
+        """
+        The world's terrain.
+
+        Returns:
+            provider (MaritimeMapProvider): The configured map.
+
+        """
+        from . import config
+
+        return config.map_provider()
+
+    def wind_here(self):
+        """
+        The wind where this vessel is.
+
+        Returns:
+            wind (WindVector): The local wind.
+
+        """
+        from . import environment
+
+        return environment.wind_at(self.maritime_position)
+
+    def current_here(self):
+        """
+        The current where this vessel is.
+
+        Returns:
+            current (CurrentVector): Set and drift, or slack water if she has not
+                been launched.
+
+        """
+        from . import config, environment
+
+        position = self.maritime_position
+        if position is None:
+            return STILL
+        return environment.current_at(position, config.time_provider().now())
+
+    def keel_clearance(self):
+        """
+        How much water she has under her.
+
+        Returns:
+            clearance (float or None): Metres between keel and ground, or None if
+                she has not been launched.
+
+        """
+        from . import config, environment
+
+        position = self.maritime_position
+        if position is None:
+            return None
+        return environment.clearance_at(position, self.draft, config.time_provider().now())
+
+    def made_good(self):
+        """
+        Where she is actually going, and how fast.
+
+        Returns:
+            track (tuple or None): `(course, speed)` over the ground, or None if
+                she has not been launched.
+
+        Notes:
+            Not the same as heading and speed, and the difference is the whole
+            reason currents exist. `speed` is speed through the water - what a
+            log line measures - so a vessel set sideways by a stream is making
+            good a course she is not pointing at, at a speed she is not sailing.
+
+        """
+        from . import config, environment
+
+        position = self.maritime_position
+        if position is None:
+            return None
+        _current, course, made = environment.set_and_drift(
+            position, self.heading, self.speed, config.time_provider().now()
+        )
+        return course, made

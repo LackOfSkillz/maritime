@@ -13,8 +13,8 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 ## Status
 
 **Early development.** The foundations, spatial model, vessels, simulation, sailing,
-currents, grounding, observation and ports are working and tested; charts, weather, crew,
-combat and damage are not built yet. Nothing here is API-stable.
+currents, grounding, observation, ports and dead reckoning are working and tested; charts,
+weather, crew, combat and damage are not built yet. Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
 sail continuous water, sound your way through a channel past a rock ledge, come alongside
@@ -93,7 +93,7 @@ The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
 
 ## Design
 
-Nine ideas do most of the work. `docs/architecture.md` has the rest.
+Ten ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -116,6 +116,13 @@ returning structured results, and nothing in the simulation knows the word "agro
 watch the sea go by, below you feel her heel and hear water on the planking. Point
 `MARITIME_NARRATOR` at a `VesselNarrator` subclass, override one method, and every line
 the system speaks changes without a line of physics moving.
+
+**The crew do not know where they are.** The engine does. A dead reckoning is advanced by
+the course steered and the distance logged — which is all a compass and a log line give you
+— so it drifts from the truth by exactly the current and the leeway nobody aboard could see.
+Nothing rolls an error: in slack water a reckoning is perfect, and it should be. Take a fix
+off a landmark and you learn not just where you are but what has been setting you, which is
+the number that lets you steer the next leg properly.
 
 **A heading is not a track.** The water moves as well, and an observer ashore sees the sum
 of the two. `speed` is speed *through the water* — what a chip log measures — and the
@@ -201,6 +208,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `sail <plan>` | `furled`, `storm`, `reefed`, `working`, `full` |
 | `wind` | Where the wind is from and how she lies to it |
 | `current` | Set and drift, and the course she is making good |
+| `fix` | Fix her position off a landmark, and learn the set |
 | `speed <knots>` | Order a speed, for vessels not under sail |
 | `allstop` | Take the way off her |
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
@@ -283,6 +291,19 @@ detection_level(0.9 * limit, limit)      # 'contact'    - something on the water
 detection_level(0.1 * limit, limit)      # 'identified' - you know the ship
 ```
 
+Being lost is the water, not a dice roll:
+
+```python
+from evennia.contrib.full_systems.maritime import reckon, take_fix, error_of, WorldPosition
+
+dr = take_fix(WorldPosition(0.0, 0.0), now=0.0)
+dr = reckon(dr, heading=90.0, speed=5.0, elapsed=600.0)   # course steered, distance logged
+
+dr.position            # (3000, 0) - where she reckons she is
+dr.uncertainty         # what the navigator would admit to
+error_of(dr, true)     # what she is actually out by: the current, exactly
+```
+
 A berth is a place with dimensions, and that is what makes it a decision:
 
 ```python
@@ -330,7 +351,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 900 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 930 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -343,9 +364,8 @@ would take half an hour of wall time runs in milliseconds.
 - No sea state. It is a documented input to sailing and stability and is not yet one.
 - One global current, like the wind. A provider replaces it with a tidal stream later;
   call sites will not change.
-- Ranges reported to players are true ranges. A lookout should be giving an estimate, and
-  will once dead reckoning and navigational error land — `Sighting` carries the true
-  distance and says so.
+- Ranges and bearings in a sighting are true, not estimated. The vessel's *position* is now
+  reckoned rather than known, but a lookout's range to a contact is still exact.
 - Every vessel scans every tick, against a linear index. Fine for a harbour, and the reason
   the index interface exists separately from what is behind it.
 - Grounding samples the vessel centre point only. A hull can step over a reef

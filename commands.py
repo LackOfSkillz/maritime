@@ -33,6 +33,7 @@ from .ports import (
     can_dock,
 )
 from .rooms import berths_near, rig_gangway
+from .navigation import FIX_UNCERTAINTY
 from .observation import (
     CLASSIFIED,
     DEFAULT_HEIGHT_OF_EYE,
@@ -50,6 +51,11 @@ from .vessel import WEATHER_DECKS
 
 # One knot is one nautical mile per hour, and a nautical mile is 1852 metres.
 METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
+
+# How far off a landmark can be and still be worth a bearing, in metres. The
+# same reach as a berth search, because a quay you could tie up to is
+# unambiguously a quay you can identify.
+FIX_RANGE = 3000.0
 
 # Fastest a vessel may be moving and still bring up safely. Letting go with way
 # still on her is how cables part and anchors are left on the bottom.
@@ -706,6 +712,63 @@ class CmdCastOff(MaritimeCommand):
         )
         if port:
             port.msg_contents(f"{vessel.key} takes in her gangway and casts off.")
+
+
+class CmdFix(MaritimeCommand):
+    """
+    Fix her position from a landmark in sight.
+
+    Usage:
+      fix
+
+    A dead reckoning drifts, because the water moves and the log cannot see it.
+    Bringing something of known position within sight lets you say where you are
+    again - and the difference between where you thought you were and where you
+    actually are is the set and drift that has been carrying you, which is worth
+    more than the fix itself.
+
+    Out of sight of land there is nothing to fix on.
+
+    """
+
+    key = "fix"
+    aliases = ("take a fix",)
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        position = vessel.maritime_position
+        if position is None:
+            self.caller.msg("She is not afloat.")
+            return
+
+        landmarks = berths_near(position, radius=FIX_RANGE)
+        if not landmarks:
+            self.caller.msg(
+                "No landmark in sight. There is nothing out here to fix her position by."
+            )
+            return
+
+        port, _berth = landmarks[0]
+        before = vessel.reckoned_position
+        experienced = vessel.fix_position()
+        moved = before.horizontal_distance_to(vessel.maritime_position)
+
+        self.aboard(vessel, f"The mate takes a bearing on {port.key} and works the fix.")
+        if moved < FIX_UNCERTAINTY:
+            self.caller.msg("She is where you reckoned her, near enough.")
+        else:
+            self.caller.msg(
+                f"You were out by {format_range(moved)}. " f"The reckoning is corrected."
+            )
+        if experienced.running:
+            self.caller.msg(
+                f"That is a set of {spell_bearing(experienced.set)}, drift "
+                f"{ms_to_knots(experienced.drift):.1f} knots you have been carrying."
+            )
 
 
 class CmdAnchor(MaritimeCommand):

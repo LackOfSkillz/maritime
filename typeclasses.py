@@ -26,18 +26,13 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
-from .currents import STILL
+from .navigation import Navigator, reckon
 from .grounding import check_grounding
-from .observation import DEFAULT_HEIGHT_OF_EYE
-from .sailing import (
-    FURLED,
-    steerage_floor,
-    PolarCurve,
-    achievable_speed,
-    leeway_angle,
-    sail_plan,
-)
+from .observation import Lookout
+from .sailing import Rigged, steerage_floor, leeway_angle
 from .position import WorldPosition, normalize_bearing
+from .environment import Situated
+from .ports import Berthing
 from .traffic import traffic
 
 # ShipRoom lives in rooms.py now, and is imported here for `ship_rooms` below - but
@@ -46,11 +41,10 @@ from .traffic import traffic
 # has this module's name written into its database. Dropping the name here would not
 # fail at startup; it would produce rooms that fail to resolve their typeclass one at
 # a time as they are loaded, which is a considerably worse way to find out.
-from .rooms import ShipRoom, unrig_gangway  # noqa: F401
-from .vessel import WEATHER_DECKS
+from .rooms import Compartmented, ShipRoom  # noqa: F401
 
 
-class Vessel(DefaultObject):
+class Vessel(Navigator, Berthing, Lookout, Rigged, Situated, Compartmented, DefaultObject):
     """
     A ship, as an Evennia object.
 
@@ -61,7 +55,16 @@ class Vessel(DefaultObject):
     """
 
     def at_object_creation(self):
-        """Set up a newly created vessel."""
+        """
+        Set up a newly created vessel.
+
+        Notes:
+            Only what a hull has regardless of what it does. Each mixin sets its
+            own defaults through the same chain, so a concern's state is
+            initialised in the file that owns it rather than in one list here
+            that everything has to remember to edit.
+
+        """
         super().at_object_creation()
         self.db.template_key = None
         self.db.maritime_position = None
@@ -69,18 +72,9 @@ class Vessel(DefaultObject):
         self.db.speed = 0.0
         self.db.orders = HelmOrders()
         self.db.motion_limits = MotionLimits()
-        self.db.sail_plan_key = FURLED.key
         self.db.anchored = False
         self.db.aground = False
         self.db.draft = 2.0
-        self.db.air_draft = 12.0
-        self.db.length = 0.0
-        self.db.beam = 0.0
-        self.db.docked_at = None
-        self.db.berth_key = None
-        self.db.gangway = []
-        self.db.compartments = []
-        self.db.polar_curve = PolarCurve()
 
     # --- position -----------------------------------------------------------
 
@@ -294,87 +288,6 @@ class Vessel(DefaultObject):
         """
         self.db.aground = bool(value)
 
-    def map_here(self):
-        """
-        The world's terrain.
-
-        Returns:
-            provider (MaritimeMapProvider): The configured map.
-
-        """
-        from . import config
-
-        return config.map_provider()
-
-    def wind_here(self):
-        """
-        The wind where this vessel is.
-
-        Returns:
-            wind (WindVector): The local wind.
-
-        """
-        from . import environment
-
-        return environment.wind_at(self.maritime_position)
-
-    def current_here(self):
-        """
-        The current where this vessel is.
-
-        Returns:
-            current (CurrentVector): Set and drift, or slack water if she has not
-                been launched.
-
-        """
-        from . import config, environment
-
-        position = self.maritime_position
-        if position is None:
-            return STILL
-        return environment.current_at(position, config.time_provider().now())
-
-    def keel_clearance(self):
-        """
-        How much water she has under her.
-
-        Returns:
-            clearance (float or None): Metres between keel and ground, or None if
-                she has not been launched.
-
-        """
-        from . import config, environment
-
-        position = self.maritime_position
-        if position is None:
-            return None
-        return environment.clearance_at(position, self.draft, config.time_provider().now())
-
-    def made_good(self):
-        """
-        Where she is actually going, and how fast.
-
-        Returns:
-            track (tuple or None): `(course, speed)` over the ground, or None if
-                she has not been launched.
-
-        Notes:
-            Not the same as heading and speed, and the difference is the whole
-            reason currents exist. `speed` is speed through the water - what a
-            log line measures - so a vessel set sideways by a stream is making
-            good a course she is not pointing at, at a speed she is not sailing.
-
-        """
-        from . import config, environment
-
-        position = self.maritime_position
-        if position is None:
-            return None
-        _current, course, made = environment.set_and_drift(
-            position, self.heading, self.speed, config.time_provider().now()
-        )
-        return course, made
-
     @property
     def narrator(self):
         """
@@ -394,266 +307,7 @@ class Vessel(DefaultObject):
 
         return config.narrator_class()(self)
 
-    @property
-    def air_draft(self):
-        """
-        How high she stands above the water.
-
-        Returns:
-            air_draft (float): Metres from the waterline to her highest point.
-
-        Notes:
-            Her masthead, not her deck. This is what decides how far away someone
-            else can see her, and it is the same number that will decide whether
-            she fits under a bridge - which is why it is height above the water
-            and not height overall.
-
-        """
-        return float(self.db.air_draft or 0.0)
-
-    @air_draft.setter
-    def air_draft(self, metres):
-        """
-        Args:
-            metres (float): Height above the waterline.
-
-        """
-        self.db.air_draft = float(metres)
-
-    @property
-    def height_of_eye(self):
-        """
-        How high this ship's own lookout sees from.
-
-        Returns:
-            height (float): Metres above the waterline.
-
-        Notes:
-            The highest weather deck she has, because that is where a lookout
-            would stand. Building a masthead compartment therefore buys real
-            range rather than flavour, and a ship with nothing but a main deck
-            sees like a small boat - which she is.
-
-        """
-        heights = [room.height_of_eye for room in self.ship_rooms if room.exposure in WEATHER_DECKS]
-        return max(heights) if heights else DEFAULT_HEIGHT_OF_EYE
-
-    def contacts(self, height_of_eye=None):
-        """
-        What can be seen from this hull.
-
-        Args:
-            height_of_eye (float, optional): How high the observer's eye is, in
-                metres above the waterline. Defaults to her own lookout's.
-
-        Returns:
-            sightings (tuple): `Sighting` objects, nearest first.
-
-        Notes:
-            Two phases. The register supplies candidates within the furthest
-            anything could possibly be seen from this height, and each candidate
-            is then tested against its own height - so a low boat and a tall ship
-            at the same range get different answers, which is the entire point.
-
-        """
-        from . import environment
-
-        position = self.maritime_position
-        if position is None:
-            return ()
-        if height_of_eye is None:
-            height_of_eye = self.height_of_eye
-        candidates = environment.vessels_within_sight(position, height_of_eye, exclude=self)
-        return environment.contacts_from(position, self.heading, height_of_eye, candidates)
-
-    @property
-    def length(self):
-        """
-        How long she is.
-
-        Returns:
-            length (float): Metres.
-
-        Notes:
-            Berth fitting today, hull footprint and swept grounding later. The
-            same number answers both, which is why it lives on the hull rather
-            than in the port code that first needed it.
-
-        """
-        return float(self.db.length or 0.0)
-
-    @length.setter
-    def length(self, metres):
-        """
-        Args:
-            metres (float): Her length.
-
-        """
-        self.db.length = float(metres)
-
-    @property
-    def beam(self):
-        """
-        How wide she is.
-
-        Returns:
-            beam (float): Metres.
-
-        """
-        return float(self.db.beam or 0.0)
-
-    @beam.setter
-    def beam(self, metres):
-        """
-        Args:
-            metres (float): Her beam.
-
-        """
-        self.db.beam = float(metres)
-
-    @property
-    def docked_at(self):
-        """
-        The quay she is lying at.
-
-        Returns:
-            port (PortRoom or None): Her berth's port, or None if she is at sea.
-
-        """
-        return self.db.docked_at
-
-    @property
-    def berth_key(self):
-        """
-        Which berth she is lying in.
-
-        Returns:
-            key (str or None): The berth's identifier, or None if she is at sea.
-
-        """
-        return self.db.berth_key
-
-    @property
-    def docked(self):
-        """
-        Whether she is made fast to a quay.
-
-        Returns:
-            docked (bool): True if her lines are ashore.
-
-        """
-        return self.db.docked_at is not None
-
-    def make_fast(self, port, berth, gangway=()):
-        """
-        Record her as lying in a berth.
-
-        Args:
-            port (PortRoom): The quay.
-            berth (Berth): The berth she is in.
-            gangway (iterable, optional): The exits rigged to her.
-
-        Returns:
-            vessel (Vessel): This hull, for chaining.
-
-        Notes:
-            Persists immediately rather than waiting for a checkpoint. Docking is
-            a critical transition: a ship that reloads having lost the fact that
-            she is made fast comes back adrift at a quay with a gangway to
-            nowhere.
-
-        """
-        self.db.docked_at = port
-        self.db.berth_key = berth.key
-        self.db.gangway = list(gangway)
-        self.ndb.speed = 0.0
-        self.maritime_position = berth.position
-        self.heading = berth.heading
-        self.checkpoint()
-        port.moor(self)
-        return self
-
-    def let_go(self):
-        """
-        Record her as cast off, and take the gangway away.
-
-        Returns:
-            removed (int): How many gangway exits were removed.
-
-        """
-        port = self.db.docked_at
-        removed = unrig_gangway(self.db.gangway)
-        if port:
-            port.cast_off(self)
-        self.db.docked_at = None
-        self.db.berth_key = None
-        self.db.gangway = []
-        self.checkpoint()
-        return removed
-
     # --- rig ----------------------------------------------------------------
-
-    @property
-    def sail_plan(self):
-        """
-        How much canvas is set.
-
-        Returns:
-            plan (SailPlan): The current sail plan. Bare poles by default - a
-                vessel does not put to sea with sail already set.
-
-        """
-        return sail_plan(self.db.sail_plan_key or FURLED.key) or FURLED
-
-    @sail_plan.setter
-    def sail_plan(self, plan):
-        """
-        Args:
-            plan (SailPlan): The plan to set.
-
-        """
-        self.db.sail_plan_key = plan.key
-
-    @property
-    def polar_curve(self):
-        """
-        How this rig drives at each angle off the wind.
-
-        Returns:
-            curve (PolarCurve): The hull's performance data.
-
-        """
-        return self.db.polar_curve or PolarCurve()
-
-    @polar_curve.setter
-    def polar_curve(self, curve):
-        """
-        Args:
-            curve (PolarCurve): The rig's polar data.
-
-        """
-        self.db.polar_curve = curve
-
-    def sailing_speed(self):
-        """
-        The best speed she can make as she is currently set.
-
-        Returns:
-            speed (float): Metres per second.
-
-        Notes:
-            Replaces the ordered speed when under sail. A sailing vessel is not
-            asked how fast to go; she goes as fast as the wind on this heading
-            allows, which on some headings is not at all.
-
-        """
-        return achievable_speed(
-            self.heading,
-            self.wind_here(),
-            self.sail_plan,
-            self.polar_curve,
-            self.motion_limits,
-        )
 
     # --- simulation ---------------------------------------------------------
 
@@ -753,6 +407,13 @@ class Vessel(DefaultObject):
         world = self.map_here()
         now = config.time_provider().now()
 
+        # Course steered and distance logged, and nothing else. The gap this
+        # opens against the truth is the current and the leeway - which is not a
+        # penalty applied to the crew but the two things they cannot see.
+        dr = self.dead_reckoning
+        if dr is not None:
+            self.dead_reckoning = reckon(dr, after.heading, after.speed, elapsed)
+
         # The water is moving too. She is carried in addition to whatever she is
         # making through it, which is why her speed is untouched here - a log
         # line measures the water going past the hull, not the ground going past
@@ -841,94 +502,6 @@ class Vessel(DefaultObject):
         self.checkpoint()
 
     # --- interior -----------------------------------------------------------
-
-    def attach(self, room):
-        """
-        Record a compartment as belonging to this hull.
-
-        Args:
-            room (ShipRoom): The compartment.
-
-        Returns:
-            vessel (Vessel): This hull, for chaining.
-
-        Notes:
-            Called by `ShipRoom.vessel`; there is no reason to call it directly.
-
-        """
-        rooms = [other for other in (self.db.compartments or ()) if other and other != room]
-        rooms.append(room)
-        self.db.compartments = rooms
-        return self
-
-    def detach(self, room):
-        """
-        Forget a compartment.
-
-        Args:
-            room (ShipRoom): The compartment.
-
-        Returns:
-            vessel (Vessel): This hull, for chaining.
-
-        """
-        self.db.compartments = [
-            other for other in (self.db.compartments or ()) if other and other != room
-        ]
-        return self
-
-    def reattach_compartments(self):
-        """
-        Rebuild the compartment list by looking for rooms that name this hull.
-
-        Returns:
-            count (int): How many compartments were found.
-
-        Notes:
-            The repair path, and the upgrade path. Compartments used to be found
-            by asking the typeclass manager for every `ShipRoom` and filtering,
-            which is a full table scan on every call and - worse - depends on the
-            *string* Evennia stored in each row. Moving the class to another
-            module left that string naming the old one, so the manager returned
-            nothing at all while the rooms themselves loaded perfectly: a ship
-            with compartments behaving exactly like a ship with none.
-
-            This scans by type rather than by path, so it repairs both that and
-            any game that set `db.vessel` directly before the link had two sides.
-            Run once per vessel after upgrading.
-
-        """
-        from evennia import ObjectDB
-
-        found = [
-            room
-            for room in ObjectDB.objects.all()
-            if isinstance(room, ShipRoom) and room.db.vessel == self
-        ]
-        self.db.compartments = found
-        return len(found)
-
-    @property
-    def ship_rooms(self):
-        """
-        Every compartment belonging to this vessel.
-
-        Returns:
-            rooms (tuple): The `ShipRoom` objects that name this vessel, ordered
-                from the lowest deck upward.
-
-        Notes:
-            Read from a list the vessel keeps, not from a query. This is asked on
-            every tick, and the query it replaced was a full pass over every ship
-            room in the world - and one that silently returned nothing for rooms
-            created before the class moved module.
-
-            Lowest deck first, matching the deck-plan ordering, because that is
-            the order flooding will care about.
-
-        """
-        rooms = [room for room in (self.db.compartments or ()) if room and room.pk]
-        return tuple(sorted(rooms, key=lambda room: room.deck_level))
 
     def __repr__(self):
         return f"<Vessel {self.key} at {self.maritime_position}>"

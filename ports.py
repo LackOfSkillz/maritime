@@ -225,3 +225,152 @@ def nearest_berth(position, berths):
     if not candidates:
         return None
     return min(candidates, key=lambda berth: position.horizontal_distance_to(berth.position))
+
+
+class Berthing:
+    """
+    A vessel's dimensions, and whether she is lying at a quay.
+
+    Notes:
+        Length and beam are here because berth fitting is what first needed them.
+        They will be wanted again by hull footprints and swept grounding, and
+        they will still be one number each.
+
+    """
+
+    def at_object_creation(self):
+        """Set up this part of a newly created vessel."""
+        super().at_object_creation()
+        self.db.length = 0.0
+        self.db.beam = 0.0
+        self.db.docked_at = None
+        self.db.berth_key = None
+        self.db.gangway = []
+
+    @property
+    def length(self):
+        """
+        How long she is.
+
+        Returns:
+            length (float): Metres.
+
+        Notes:
+            Berth fitting today, hull footprint and swept grounding later. The
+            same number answers both, which is why it lives on the hull rather
+            than in the port code that first needed it.
+
+        """
+        return float(self.db.length or 0.0)
+
+    @length.setter
+    def length(self, metres):
+        """
+        Args:
+            metres (float): Her length.
+
+        """
+        self.db.length = float(metres)
+
+    @property
+    def beam(self):
+        """
+        How wide she is.
+
+        Returns:
+            beam (float): Metres.
+
+        """
+        return float(self.db.beam or 0.0)
+
+    @beam.setter
+    def beam(self, metres):
+        """
+        Args:
+            metres (float): Her beam.
+
+        """
+        self.db.beam = float(metres)
+
+    @property
+    def docked_at(self):
+        """
+        The quay she is lying at.
+
+        Returns:
+            port (PortRoom or None): Her berth's port, or None if she is at sea.
+
+        """
+        return self.db.docked_at
+
+    @property
+    def berth_key(self):
+        """
+        Which berth she is lying in.
+
+        Returns:
+            key (str or None): The berth's identifier, or None if she is at sea.
+
+        """
+        return self.db.berth_key
+
+    @property
+    def docked(self):
+        """
+        Whether she is made fast to a quay.
+
+        Returns:
+            docked (bool): True if her lines are ashore.
+
+        """
+        return self.db.docked_at is not None
+
+    def make_fast(self, port, berth, gangway=()):
+        """
+        Record her as lying in a berth.
+
+        Args:
+            port (PortRoom): The quay.
+            berth (Berth): The berth she is in.
+            gangway (iterable, optional): The exits rigged to her.
+
+        Returns:
+            vessel (Vessel): This hull, for chaining.
+
+        Notes:
+            Persists immediately rather than waiting for a checkpoint. Docking is
+            a critical transition: a ship that reloads having lost the fact that
+            she is made fast comes back adrift at a quay with a gangway to
+            nowhere.
+
+        """
+        self.db.docked_at = port
+        self.db.berth_key = berth.key
+        self.db.gangway = list(gangway)
+        self.ndb.speed = 0.0
+        self.maritime_position = berth.position
+        self.heading = berth.heading
+        self.start_reckoning()
+        self.checkpoint()
+        port.moor(self)
+        return self
+
+    def let_go(self):
+        """
+        Record her as cast off, and take the gangway away.
+
+        Returns:
+            removed (int): How many gangway exits were removed.
+
+        """
+        from .rooms import unrig_gangway
+
+        port = self.db.docked_at
+        removed = unrig_gangway(self.db.gangway)
+        if port:
+            port.cast_off(self)
+        self.db.docked_at = None
+        self.db.berth_key = None
+        self.db.gangway = []
+        self.checkpoint()
+        return removed

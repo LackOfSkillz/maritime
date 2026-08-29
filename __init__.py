@@ -72,6 +72,14 @@ from .grounding import (
     refloats_on_tide,
 )
 from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .navigation import (
+    FIX_UNCERTAINTY,
+    DeadReckoning,
+    error_of,
+    reckon,
+    set_and_drift,
+    take_fix,
+)
 from .observation import (
     CLASSIFIED,
     CONTACT,
@@ -195,6 +203,13 @@ __all__ = (
     "Vessel",
     "ShipRoom",
     "PortRoom",
+    # navigation
+    "DeadReckoning",
+    "reckon",
+    "take_fix",
+    "error_of",
+    "set_and_drift",
+    "FIX_UNCERTAINTY",
     # ports
     "Berth",
     "DockingResult",

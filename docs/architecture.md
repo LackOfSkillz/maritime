@@ -413,6 +413,18 @@ The engine knows the exact position. The character does not.
 dead reckoning, chart quality, current, visibility and operator skill. This is what allows
 being genuinely lost.
 
+Built, in `navigation.py`, and the error is not rolled. `speed` here is already speed
+through the water — exactly what a log measures — so advancing a dead reckoning by heading
+and logged speed *is* the historical procedure, and it diverges from the truth by precisely
+the current and the leeway, which the simulation was computing anyway. Being lost is a
+consequence of the water moving, not a mechanic laid on top to make navigation interesting.
+A ship in slack water is never lost, and should not be.
+
+Taking a fix returns what the reckoning had missed: the vector from the DR position to the
+truth, over the time run, is the set and drift she has been carrying. That is real practice,
+and it closes a loop — sail, fix, learn the set, and feed it to `course_to_steer` to allow
+for it on the next leg.
+
 **Units are display, and there are two of them.** Metres are the unit everywhere inside
 the simulation and always will be. What a player is shown is set by
 `MARITIME_DISTANCE_UNITS` — leagues, nautical, metric or raw — and separately by
@@ -685,7 +697,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
 | 7 | Ports | done | Sized berths, approach preconditions, gangway as a real exit, `dock` and `cast off` |
 | 8 | Observation | partial | Horizon, height of eye, contacts, `lookout`. Dynamic exterior descriptions are not built |
-| 9 | Navigation | — | Soundings exist. Charts, estimated position, dead-reckoning error and route planning do not |
+| 9 | Navigation | partial | Dead reckoning, estimated position, error that is the water she could not see, and fixes off known landmarks. Charts and route planning do not exist |
 | 10 | Minimal crew automation | — | Hold a heading, manage sail, follow a route, approach a destination |
 | 11 | Strategic representation | — | Strategic records, analytical travel, materialisation, benchmarks at 100/500/1000 |
 | 12 | Weather and sea state | — | Replaces the single global wind and the single global visibility |
@@ -759,7 +771,7 @@ sailing-basic ✓        sailing-upwind ✓       current-drift ✓
 grounding-shoal ✓      grounding-reef ✓       safe-channel ✓
 dock-undock ✓          reload-underway ✓      route-following
 scheduler-fairness ✓   strategic-advance      materialize-dematerialize
-contact-detection ✓    navigation-error       storm-delay
+contact-detection ✓    navigation-error ✓     storm-delay
 collision              broadside              flooding
 fire                   boarding               capture
 passenger-arrival      passenger-diversion    passenger-capture

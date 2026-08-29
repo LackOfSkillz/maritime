@@ -13,6 +13,23 @@ combat and damage are not.
 
 ### Feat
 
+- Add dead reckoning, and with it the possibility of being genuinely lost. A
+  vessel now carries an estimate of her own position, advanced by the course
+  steered and the distance logged and by nothing else - which is what a
+  navigator with a compass and a log line actually has.
+- The error is not rolled. `speed` is already speed through the water, so a
+  reckoning advanced by heading and logged speed diverges from the truth by
+  exactly the current and the leeway, both of which the simulation was computing
+  anyway. A ship in slack water is never lost and should not be; the sea makes
+  you lost.
+- Add `fix`, which takes a bearing on a landmark of known position. It reports
+  what the reckoning had missed - and the difference between where you thought
+  you were and where you are, over the time run, is the set and drift you have
+  been carrying. That is the input `course_to_steer` was written for, and the
+  loop closes.
+- Players are shown `reckoned_position`; the true position stays with the engine
+  and with staff tools.
+
 - Add ports, and with them the first true vertical slice. A berth has a position,
   a line to lie along, and dimensions - length, beam and the depth of water
   alongside - so a hull that has been fitted out until she draws another half
@@ -356,6 +373,14 @@ combat and damage are not.
   tutorial zone a deliverable rather than optional polish.
 
 ### Chore
+
+- Compose `Vessel` from the seams the domain modules already draw: `Navigator`
+  in `navigation.py`, `Berthing` in `ports.py`, `Lookout` in `observation.py`,
+  `Rigged` in `sailing.py`, `Situated` in `environment.py` and `Compartmented`
+  in `rooms.py`. Everything about a concern now sits in the file that owns it,
+  including the defaults it sets at creation, and the domain modules still
+  import nothing from Evennia. `typeclasses.py` goes from 1039 lines to 507 and
+  stops growing with every phase.
 
 - Say "take the way off her" once instead of three times. Docked, aground and
   anchored each stopped the tick with the same four lines, which is three places

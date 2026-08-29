@@ -37,6 +37,7 @@ import math
 from dataclasses import dataclass
 
 from .position import METRES_PER_NAUTICAL_MILE, bearing_difference
+from .vessel import WEATHER_DECKS
 
 # Nautical miles of horizon per square root of a metre of height. Bowditch's
 # figure, which folds in standard atmospheric refraction.
@@ -338,3 +339,87 @@ def scan(position, heading, height_of_eye, candidates, visibility=DEFAULT_VISIBI
     ]
     seen.sort(key=lambda sighting: sighting.distance)
     return tuple(seen)
+
+
+class Lookout:
+    """
+    How high a vessel stands, and what can be seen from her.
+
+    """
+
+    def at_object_creation(self):
+        """Set up this part of a newly created vessel."""
+        super().at_object_creation()
+        self.db.air_draft = 12.0
+
+    @property
+    def air_draft(self):
+        """
+        How high she stands above the water.
+
+        Returns:
+            air_draft (float): Metres from the waterline to her highest point.
+
+        Notes:
+            Her masthead, not her deck. This is what decides how far away someone
+            else can see her, and it is the same number that will decide whether
+            she fits under a bridge - which is why it is height above the water
+            and not height overall.
+
+        """
+        return float(self.db.air_draft or 0.0)
+
+    @air_draft.setter
+    def air_draft(self, metres):
+        """
+        Args:
+            metres (float): Height above the waterline.
+
+        """
+        self.db.air_draft = float(metres)
+
+    @property
+    def height_of_eye(self):
+        """
+        How high this ship's own lookout sees from.
+
+        Returns:
+            height (float): Metres above the waterline.
+
+        Notes:
+            The highest weather deck she has, because that is where a lookout
+            would stand. Building a masthead compartment therefore buys real
+            range rather than flavour, and a ship with nothing but a main deck
+            sees like a small boat - which she is.
+
+        """
+        heights = [room.height_of_eye for room in self.ship_rooms if room.exposure in WEATHER_DECKS]
+        return max(heights) if heights else DEFAULT_HEIGHT_OF_EYE
+
+    def contacts(self, height_of_eye=None):
+        """
+        What can be seen from this hull.
+
+        Args:
+            height_of_eye (float, optional): How high the observer's eye is, in
+                metres above the waterline. Defaults to her own lookout's.
+
+        Returns:
+            sightings (tuple): `Sighting` objects, nearest first.
+
+        Notes:
+            Two phases. The register supplies candidates within the furthest
+            anything could possibly be seen from this height, and each candidate
+            is then tested against its own height - so a low boat and a tall ship
+            at the same range get different answers, which is the entire point.
+
+        """
+        from . import environment
+
+        position = self.maritime_position
+        if position is None:
+            return ()
+        if height_of_eye is None:
+            height_of_eye = self.height_of_eye
+        candidates = environment.vessels_within_sight(position, height_of_eye, exclude=self)
+        return environment.contacts_from(position, self.heading, height_of_eye, candidates)
