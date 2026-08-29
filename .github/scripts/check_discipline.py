@@ -36,8 +36,39 @@ MAX_FILE_LINES = 1000
 # Directories that are never part of the shipped contrib.
 EXCLUDED_DIRS = {".git", ".github", "__pycache__", "_reference", ".venv"}
 
-# Import roots that are legitimately available to a contrib.
-ALLOWED_IMPORT_ROOTS = {"evennia", "twisted", "django"}
+# Import roots always available to a contrib, because Evennia itself depends on
+# them - installing Evennia installs these. Taken from the `dependencies` list in
+# Evennia's pyproject.toml, so importing one adds no burden on the user.
+#
+# Deliberately absent: anything from Evennia's `[extra]` optional group (scipy,
+# boto3, gitpython...). Those are permitted for contribs and several ship using
+# them, but each one is a package the user must additionally install. See
+# CLAUDE.md section 11 - adding one is a decision, not a convenience.
+ALLOWED_IMPORT_ROOTS = {
+    # the engine and its stack
+    "evennia",
+    "twisted",
+    "django",
+    "zope",
+    "autobahn",
+    # core runtime dependencies
+    "yaml",  # pyyaml
+    "pytz",
+    "tzdata",
+    "inflect",
+    "inflection",
+    "lunr",
+    "simpleeval",
+    "uritemplate",
+    "rest_framework",  # djangorestframework
+    "django_filters",  # django-filter
+    "sekizai",  # django-sekizai
+    # test helpers, also core dependencies
+    "mock",
+    "model_mommy",
+    "anything",
+    "parameterized",
+}
 
 # Packages permitted to talk to players directly. Everywhere else, emitting prose
 # is a layering violation: the domain returns structured results and a separate

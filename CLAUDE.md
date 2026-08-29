@@ -348,14 +348,73 @@ These are not stylistic preferences. Treat violations as defects.
 
 ## 11. Dependencies
 
-> "The contribution should preferably work in isolation from other contribs (only make use of
-> core Evennia) so it can easily be dropped into use."
+Evennia **permits** third-party dependencies. This project **declines** them. Those are two
+different statements and it matters that they are not confused.
 
-- **Core Evennia and the Python standard library only.**
-- No third-party packages. No numpy, no scipy, no physics libraries.
-- No dependency on other contribs.
-- If a dependency ever becomes genuinely unavoidable, it must be discussed first and then
-  documented in the installation instructions. Do not add one unilaterally.
+### What Evennia allows
+
+> "The contribution should preferably work in isolation from other contribs (only make use of
+> core Evennia) so it can easily be dropped into use. If it does depend on other contribs or
+> third-party modules, these must be clearly documented and part of the installation
+> instructions."
+
+There is a formal mechanism. Evennia's `pyproject.toml` carries an optional group installed
+with `pip install evennia[extra]`, and several shipped contribs use it:
+
+```text
+"scipy == 1.17.0",        # xyzroom contrib
+"boto3 >= 1.4.4",         # AWS storage contrib
+"gitpython >= 3.1.27",    # Git contrib
+```
+
+So a dependency is available, with precedent, if genuinely needed.
+
+### Free to use — already core dependencies
+
+Installing Evennia installs these, so importing one costs the user nothing:
+
+```text
+django  twisted  zope  autobahn  pytz  tzdata
+yaml (pyyaml)  inflect  inflection  lunr  simpleeval  uritemplate
+rest_framework  django_filters  sekizai
+mock  model_mommy  anything  parameterized     (test helpers)
+```
+
+`yaml` and `simpleeval` in particular are worth remembering — data-driven vessel templates
+need no new dependency.
+
+### What this project uses: nothing beyond that
+
+Not out of purity. For three concrete reasons:
+
+1. **Standalone use is a design goal** (section 1). Every extra package is friction for the
+   developer dropping this into their own game, and a second install step that can be missed.
+2. **Adding to `[extra]` means editing a file outside this folder** — Evennia's
+   `pyproject.toml`. Section 2 forbids that, and a contrib requiring changes elsewhere in the
+   tree is exactly what the guidelines warn is unlikely to be accepted.
+3. **The maths does not need it.** Vectors, trigonometry, interpolation, spatial hashing and
+   A* over a coarse node graph are each a few dozen lines of clear Python. `numpy` would
+   likely be *slower* here — its advantage is bulk array operations, and its per-call
+   overhead is real on three-element vectors accessed one at a time, which is our access
+   pattern. `scipy`'s KD-tree is excellent for static point sets and a poor fit for positions
+   that change every tick, where grid buckets update in constant time.
+
+So: **study the libraries, hand-roll the small piece we actually need.** That is a
+performance and portability decision, not asceticism.
+
+### If that ever stops being true
+
+It might. Say so rather than working around it. The process:
+
+1. Establish the need with a measurement, not an intuition.
+2. Get Gary's approval before writing code against it.
+3. Add it to Evennia's `[extra]` group with a comment naming this contrib.
+4. Make it step one of the README's Installation section.
+5. Add its import root to `ALLOWED_IMPORT_ROOTS` in the discipline checker, with the reason.
+
+Never add one silently. CI fails the build on any import root outside the list above.
+
+Also: **no dependency on other contribs.** That constraint has no escape hatch here.
 
 ---
 
