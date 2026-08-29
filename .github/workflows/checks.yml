@@ -1,0 +1,76 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  style:
+    name: Style and discipline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Versions and line length match Evennia's own pyproject.toml and .flake8,
+      # so anything passing here passes upstream's checks too.
+      - name: Install linters
+        run: pip install "black==26.5.1" flake8
+
+      - name: black
+        run: black --check --diff --line-length 100 .
+
+      - name: flake8
+        run: flake8 --max-line-length 100 --extend-exclude _reference .
+
+      # Project rules no off-the-shelf tool knows about: the file-size ceiling,
+      # the core-Evennia-only dependency policy, README shape, and keeping prose
+      # out of the domain layer.
+      - name: Project discipline
+        run: python .github/scripts/check_discipline.py
+
+  tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Mirrors the Python versions Evennia's own test suite runs against.
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: maritime-checkout
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Evennia
+        run: pip install evennia
+
+      # Tests must run with the contrib at its real import path, since that is
+      # where it lives upstream and what its install instructions reference.
+      - name: Place contrib at its canonical path
+        run: |
+          CONTRIB_DIR="$(python -c 'import evennia, pathlib; print(pathlib.Path(evennia.__file__).parent / "contrib" / "full_systems")')"
+          echo "Installing into: $CONTRIB_DIR/maritime"
+          rm -rf "$CONTRIB_DIR/maritime"
+          cp -r maritime-checkout "$CONTRIB_DIR/maritime"
+          rm -rf "$CONTRIB_DIR/maritime/.git" "$CONTRIB_DIR/maritime/_reference"
+
+      - name: Initialise a throwaway game
+        run: |
+          evennia --init testing_game
+          cd testing_game
+          evennia migrate
+
+      - name: Run contrib tests
+        run: |
+          cd testing_game
+          evennia test --settings settings.py evennia.contrib.full_systems.maritime

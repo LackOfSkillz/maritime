@@ -330,9 +330,48 @@ Do not initiate any of this. Gary decides when and whether to submit.
 
 ---
 
-## 14. Before you claim you are done
+## 14. The rules are enforced, not just written down
 
-Run the tests. Read the output. Check the line count of anything you touched. Confirm the
-change is inside this folder and nothing leaked into the Evennia clone.
+Most of this document is checked mechanically. A rule that only lives in prose decays; a rule
+with a check behind it does not.
+
+`.github/workflows/checks.yml` runs on every push and pull request:
+
+| Job | Enforces |
+| --- | --- |
+| `black --check --line-length 100` | section 5 formatting |
+| `flake8 --max-line-length 100` | section 5 lint |
+| `.github/scripts/check_discipline.py` | sections 3, 6, 8, 9 |
+| `evennia test` on 3.12 and 3.13 | section 4 |
+
+`check_discipline.py` covers the rules no off-the-shelf tool knows about:
+
+1. **File length** — no source file over 1000 lines (section 6).
+2. **Dependencies** — standard library, `evennia`, `twisted`, `django` and relative imports
+   only. Any other import root fails the build (section 9).
+3. **Domain purity** — a `.msg(` outside `messaging/`, `commands/`, `cmdsets/` or
+   `typeclasses/` fails. Domain code returns structured results; it does not speak (section
+   8).
+4. **README shape** — title, credit line and `## Installation` must be present, because
+   Evennia generates the public documentation page from this file (section 3).
+
+Run it locally before committing:
+
+```bash
+python .github/scripts/check_discipline.py
+```
+
+**When you add a rule to this document, add its check.** If a rule cannot be checked, say so
+explicitly where it is stated, so nobody assumes CI is covering it.
+
+`black` is pinned in CI. Its formatting changes between releases, and an unpinned formatter
+turns an unrelated upstream release into a red build on an untouched branch.
+
+---
+
+## 15. Before you claim you are done
+
+Run the tests. Run the discipline checks. Read the output. Confirm the change is inside this
+folder and nothing leaked into the Evennia clone.
 
 Evidence before assertions, every time.
