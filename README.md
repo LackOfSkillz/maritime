@@ -218,6 +218,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `position` | Latitude, longitude, course and speed |
 | `sound` | Water under the keel, and a shoal warning |
 | `lookout` | What is in sight from where you are standing |
+| `look` | A weather deck also describes the sea outside it |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
 
 ## Examples
@@ -353,7 +354,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 955 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 980 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations

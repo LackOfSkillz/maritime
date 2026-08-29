@@ -414,3 +414,32 @@ class Rigged:
             self.polar_curve,
             self.motion_limits,
         )
+
+
+# Upper wind speed of each Beaufort force, in metres per second. The scale is
+# ordinal rather than linear - Beaufort defined it by what a full-rigged ship
+# could carry, which is why the bands are uneven and why it suits this system so
+# exactly. Force 12 has no upper bound.
+BEAUFORT_LIMITS = (0.5, 1.5, 3.3, 5.4, 7.9, 10.7, 13.8, 17.1, 20.7, 24.4, 28.4, 32.6)
+
+
+def beaufort_force(speed):
+    """
+    The Beaufort force of a wind speed.
+
+    Args:
+        speed (float): Wind speed in metres per second.
+
+    Returns:
+        force (int): 0 to 12.
+
+    Notes:
+        Arithmetic only. What each force is *called* is prose, and lives with the
+        rest of the prose - a game describing a force 7 as "near gale" or as
+        "the sky gone the colour of a bruise" is making the same measurement.
+
+    """
+    for force, limit in enumerate(BEAUFORT_LIMITS):
+        if speed < limit:
+            return force
+    return len(BEAUFORT_LIMITS)

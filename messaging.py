@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
 from .observation import CLASSIFIED, IDENTIFIED, bearing_in_points
+from .sailing import beaufort_force
 from .position import METRES_PER_FATHOM, bearing_difference
 from .vessel import WEATHER_DECKS
 
@@ -115,6 +116,34 @@ class Order:
     called: str
     overheard: str = ""
     answered: str = ""
+
+
+# --- what it looks like out there ------------------------------------------
+#
+# A ship's rooms are static objects and the world outside them is not. The deck
+# description says what is nailed down; this says what is happening, and the two
+# together are why a vessel can be an ordinary Evennia room and still feel like
+# she is at sea.
+
+#: What each Beaufort force is called. The scale is arithmetic and lives in
+#: `sailing`; these are the words for it, and a game is free to replace them with
+#: its own - "near gale" and "the sky gone the colour of a bruise" are the same
+#: measurement.
+BEAUFORT_NAMES = (
+    "a flat calm",
+    "light airs",
+    "a light breeze",
+    "a gentle breeze",
+    "a moderate breeze",
+    "a fresh breeze",
+    "a strong breeze",
+    "a near gale",
+    "a gale",
+    "a strong gale",
+    "a storm",
+    "a violent storm",
+    "a hurricane",
+)
 
 
 def compass_point(bearing):
@@ -510,6 +539,117 @@ class VesselNarrator:
             )
 
         raise KeyError(event)
+
+    def exterior(self, room=None):
+        """
+        What the sea outside looks like from a weather deck.
+
+        Args:
+            room (ShipRoom, optional): Where the observer is standing. Height of
+                eye comes from it, so a masthead sees further than a deck.
+
+        Returns:
+            lines (tuple): Sentences describing what is happening outside.
+
+        Notes:
+            Static rooms, moving world. A ship's compartments are ordinary
+            Evennia objects that never change; everything that makes standing on
+            her deck feel like being at sea is out here, assembled fresh each
+            time somebody looks.
+
+            Nothing is invented for it. Her motion, the wind, the water and what
+            the lookout can see are all already being computed - this is the one
+            place they are put into a sentence.
+
+        """
+        vessel = self.vessel
+        lines = []
+
+        motion = self.motion_line(vessel)
+        if motion:
+            lines.append(motion)
+
+        weather = self.weather_line(vessel)
+        if weather:
+            lines.append(weather)
+
+        height = getattr(room, "height_of_eye", None)
+        sighted = self.sighted_line(vessel, height)
+        if sighted:
+            lines.append(sighted)
+
+        return tuple(lines)
+
+    def motion_line(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull.
+
+        Returns:
+            line (str): What she is doing.
+
+        """
+        held = vessel.held_by()
+        if held == "docked":
+            return "She lies alongside, still and solid underfoot."
+        if held == "aground":
+            return "She sits canted and unmoving, hard on the ground."
+        if held == "anchored":
+            return "She lies to her anchor, swinging slowly with the water."
+        if vessel.speed <= 0.0:
+            return "She lies quiet, with no way on her at all."
+        return f"She runs {compass_point(vessel.heading)}, the sea sliding past her rail."
+
+    def weather_line(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull.
+
+        Returns:
+            line (str): The wind, and the water under it.
+
+        """
+        wind = vessel.wind_here()
+        force = beaufort_force(wind.speed)
+        if force == 0:
+            weather = "There is not a breath of wind, and the water lies like oil."
+        else:
+            weather = (
+                f"{BEAUFORT_NAMES[force].capitalize()} comes out of the "
+                f"{compass_point(wind.bearing)}."
+            )
+
+        current = vessel.current_here()
+        if current.running:
+            weather += f" The water itself is setting {compass_point(current.set)}."
+        return weather
+
+    def sighted_line(self, vessel, height_of_eye=None):
+        """
+        Args:
+            vessel (Vessel): The hull.
+            height_of_eye (float, optional): How high the observer is standing.
+
+        Returns:
+            line (str): What is in sight, or an empty horizon.
+
+        Notes:
+            Uses the observer's own height, so the same look from a masthead and
+            from the deck can honestly disagree about whether there is anything
+            out there.
+
+        """
+        seen = vessel.contacts(height_of_eye) if height_of_eye else vessel.contacts()
+        if not seen:
+            return "Nothing breaks the horizon."
+
+        nearest = seen[0]
+        where = bearing_in_points(nearest.relative)
+        rest = ""
+        if len(seen) > 1:
+            others = len(seen) - 1
+            rest = f", and {others} more sail{'s' if others != 1 else ''} besides"
+        return f"A sail stands {where}{rest}."
 
     # --- transitions --------------------------------------------------------
 

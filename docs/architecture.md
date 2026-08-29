@@ -713,7 +713,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 5 | Basic safe movement | done | Movement, helm, swept grounding against a hull footprint, reload survival |
 | 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
 | 7 | Ports | done | Sized berths, approach preconditions, gangway as a real exit, `dock` and `cast off` |
-| 8 | Observation | partial | Horizon, height of eye, contacts, `lookout`. Dynamic exterior descriptions are not built |
+| 8 | Observation | done | Horizon, height of eye, contacts, `lookout`, and a deck that describes the sea outside it |
 | 9 | Navigation | partial | Dead reckoning, estimated position, error that is the water she could not see, and fixes off known landmarks. Charts and route planning do not exist |
 | 10 | Minimal crew automation | — | Hold a heading, manage sail, follow a route, approach a destination |
 | 11 | Strategic representation | — | Strategic records, analytical travel, materialisation, benchmarks at 100/500/1000 |

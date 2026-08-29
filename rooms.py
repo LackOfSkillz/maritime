@@ -16,6 +16,7 @@ from evennia.objects.objects import DefaultExit, DefaultRoom
 from evennia.utils import create
 
 from .observation import DEFAULT_HEIGHT_OF_EYE
+from .vessel import WEATHER_DECKS
 from .ports import APPROACH_RANGE
 from .position import WorldPosition
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
@@ -68,6 +69,37 @@ class ShipRoom(DefaultRoom):
         self.db.vessel = vessel
         if vessel:
             vessel.attach(self)
+
+    def return_appearance(self, looker, **kwargs):
+        """
+        Describe this compartment, and the sea outside it if there is one.
+
+        Args:
+            looker (Object): Whoever is looking.
+            **kwargs: Passed through to Evennia's own description machinery.
+
+        Returns:
+            text (str): The room, then what is happening outside it.
+
+        Notes:
+            The room's own description says what is nailed down; a deck says the
+            same thing in a gale off a lee shore as it does becalmed in harbour,
+            and it should. Everything that changes is appended, and only for
+            compartments open to the sky - there is no view from the hold.
+
+        """
+        appearance = super().return_appearance(looker, **kwargs)
+        if self.exposure not in WEATHER_DECKS:
+            return appearance
+
+        vessel = self.vessel
+        if vessel is None or vessel.maritime_position is None:
+            return appearance
+
+        outside = vessel.narrator.exterior(self)
+        if not outside:
+            return appearance
+        return appearance + "\n\n" + " ".join(outside)
 
     @property
     def maritime_position_source(self):

@@ -13,6 +13,22 @@ combat and damage are not.
 
 ### Feat
 
+- A weather deck now describes the sea outside it. The room's own description
+  says what is nailed down; appended to it is what is happening - how she is
+  moving, the wind by its Beaufort force, whether the water is setting, and what
+  the lookout can see. Static rooms, moving world, which is what lets a ship be
+  ordinary Evennia rooms and still feel like she is at sea.
+- Nothing is invented for it: her motion, the wind, the current and her contacts
+  were all already being computed, and this is the one place they are put into a
+  sentence.
+- The view uses the height of eye of the compartment you are standing in, so the
+  same look from the deck and from the masthead can honestly disagree about
+  whether there is anything out there. Demonstrated live at 29.8 km: "Nothing
+  breaks the horizon" on deck, "A sail stands on the port beam" aloft.
+- Add the Beaufort scale. The arithmetic is in `sailing.py` and the names are in
+  `messaging.py`, because what a force 7 is *called* is prose - "near gale" and
+  "the sky gone the colour of a bruise" are the same measurement.
+
 - Grounding now tests a hull's footprint along her whole track instead of one
   point where she ends up. This was the largest known gap between the
   architecture doc and the code, recorded in both for several phases: a fast
