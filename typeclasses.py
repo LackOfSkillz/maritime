@@ -26,7 +26,7 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject, DefaultRoom
 
 from .motion import HelmOrders, MotionLimits, MotionState, advance
-from .grounding import HOLED, SHOAL_WARNING_CLEARANCE, check_grounding, keel_clearance
+from .grounding import check_grounding, keel_clearance
 from .sailing import (
     FURLED,
     steerage_floor,
@@ -36,49 +36,8 @@ from .sailing import (
     leeway_angle,
     sail_plan,
 )
-from .position import WorldPosition, bearing_difference, normalize_bearing
-from .vessel import EXPOSURES, INTERIOR, MAIN_DECK, OPEN, SEMI_EXPOSED
-
-# Compass points, for describing a heading to someone who is not reading an
-# instrument. Sixteen points is what a helmsman would actually call.
-_COMPASS_POINTS = (
-    "north",
-    "north-northeast",
-    "northeast",
-    "east-northeast",
-    "east",
-    "east-southeast",
-    "southeast",
-    "south-southeast",
-    "south",
-    "south-southwest",
-    "southwest",
-    "west-southwest",
-    "west",
-    "west-northwest",
-    "northwest",
-    "north-northwest",
-)
-
-# Exposures from which someone can see the sea go by. Below deck you feel the
-# motion but you do not watch the water, which is what makes an open deck worth
-# standing on.
-_WEATHER_DECKS = (OPEN, SEMI_EXPOSED)
-
-
-def compass_point(bearing):
-    """
-    Describe a bearing the way a person would say it.
-
-    Args:
-        bearing (float): Compass bearing in degrees.
-
-    Returns:
-        name (str): One of the sixteen points, e.g. `"east-northeast"`.
-
-    """
-    index = int((bearing % 360.0) / 22.5 + 0.5) % 16
-    return _COMPASS_POINTS[index]
+from .position import WorldPosition, normalize_bearing
+from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
 
 
 class Vessel(DefaultObject):
@@ -346,6 +305,25 @@ class Vessel(DefaultObject):
 
         return keel_clearance(position, self.draft, self.map_here(), config.time_provider().now())
 
+    @property
+    def narrator(self):
+        """
+        The layer that turns what happens to her into what people hear.
+
+        Returns:
+            narrator (VesselNarrator): The configured narrator, bound to this
+                hull.
+
+        Notes:
+            Built on demand rather than held, so a game that changes
+            `MARITIME_NARRATOR` and reloads gets the new one without every
+            existing vessel carrying a stale reference.
+
+        """
+        from . import config
+
+        return config.narrator_class()(self)
+
     # --- rig ----------------------------------------------------------------
 
     @property
@@ -523,131 +501,14 @@ class Vessel(DefaultObject):
         if not contact:
             self.ndb.speed = 0.0
             self.aground = True
-            self._report_grounding(contact)
+            self.narrator.grounding(contact)
             return True
 
         self.ndb.speed = after.speed
-        self._report_underway(before, after)
-        self._report_soundings(contact)
+        narrator = self.narrator
+        narrator.underway(before, after)
+        narrator.soundings(contact)
         return True
-
-    def _report_grounding(self, contact):
-        """
-        Tell the ship she has found the bottom.
-
-        Args:
-            contact (GroundingResult): What she struck and how hard.
-
-        """
-        if contact.severity == HOLED:
-            topside = (
-                "A grinding crash runs the length of her. She stops dead, canted "
-                "over, and the sound of water is suddenly very loud."
-            )
-            below = "The hull screams against rock, and water bursts in through the seams."
-        else:
-            topside = (
-                f"She slides to a halt with a long shudder, aground on "
-                f"{contact.bottom}. The deck tilts, and stays tilted."
-            )
-            below = f"The hull grinds and settles. She is aground on {contact.bottom}."
-
-        for room in self.ship_rooms:
-            room.msg_contents(topside if room.exposure in _WEATHER_DECKS else below)
-
-    def _report_soundings(self, contact):
-        """
-        Warn the ship when the water shoals beneath her.
-
-        Args:
-            contact (GroundingResult): The clearance she currently has.
-
-        Notes:
-            A vessel that grounds without warning is an accident; one that grounds
-            after the leadsman has called diminishing water is a decision, and
-            only the second is worth playing. Warned once on entering shallow
-            water, not every tick, for the same reason turns are.
-
-        """
-        if contact.clearance >= SHOAL_WARNING_CLEARANCE:
-            self.ndb.reported_shoaling = False
-            return
-        if self.ndb.reported_shoaling:
-            return
-        self.ndb.reported_shoaling = True
-
-        call = (
-            f"The leadsman calls the depth: {contact.clearance:.1f} metres "
-            f"under her keel, and shoaling."
-        )
-        for room in self.ship_rooms:
-            room.msg_contents(call)
-
-    def _report_underway(self, before, after):
-        """
-        Tell anyone aboard what the ship is doing.
-
-        Args:
-            before (MotionState): State at the start of the step.
-            after (MotionState): State at the end of it.
-
-        Notes:
-            Reports *transitions*, not conditions. A ship announces that she is
-            coming round, and again when she is steady - not that she is still
-            turning, every two seconds, for the whole minute it takes. Reporting
-            a condition rather than a change is how ambient messaging turns into
-            noise that players learn to scroll past.
-
-            What reaches a person depends on where they stand. On deck you watch
-            the sea go by; below, you feel her heel and hear the water on the
-            planking but see none of it.
-
-        """
-        turning = abs(after.heading - before.heading) > 1e-6
-        on_course = abs(bearing_difference(after.heading, self.orders.heading)) < 1e-6
-        under_way = after.speed > 0.0
-        gathering = after.speed > before.speed
-        at_ordered_speed = under_way and abs(after.speed - self.orders.speed) < 1e-6
-
-        was_turning = bool(self.ndb.reported_turning)
-        was_at_speed = bool(self.ndb.reported_at_speed)
-        was_under_way = bool(self.ndb.reported_under_way)
-
-        topside = below = None
-
-        if turning and not was_turning:
-            side = "starboard" if bearing_difference(before.heading, after.heading) > 0 else "port"
-            topside = f"The deck leans as she comes round to {side}."
-            below = f"You feel her heel over, coming round to {side}."
-            self.ndb.reported_turning = True
-        elif was_turning and on_course and not turning:
-            spoken = "-".join(f"{int(round(after.heading)) % 360:03d}")
-            point = compass_point(after.heading)
-            topside = (
-                f'The helmsman reports, "Vessel steady on {spoken} now, sir." '
-                f"She runs {point}, the sea sliding past her rail."
-            )
-            below = f'The call carries down from the helm: "Steady on {spoken}, sir."'
-            self.ndb.reported_turning = False
-        elif at_ordered_speed and gathering and not was_at_speed:
-            topside = "She settles into her stride, water curling steadily from the bow."
-            below = "The working of the hull settles into a steady rhythm."
-            self.ndb.reported_at_speed = True
-        elif was_under_way and not under_way:
-            topside = "The last of her way falls off. She lies quiet on the water."
-            below = "The sound of water along the planking dies away."
-
-        if not at_ordered_speed:
-            self.ndb.reported_at_speed = False
-        self.ndb.reported_under_way = under_way
-
-        if topside is None:
-            return
-
-        for room in self.ship_rooms:
-            message = topside if room.exposure in _WEATHER_DECKS else below
-            if message:
-                room.msg_contents(message)
 
     # --- persistence --------------------------------------------------------
 

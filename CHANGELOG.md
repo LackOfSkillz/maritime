@@ -7,10 +7,23 @@ Entry prefixes follow Evennia's own changelog convention (`Feat:`, `Fix:`, `Docs
 
 ## Unreleased
 
-Nothing released yet. Foundations and the spatial model are in place; no vessel
-simulation exists yet.
+Nothing released yet. Foundations, the spatial model, vessels, the simulation
+service, sailing and grounding are in place; ports, navigation, weather, crew,
+combat and damage are not.
 
 ### Feat
+
+- Split the speaking layer out of the `Vessel` typeclass into `messaging.py`, and
+  make it a configured seam. Law 11 said the domain returns data and a separate
+  layer renders it; the prose was in fact welded into the typeclass, so the
+  README's claim that a game could replace every word without touching the
+  simulation was not true. It is now: `MARITIME_NARRATOR` points at a
+  `VesselNarrator` subclass, every line a vessel speaks passes through one
+  `phrase_for` method, and a game that overrides only the words still inherits
+  the transition logic that decides when to say them.
+- Deciding *when* to speak now lives with the narrator rather than the hull,
+  because it needs to know what was last said - a property of the conversation,
+  not of the ship.
 
 - Add grounding. A hull finds the bottom when terrain intersects her envelope -
   keel clearance is the water surface less her draft, less the ground beneath -

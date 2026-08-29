@@ -30,6 +30,7 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
+from .messaging import VesselNarrator
 from .clock import MaritimeTimeProvider
 from .rng import RNGContext
 
@@ -40,6 +41,7 @@ SETTING_PREFIX = "MARITIME_"
 # Derived, never hardcoded - see the module docstring.
 DEFAULT_TIME_PROVIDER = f"{__package__}.clock.GameTimeProvider"
 DEFAULT_MAP_PROVIDER = f"{__package__}.bathymetry.FlatSeaMapProvider"
+DEFAULT_NARRATOR = f"{__package__}.messaging.VesselNarrator"
 
 
 def get_setting(name, default=None):
@@ -160,3 +162,22 @@ def map_provider():
     if not path:
         return FlatSeaMapProvider(depth=float(get_setting("DEFAULT_DEPTH", 200.0)))
     return load_class(path, expected=MaritimeMapProvider)()
+
+
+def narrator_class():
+    """
+    The class that speaks for vessels.
+
+    Returns:
+        cls (type): A `VesselNarrator` subclass, uninstantiated.
+
+    Raises:
+        TypeError: If the configured class is not a narrator.
+
+    Notes:
+        Returned uninstantiated because a narrator is bound to one vessel. This
+        is the seam a game uses to replace the prose of the whole system without
+        touching the simulation that produces it.
+
+    """
+    return load_class(get_setting("NARRATOR", DEFAULT_NARRATOR), expected=VesselNarrator)

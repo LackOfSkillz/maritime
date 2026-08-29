@@ -59,9 +59,11 @@ reads elapsed game time from a provider, so a vessel's eight knots means eight n
 miles per *in-world* hour whatever `TIME_FACTOR` the game runs at.
 
 **The domain returns data; a separate layer speaks.** Physics and rules are plain Python
-returning structured results. Commands and messaging turn those into prose, which is what
-lets a game replace every word without touching the simulation — including telling a
-captain, a deck hand and a lookout three different things about one event.
+returning structured results, and nothing in the simulation knows the word "aground".
+`messaging.py` decides which change is worth mentioning and who hears it — on deck you
+watch the sea go by, below you feel her heel and hear water on the planking. Point
+`MARITIME_NARRATOR` at a `VesselNarrator` subclass, override one method, and every line
+the system speaks changes without a line of physics moving.
 
 **One scheduler, bounded and fair.** Not a ticker per vessel: Evennia's `TickerHandler`
 keys subscriptions on callback and interval but not arguments, so a fleet subscribing one
@@ -103,6 +105,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_WIND_BEARING` | `0.0` | Bearing the wind blows *from* |
 | `MARITIME_WIND_SPEED` | `0.0` | Wind speed in metres per second |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
+| `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_DEFAULT_DEPTH` | `200.0` | Depth of the default flat sea, in metres |
 
 ## Usage
@@ -160,13 +163,31 @@ SLOOP = VesselTemplate(
 )
 ```
 
+Every word the system speaks is replaceable, and replacing the words does not mean
+reimplementing when to say them:
+
+```python
+from evennia.contrib.full_systems.maritime.messaging import VesselNarrator, COMING_ROUND
+
+
+class Terse(VesselNarrator):
+    def phrase_for(self, event, **detail):
+        if event == COMING_ROUND:
+            return f"Coming round to {detail['side']}.", None
+        return super().phrase_for(event, **detail)
+
+
+# settings.py
+MARITIME_NARRATOR = "world.ships.Terse"
+```
+
 ## Testing
 
 ```bash
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 670 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 680 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -181,6 +202,9 @@ would take half an hour of wall time runs in milliseconds.
   actually sailed.
 - Spatial indexes are a linear scan. The interface is settled; the structure behind it
   lands when there is real traffic to measure it against.
+- Narration is addressed to compartments, not to people. A ship can tell the deck one
+  thing and the hold another, but cannot yet tell the captain and a deck hand standing
+  side by side two different things.
 
 ## License
 

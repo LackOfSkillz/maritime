@@ -24,6 +24,18 @@ from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
 from .formatting import NAUTICAL, RAW, format_position
+from .messaging import (
+    AT_SPEED,
+    COMING_ROUND,
+    HULL_HOLED,
+    RUN_AGROUND,
+    SHOALING,
+    STEADY,
+    WAY_OFF,
+    VesselNarrator,
+    compass_point,
+    spell_bearing,
+)
 from .grounding import (
     AGROUND,
     HOLED,
@@ -156,6 +168,16 @@ __all__ = (
     "format_position",
     "NAUTICAL",
     "RAW",
+    "VesselNarrator",
+    "compass_point",
+    "spell_bearing",
+    "COMING_ROUND",
+    "STEADY",
+    "AT_SPEED",
+    "WAY_OFF",
+    "RUN_AGROUND",
+    "HULL_HOLED",
+    "SHOALING",
     # sailing
     "WindVector",
     "PolarCurve",

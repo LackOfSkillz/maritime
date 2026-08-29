@@ -117,6 +117,13 @@ Messaging is a separate layer that renders results per observer. A `caller.msg()
 physics or damage calculation is a defect — it is the easiest law to break by accident, and
 breaking it makes the messaging layer unreplaceable by a game that wants its own voice.
 
+That layer is `messaging.py`, and it answers two questions the simulation does not: which
+change is worth mentioning, and who hears it. The first is why narration state lives there
+rather than on the vessel — deciding whether to speak needs to know what was last said,
+which is a property of the conversation and not of the hull. A game points
+`MARITIME_NARRATOR` at a `VesselNarrator` subclass and overrides `phrase_for`, which every
+line a vessel speaks passes through; it inherits the timing it did not ask to change.
+
 ### Law 12 — Services never fabricate physical state
 
 A service executes only while its physical, contractual and temporal preconditions hold.
@@ -443,6 +450,14 @@ rather than the vessel, and it exists only because grounding and sinking share o
 **The water column is a place.** Divers, sinking objects and settled wrecks hold real
 positions. Without this the wreck lifecycle dead-ends at a seafloor nothing can reach, and
 salvage becomes content that cannot be played.
+
+**Depth harms by rate, not only by value.** Decompression sickness is caused by ascending
+faster than dissolved gas can leave the blood, so a diver who panics and swims straight up
+from a survivable depth is injured by the ascent and not by the depth. That makes vertical
+*velocity* a quantity the water column has to track, alongside position — the one place in
+this design where a derivative of position is itself physical state. Worth recording now
+because it is cheap to carry from the start and expensive to retrofit into a model that
+only ever stored where things are.
 
 ```text
 Vessel -> Disabled -> Sinking -> Wreck (afloat / aground / settled at depth)

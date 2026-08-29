@@ -21,6 +21,7 @@ from evennia.commands.command import Command
 
 from .formatting import RAW, format_position
 from .grounding import SHOAL_WARNING_CLEARANCE
+from .messaging import spell_bearing
 from .motion import HelmOrders
 from .sailing import SAIL_PLANS, relative_wind_angle, sail_plan
 from .position import normalize_bearing
@@ -33,25 +34,6 @@ METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
 # Fastest a vessel may be moving and still bring up safely. Letting go with way
 # still on her is how cables part and anchors are left on the bottom.
 MAX_ANCHORING_SPEED = 1.0
-
-
-def spell_bearing(bearing):
-    """
-    Speak a bearing the way it is actually said aloud.
-
-    Args:
-        bearing (float): Compass bearing in degrees.
-
-    Returns:
-        spoken (str): Digits separated, e.g. `"0-9-0"` for 090.
-
-    Notes:
-        Courses are always given digit by digit and always in three figures.
-        "Ninety" and "one nine zero" are dangerously easy to confuse across a
-        windy deck; "zero-nine-zero" is not, which is why the convention exists.
-
-    """
-    return "-".join(f"{int(round(bearing)) % 360:03d}")
 
 
 def knots_to_ms(knots):

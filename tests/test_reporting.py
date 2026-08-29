@@ -6,10 +6,17 @@ Tests for what a ship's company is told while she is under way.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
-from ..commands import spell_bearing
+from django.test import override_settings
+
+from ..messaging import (
+    COMING_ROUND,
+    VesselNarrator,
+    compass_point,
+    spell_bearing,
+)
 from ..motion import HelmOrders, MotionLimits
 from ..position import WorldPosition
-from ..typeclasses import ShipRoom, Vessel, compass_point
+from ..typeclasses import ShipRoom, Vessel
 from ..vessel import BELOW_WATERLINE, OPEN
 
 
@@ -204,3 +211,112 @@ class TestTurnDirection(ReportingTestCase):
         self.hull.orders = HelmOrders(heading=10.0, speed=10.0)
         self.hull.at_maritime_tick(1.0)
         self.assertIn("starboard", self.said_on("deck")[0])
+
+
+class Laconic(VesselNarrator):
+    """A game that would rather its ships said less."""
+
+    def phrase_for(self, event, **detail):
+        if event == COMING_ROUND:
+            return "Turning.", "Turning."
+        return super().phrase_for(event, **detail)
+
+
+class NotANarrator:
+    """
+    Configured by mistake: a perfectly good class that is simply not a narrator.
+
+    Deliberately one that would construct without complaint. A stand-in that blew
+    up on its own account would let the type check pass its test while doing
+    nothing.
+
+    """
+
+    def __init__(self, vessel):
+        self.vessel = vessel
+
+
+class TestNarratorSeam(BaseEvenniaTest):
+    """
+    The prose is replaceable without touching the simulation.
+
+    The reason the speaking layer is a separate module at all. If a game cannot
+    change the words without reimplementing when to say them, the separation is
+    decorative.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Sloop")
+        self.deck = create.create_object(ShipRoom, key="Main Deck")
+        self.deck.db.vessel = self.hull
+        self.deck.exposure = OPEN
+        self.heard = []
+        self.deck.msg_contents = lambda text, **kwargs: self.heard.append(text)
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=2.0, turn_rate=8.0)
+        self.hull.speed = 10.0
+        self.hull.orders = HelmOrders(heading=90.0, speed=10.0)
+
+    def test_the_default_narrator_is_the_one_here(self):
+        self.assertIsInstance(self.hull.narrator, VesselNarrator)
+
+    def test_a_game_can_replace_every_word(self):
+        with override_settings(MARITIME_NARRATOR=f"{Laconic.__module__}.Laconic"):
+            self.hull.at_maritime_tick(1.0)
+        self.assertEqual(self.heard, ["Turning."])
+
+    def test_replacing_the_words_does_not_replace_the_timing(self):
+        """
+        A narrator that only overrides phrases still speaks once per transition,
+        because deciding when to speak is not part of what it overrode.
+
+        """
+        with override_settings(MARITIME_NARRATOR=f"{Laconic.__module__}.Laconic"):
+            for _ in range(5):
+                self.hull.at_maritime_tick(1.0)
+        self.assertEqual(self.heard.count("Turning."), 1)
+
+    def test_a_narrator_that_is_not_one_is_refused(self):
+        """
+        Fails at the point of misconfiguration, naming the class, rather than as
+        a missing attribute somewhere inside a tick.
+
+        """
+        with override_settings(MARITIME_NARRATOR=f"{Laconic.__module__}.NotANarrator"):
+            with self.assertRaises(TypeError):
+                self.hull.narrator
+
+    def test_an_unknown_event_is_an_error_not_silence(self):
+        with self.assertRaises(KeyError):
+            VesselNarrator(self.hull).phrase_for("no_such_event")
+
+
+class TestDelivery(BaseEvenniaTest):
+    """Who hears what."""
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Sloop")
+        self.deck = create.create_object(ShipRoom, key="Main Deck")
+        self.deck.db.vessel = self.hull
+        self.deck.exposure = OPEN
+        self.hold = create.create_object(ShipRoom, key="Hold")
+        self.hold.db.vessel = self.hull
+        self.hold.exposure = BELOW_WATERLINE
+        self.topside, self.below = [], []
+        self.deck.msg_contents = lambda text, **kwargs: self.topside.append(text)
+        self.hold.msg_contents = lambda text, **kwargs: self.below.append(text)
+
+    def test_each_part_of_the_ship_hears_its_own_line(self):
+        VesselNarrator(self.hull).deliver("On deck.", "Below.")
+        self.assertEqual((self.topside, self.below), (["On deck."], ["Below."]))
+
+    def test_an_event_can_reach_the_deck_only(self):
+        """
+        Saying nothing below is a real answer. Not every event carries down.
+
+        """
+        VesselNarrator(self.hull).deliver("On deck.")
+        self.assertEqual((self.topside, self.below), (["On deck."], []))

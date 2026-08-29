@@ -304,6 +304,19 @@ Rules that are easy to break:
   actively believed.
 - **Keep examples generic** — `Test Sloop`, `Harbor A`, `Harbor B`. Never real game lore.
 
+### The README is part of every push
+
+Before any `git push`, re-read `README.md` and bring it up to the state of the branch.
+Not a note appended at the bottom - the whole document. Status, the worked example, the
+settings table, the command table, the test count and the limitations all go stale
+silently, and a README that describes a version that no longer exists is worse than one
+that describes nothing.
+
+The limitations section is the one that rots first and matters most. When a limitation is
+fixed, delete it. When the work introduces a new one, write it down in the same breath -
+this is the only place a reader learns what the contrib does *not* do, and every honest
+entry there buys credibility for everything above it.
+
 ### The changelog
 
 **Every change that a user or reviewer could notice gets a `CHANGELOG.md` entry, written

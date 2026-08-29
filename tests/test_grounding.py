@@ -8,7 +8,7 @@ from django.test import override_settings
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
-from ..bathymetry import MUD, REEF, ROCK, SAND, FlatSeaMapProvider, MaritimeMapProvider
+from ..bathymetry import MUD, REEF, ROCK, FlatSeaMapProvider, MaritimeMapProvider
 from ..grounding import (
     AGROUND,
     HOLED,
@@ -21,7 +21,6 @@ from ..grounding import (
 )
 from ..motion import HelmOrders, MotionLimits
 from ..position import EAST, WorldPosition
-from ..sailing import WORKING
 from ..typeclasses import ShipRoom, Vessel
 from ..vessel import OPEN
 
