@@ -12,6 +12,13 @@ simulation exists.
 
 ### Feat
 
+- Add domain events and `EventBus`. The simulation announces what happened without
+  knowing who listens; messaging, AI, quests, economy, logging and tests subscribe.
+  Subscribing to a base event type also receives its subtypes, so a logger can take
+  everything with one registration. A handler that raises is logged and skipped
+  rather than propagating - a quest script with a bug must not be able to stop a
+  vessel from sinking. Delivery iterates a snapshot, so a handler subscribed while
+  an event is being delivered does not receive that same event.
 - Add `Result`, the structured return value for every domain operation. Frozen and
   keyword-only; a failed result must carry a machine-readable code, so a caller
   always has something to branch on and a renderer always has something to
