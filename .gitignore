@@ -13,6 +13,16 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Credentials and local environment files. These belong in the game directory,
+# never in this repository - it is public, and a gitignored secret here is one
+# 'git add -f' away from exposure. Listed defensively so that if one ever does
+# appear, git refuses it rather than staging it.
+.playtest_env
+*.env
+.env
+!.env.example
+secret_settings.py
+
 # Third-party reference material kept locally for study only.
 # Never shipped, imported or executed as part of this contrib.
 # See _reference/PROVENANCE.md for what is in here and where it came from.
