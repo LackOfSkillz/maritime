@@ -284,9 +284,12 @@ reader cannot tell a deliberate choice from an accident without being told.
 
 Three tiers, each with a different job:
 
+Four tiers, each with a different job:
+
 | Where | Audience | Job |
 | --- | --- | --- |
 | `README.md` | someone deciding whether to use it | what it is, how to install, how to start |
+| `CHANGELOG.md` | someone tracking what moved | what changed, and when |
 | `docs/architecture.md` | someone extending it | how it is built and why it is built that way |
 | Docstrings | someone reading the code | what this does, its arguments, its return, its traps |
 
@@ -300,6 +303,41 @@ Rules that are easy to break:
 - **Update docs when behaviour changes.** A stale docstring is worse than none — it is
   actively believed.
 - **Keep examples generic** — `Test Sloop`, `Harbor A`, `Harbor B`. Never real game lore.
+
+### The changelog
+
+**Every change that a user or reviewer could notice gets a `CHANGELOG.md` entry, written
+in the same commit as the change.** Not batched up later — by then the reason is gone and
+what remains is a list of file names.
+
+Entries live under `## Unreleased` until a release, grouped `Feat` / `Fix` / `Docs` /
+`Chore`. Those prefixes match Evennia's own changelog convention, so entries slot in
+naturally if this contrib is merged upstream.
+
+Write for someone who was not here. "Fixed the check" is useless; "core Evennia
+dependencies such as PyYAML were rejected by the dependency check, so `import yaml`
+failed the build" tells them what broke and whether it affects them.
+
+Internal churn — reformatting, a typo in a comment, a test rename — needs no entry. If in
+doubt, ask whether a reader would want to know. Usually they would.
+
+### Commit and push messages
+
+A commit message explains **what changed and why**, for a stranger reading the log,
+because a stranger will.
+
+- One logical change per commit. Committing often is fine and pushing every commit is not
+  required — but **when you push, the messages must fully account for everything in it.**
+  Nothing arrives on the remote undescribed.
+- Say why, not only what. The diff already shows what.
+- Record decisions and their reasons, so the log stays useful when the code has moved on.
+- If a change came out of a bug, name the bug — the next person to hit it will search for
+  those words.
+- No AI-authorship tells, no churn commits, no "fix fix fix" chains.
+
+Before pushing, re-read the commits going out and check each one is described. If a commit
+message no longer matches what it contains, amend it rather than pushing something
+misleading.
 
 ---
 

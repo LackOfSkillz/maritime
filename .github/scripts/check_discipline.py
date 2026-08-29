@@ -8,11 +8,13 @@ rules specific to this contrib, which no off-the-shelf tool knows about:
     1. No source file over the line ceiling (CLAUDE.md section 6).
     2. Core Evennia and the standard library only - no third-party imports
        (CLAUDE.md section 9).
-    3. README.md keeps the exact shape Evennia's documentation generator parses
+    3. CHANGELOG.md exists with a place to record unreleased work
+       (CLAUDE.md section 8).
+    4. README.md keeps the exact shape Evennia's documentation generator parses
        (CLAUDE.md section 3).
-    4. The domain layer returns structured results and never emits prose
+    5. The domain layer returns structured results and never emits prose
        (CLAUDE.md section 8, and Law 11 in docs/architecture.md).
-    5. No module imports this package by its absolute path, so the contrib works
+    6. No module imports this package by its absolute path, so the contrib works
        both inside the Evennia tree and as a standalone drop-in (CLAUDE.md
        section 2).
 
@@ -250,6 +252,37 @@ def check_location_independence(failures):
                 )
 
 
+def check_changelog(failures):
+    """
+    A changelog must exist and have somewhere to record unreleased work.
+
+    Checks the file's shape, not whether a given commit updated it - git history
+    is not available to this script, and a check that cannot see the diff would
+    either pass vacuously or block unrelated work. Keeping entries current is a
+    review responsibility (CLAUDE.md section 8); this only guarantees the place
+    to put them has not been removed or renamed.
+
+    Args:
+        failures (list): Accumulator for failure messages.
+
+    """
+    changelog = REPO_ROOT / "CHANGELOG.md"
+    if not changelog.exists():
+        failures.append("CHANGELOG.md is missing. Every notable change is recorded there.")
+        return
+
+    stripped = [line.strip() for line in changelog.read_text(encoding="utf-8").splitlines()]
+
+    if not stripped or not stripped[0].startswith("# "):
+        failures.append("CHANGELOG.md: first line must be a title, as '# Changelog'.")
+
+    if not any(line.lower().startswith("## unreleased") for line in stripped):
+        failures.append(
+            "CHANGELOG.md: needs an '## Unreleased' section for work that has not "
+            "shipped yet, or there is nowhere to record a change in progress."
+        )
+
+
 def check_readme(failures):
     """
     README.md must keep the shape Evennia's documentation generator parses.
@@ -301,6 +334,7 @@ def main():
         ("dependencies", check_dependencies),
         ("domain purity", check_no_prose_in_domain),
         ("location independence", check_location_independence),
+        ("changelog", check_changelog),
         ("readme format", check_readme),
     )
 
