@@ -546,7 +546,13 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1760 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Sixteen of those are **scenarios** rather than unit tests — named voyages in
+`tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
+the slowest part of the suite and worth it: writing them found a sailing master who handed
+back the con at his last mark and then sailed twelve kilometres past it, which every unit
+test in the repository had passed over.
+
+Roughly 1800 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations

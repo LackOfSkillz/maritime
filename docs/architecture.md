@@ -1031,20 +1031,41 @@ Five of the six are written. The last needs a channel, which needs a harbour to 
 
 ## 20. Scenario suite
 
-Named scenarios, each a runnable integration test rather than a unit test. Built ones are
-marked.
+Named scenarios, each a runnable integration test rather than a unit test. They live in
+`tests/test_scenarios.py` and the names below are the method names, so "which of these
+actually run?" has an answer that is not somebody's memory.
 
 ```text
 sailing-basic ✓        sailing-upwind ✓       current-drift ✓
 grounding-shoal ✓      grounding-reef ✓       safe-channel ✓
-dock-undock ✓          reload-underway ✓      route-following
+dock-undock ✓          reload-underway ✓      route-following ✓
 scheduler-fairness ✓   strategic-advance      materialize-dematerialize
-contact-detection ✓    navigation-error ✓     storm-delay
-collision              broadside              flooding
-fire                   boarding               capture
+contact-detection ✓    navigation-error ✓     storm-delay ✓
+collision              broadside ✓            flooding
+fire                   boarding ✓             capture ✓
 passenger-arrival      passenger-diversion    passenger-capture
-service-partial-failure
+service-partial-failure                       charted-approach ✓
 ```
+
+The ticks used to mean "the capability is built and has unit tests". They now mean "there
+is a named voyage that runs it end to end", which is a different and stronger claim — and
+making it true found two defects that every unit test in the suite had passed over:
+
+- **The sailing master never stopped.** He handed back the con at the last mark and left
+  her under working canvas with her last helm orders, so she sailed twelve kilometres past
+  it. Ordering no speed stops a boat under oars and does nothing at all to one under sail.
+- **The dead reckoning has a third source of error**, besides the current and the leeway
+  this document names. The log is read at the end of a step, so the reckoning over-counts
+  while she is working up — about thirty metres for a sloop from rest. It is a realistic
+  artefact rather than a bug, and it was being claimed away.
+
+`charted-approach` is not on the design's original list and should have been: that a chart
+is wrong in *fixed* places rather than randomly is the one part of navigation where correct
+behaviour looks like a bug.
+
+The unbuilt ones are unbuilt because their phases are: flooding, fire and collision are
+damage; strategic-advance and materialize are phase 11; the passenger and service scenarios
+are phases 21 and 23. A scenario that pretended to exercise them would be worse than a gap.
 
 ---
 

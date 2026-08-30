@@ -178,6 +178,15 @@ class Conned:
 
         mark = self.next_mark()
         if mark is None:
+            # Furl before handing back the con. Ordering no speed stops a boat
+            # under oars and does nothing at all to one under canvas - the sails
+            # simply drive her again on the next tick - so a mate who reported the
+            # passage made and left her running was leaving her unattended at four
+            # knots. She sailed twelve kilometres past her last mark before a
+            # scenario noticed.
+            if self.sail_plan.area > 0.0:
+                self.sail_plan = FURLED
+            self.orders = HelmOrders(heading=self.heading, speed=0.0)
             self.under_con = False
             self.narrator.passage_made()
             return False

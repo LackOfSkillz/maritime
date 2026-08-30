@@ -13,6 +13,38 @@ combat and damage are not.
 
 ### Feat
 
+- Add the scenario suite the design has listed since the beginning. Sixteen named
+  voyages in `tests/test_scenarios.py`, each one a passage rather than an
+  assertion about a function - set sail, stand on, and see where she ends up.
+  Section 20's ticks used to mean "built and unit-tested"; they now mean "there is
+  a voyage that runs it end to end", which is a stronger claim.
+- Keep the grounding the tick already computed. `aground` is a boolean and the
+  interesting question is not whether she is on the ground but what she is on and
+  how hard she hit it - mud on a rising tide is an afternoon and rock at six knots
+  is a different ship. The tick worked that out and threw it away; `Vessel.grounding`
+  now holds it, which phase 17 will need badly.
+- Add `charted-approach`, which the design's list did not have and should have.
+  That a chart is wrong in *fixed* places rather than randomly is the one part of
+  navigation where correct behaviour looks like a bug.
+
+### Fix
+
+- **The sailing master never stopped.** He handed back the con at the last mark
+  and left her under working canvas with her last helm orders, so she sailed
+  twelve kilometres past it and kept going. Ordering no speed stops a boat under
+  oars and does nothing at all to one under sail - the canvas simply drives her
+  again on the next tick. He now furls before handing back the con, which is what
+  "takes the way off her at the end" was always supposed to mean. Every unit test
+  in the suite passed over this; the route-following scenario caught it on its
+  first run.
+- The dead reckoning has a third source of error and the documentation claimed
+  there were two. The log is read at the end of a step, so the reckoning
+  over-counts while she is working up - about thirty metres for a sloop from rest.
+  That is a realistic sampling artefact rather than a bug: a navigator reading four
+  knots off the log and multiplying by the hour makes exactly the same mistake. It
+  is now named in `reckon` rather than claimed away, and the scenario that asserts
+  a perfect reckoning takes both the sails and the acceleration out first.
+
 - Add boarding: grapples, the crossing they make, and the lines that part.
 - **Speed is not the constraint - relative velocity is,** and that is the whole of
   the manoeuvre. Two ships running side by side at ten knots on the same course are

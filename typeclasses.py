@@ -270,6 +270,25 @@ class Vessel(
         self.db.anchored = bool(value)
 
     @property
+    def grounding(self):
+        """
+        What happened the last time she found the bottom.
+
+        Returns:
+            grounding (dict or None): `severity`, `bottom`, `clearance` and
+                `speed` as they were at the moment of contact, or None if she has
+                never touched.
+
+        Notes:
+            Kept because `aground` is a boolean and the interesting question is
+            not whether she is on the ground but what she is on and how hard she
+            hit it. Mud on a rising tide is an afternoon; rock at six knots is a
+            different ship.
+
+        """
+        return self.db.grounding
+
+    @property
     def aground(self):
         """
         Whether the hull is in the ground.
@@ -288,6 +307,8 @@ class Vessel(
 
         """
         self.db.aground = bool(value)
+        if not value:
+            self.db.grounding = None
 
     @property
     def narrator(self):
@@ -495,6 +516,15 @@ class Vessel(
         if not contact:
             self.ndb.speed = 0.0
             self.aground = True
+            # Kept rather than computed and discarded. Whether she is holed or
+            # merely held is the difference between a lost ship and a wasted tide,
+            # and the tick already knows - it was simply not writing it down.
+            self.db.grounding = {
+                "severity": contact.severity,
+                "bottom": contact.bottom,
+                "clearance": contact.clearance,
+                "speed": contact.speed,
+            }
             self.narrator.grounding(contact)
             return True
 

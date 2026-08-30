@@ -113,6 +113,14 @@ def reckon(dr, heading, speed, elapsed):
         displacement in here would produce a DR that is always right, which is
         not a dead reckoning, it is a chart plotter.
 
+        There is a third source of error besides the current and the leeway, and
+        it is worth naming because the rest of the documentation used to imply
+        there were only two. The speed handed in is her speed at the *end* of the
+        step, so while she is accelerating the reckoning over-counts - about thirty
+        metres for a sloop working up from rest. That is a sampling artefact and a
+        realistic one: a navigator reading four knots off the log and multiplying
+        by the hour makes exactly the same mistake.
+
     """
     distance = max(speed, 0.0) * max(elapsed, 0.0)
     if distance <= 0.0:
