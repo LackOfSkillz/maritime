@@ -28,7 +28,7 @@ hand differently, without reimplementing when to speak.
 from dataclasses import dataclass
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
-from .formatting import format_range, format_speed
+from .formatting import format_range, format_speed, pick_scale
 from .cargo import VOLUME, WEIGHT, stowed_volume
 from .oars import (
     EASY_OARS,
@@ -907,7 +907,7 @@ class VesselNarrator:
         """
         return describe_contact(sighting)
 
-    def contact_line(self, sighting):
+    def contact_line(self, sighting, scale=None):
         """
         One contact, as a line of a report.
 
@@ -927,11 +927,11 @@ class VesselNarrator:
         return (
             f"  {bearing_in_points(sighting.relative).capitalize():<32}"
             f"{spell_bearing(sighting.bearing):>7}"
-            f"{format_range(sighting.distance):>14}   "
+            f"{format_range(sighting.distance, scale=scale):>14}   "
             f"{self.describe_contact(sighting)}"
         )
 
-    def mark_line(self, sighting):
+    def mark_line(self, sighting, scale=None):
         """
         One navigational mark, as a line of a report.
 
@@ -952,7 +952,7 @@ class VesselNarrator:
         return (
             f"  {bearing_in_points(sighting.relative).capitalize():<32}"
             f"{spell_bearing(sighting.bearing):>7}"
-            f"{format_range(sighting.distance):>14}   "
+            f"{format_range(sighting.distance, scale=scale):>14}   "
             f"{self.describe_mark(mark)}"
         )
 
@@ -1016,9 +1016,17 @@ class VesselNarrator:
             things to know before altering course.
 
         """
+        # One unit for the whole sweep, chosen before a word of it is written. A
+        # range column exists to be compared at a glance, and "2.9 miles" on one
+        # line with "1.5 leagues" on the next gives that up.
+        ranges = [sighting.distance for _name, found in sweep for sighting in found]
+        if horizon:
+            ranges.append(horizon)
+        scale = pick_scale(ranges)
+
         lines = ["The horizon, all round:"]
         if horizon:
-            lines[0] = f"The horizon, all round - {format_range(horizon)} off:"
+            lines[0] = f"The horizon, all round - {format_range(horizon, scale=scale)} off:"
         for name, sightings in sweep:
             heading = self.direction_phrase(name).capitalize()
             if not sightings:
@@ -1027,11 +1035,14 @@ class VesselNarrator:
             lines.append(f"  {heading:<16}{self.describe_contact(sightings[0])}, ")
             lines[-1] += (
                 f"{bearing_in_points(sightings[0].relative)}, "
-                f"{format_range(sightings[0].distance)}"
+                f"{format_range(sightings[0].distance, scale=scale)}"
             )
             for extra in sightings[1:]:
                 lines.append(f"  {'':<16}{self.describe_contact(extra)}, ")
-                lines[-1] += f"{bearing_in_points(extra.relative)}, {format_range(extra.distance)}"
+                lines[-1] += (
+                    f"{bearing_in_points(extra.relative)}, "
+                    f"{format_range(extra.distance, scale=scale)}"
+                )
         return tuple(lines)
 
     def direction_phrase(self, where):

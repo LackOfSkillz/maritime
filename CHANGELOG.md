@@ -122,6 +122,16 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- A report could not compare its own ranges. Seen live: "The horizon, all round -
+  2.9 miles off", then contacts at "2.7 miles" and "1.5 leagues" in the same list.
+  Three ranges, two units, and no way to tell which was furthest without doing
+  arithmetic - which is the one job a range column has. `format_range` picked its
+  unit per value, so a single report crossed a threshold partway down and changed
+  vocabulary. A report now chooses once, from its furthest range, with `pick_scale`.
+  Cables are deliberately still allowed alongside: a cable beside a league is two
+  scales of measurement, the way feet sit beside miles, and reads correctly. Miles
+  beside leagues is one scale said two ways, and that is the confusing pairing.
+
 - The mate announced the same alteration every tick. Clearing a mark takes many of
   them, and he said "Giving the south cardinal a berth, sir" on each one - which is
   exactly the wallpaper `messaging` exists to prevent, by its own docstring: a ship

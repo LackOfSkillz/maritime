@@ -183,7 +183,46 @@ def _cables(metres):
     return f"{cables} cables"
 
 
-def format_range(metres, units=None):
+def pick_scale(distances, units=None):
+    """
+    Choose one big unit for a whole report.
+
+    Args:
+        distances (iterable): Every range the report will print, in metres.
+        units (str, optional): One of `DISTANCE_UNITS`. Defaults to the
+            configured scheme.
+
+    Returns:
+        scale (str or None): What to say anything of a mile or more in, or None
+            if the scheme has nothing to choose between.
+
+    Notes:
+        A range column exists so that ranges can be compared at a glance, and a
+        report that says "2.9 miles" on one line and "1.5 leagues" on the next has
+        given that up. Deciding once, for the whole list, is the fix.
+
+        Cables are not part of the choice and never were. A cable alongside a
+        league is two scales of measurement, the way feet sit beside miles - it
+        reads correctly and nobody has to convert anything in their head. Miles
+        beside leagues is the same scale said two ways, which is the confusing one.
+
+        Chosen from the *largest* range, so a report that reaches out to leagues
+        speaks in leagues throughout rather than changing vocabulary partway down.
+
+    """
+    if units is None:
+        units = config.get_setting("DISTANCE_UNITS", LEAGUES)
+    if units != LEAGUES:
+        # Nothing to decide. Metric has one big unit and raw has none at all, so
+        # there is no pair to be caught mixing - saying so is more honest than
+        # handing back a scale the caller would only ignore.
+        return None
+
+    furthest = max((distance for distance in distances), default=0.0)
+    return LEAGUES if furthest >= METRES_PER_LEAGUE else NAUTICAL
+
+
+def format_range(metres, units=None, scale=None):
     """
     Say a distance the way it would be reported at sea.
 
@@ -191,6 +230,9 @@ def format_range(metres, units=None):
         metres (float): Distance in metres.
         units (str, optional): One of `DISTANCE_UNITS`. Defaults to the
             configured scheme.
+        scale (str, optional): The big unit this whole report has settled on,
+            from `pick_scale`. Without one each range picks its own, which is
+            right for a single figure and wrong for a column of them.
 
     Returns:
         text (str): e.g. `"two leagues"`, `"4.2 miles"`, `"three cables"`.
@@ -217,11 +259,9 @@ def format_range(metres, units=None):
     if metres < METRES_PER_NAUTICAL_MILE:
         return _cables(metres)
 
-    miles = metres / METRES_PER_NAUTICAL_MILE
-    if units == LEAGUES and metres >= METRES_PER_LEAGUE:
-        leagues = metres / METRES_PER_LEAGUE
-        return f"{leagues:.1f} leagues"
-    return f"{miles:.1f} miles"
+    if scale == LEAGUES or (scale is None and units == LEAGUES and metres >= METRES_PER_LEAGUE):
+        return f"{metres / METRES_PER_LEAGUE:.1f} leagues"
+    return f"{metres / METRES_PER_NAUTICAL_MILE:.1f} miles"
 
 
 def format_speed(metres_per_second, units=None):

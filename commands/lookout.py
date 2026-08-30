@@ -5,7 +5,7 @@ Keeping a lookout: what is in sight, where, and what changes.
 
 from evennia.commands.default.general import CmdLook
 
-from ..formatting import format_range
+from ..formatting import format_range, pick_scale
 from ..messaging import spell_bearing
 from ..tactical import (
     arcs_bearing,
@@ -98,10 +98,14 @@ class CmdLookout(MaritimeCommand):
             )
             return
 
+        # One unit across both lists. Shipping and marks are reported apart, but a
+        # buoy at two miles and a sail at two leagues still have to be comparable.
+        scale = pick_scale([sighting.distance for sighting in tuple(seen) + tuple(marks)])
+
         lines = []
         if seen:
             lines.append("The lookout reports:")
-            lines.extend(vessel.narrator.contact_line(sighting) for sighting in seen)
+            lines.extend(vessel.narrator.contact_line(sighting, scale) for sighting in seen)
         if marks:
             # Reported apart from the shipping, because they are a different kind of
             # news. A sail on the horizon is a question; a buoy on the horizon is an
@@ -109,7 +113,7 @@ class CmdLookout(MaritimeCommand):
             if lines:
                 lines.append("")
             lines.append("Marks in sight:")
-            lines.extend(vessel.narrator.mark_line(sighting) for sighting in marks)
+            lines.extend(vessel.narrator.mark_line(sighting, scale) for sighting in marks)
         self.caller.msg("\n".join(lines))
 
 

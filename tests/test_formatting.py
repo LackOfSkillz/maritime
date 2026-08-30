@@ -9,9 +9,12 @@ from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from ..formatting import (
     METRES_PER_MINUTE,
+    METRIC,
     NAUTICAL,
     RAW,
     format_position,
+    format_range,
+    pick_scale,
     latitude_of,
     longitude_of,
 )
@@ -142,3 +145,77 @@ class TestFormatPosition(BaseEvenniaTestCase):
 
     def test_surface_positions_mention_no_depth(self):
         self.assertNotIn("below", format_position(WorldPosition(0.0, 0.0, 0.0)))
+
+
+class TestOneUnitPerReport(BaseEvenniaTestCase):
+    """
+    A range column exists to be compared at a glance.
+
+    Seen live, and the reason this exists: "The horizon, all round - 2.9 miles off"
+    followed by contacts at "2.7 miles" and "1.5 leagues". Three ranges, two units,
+    and no way to tell which was furthest without doing arithmetic.
+
+    """
+
+    def test_a_report_that_reaches_leagues_speaks_in_leagues(self):
+        scale = pick_scale([5400.0, 5000.0, 8300.0])
+        said = [format_range(distance, scale=scale) for distance in (5400.0, 5000.0, 8300.0)]
+        self.assertTrue(all("leagues" in line for line in said), said)
+
+    def test_a_report_that_does_not_stays_in_miles(self):
+        """Not everything becomes leagues - only a report that actually reaches them."""
+        scale = pick_scale([5400.0, 3000.0])
+        said = [format_range(distance, scale=scale) for distance in (5400.0, 3000.0)]
+        self.assertTrue(all("miles" in line for line in said), said)
+
+    def test_miles_and_leagues_never_share_a_list(self):
+        """The whole point. This is the pairing that was wrong."""
+        ranges = [5400.0, 5000.0, 8300.0, 900.0]
+        scale = pick_scale(ranges)
+        said = [format_range(distance, scale=scale) for distance in ranges]
+        self.assertFalse(
+            any("miles" in line for line in said) and any("leagues" in line for line in said),
+            said,
+        )
+
+    def test_cables_survive_alongside_a_bigger_unit(self):
+        """
+        A cable beside a league is two scales of measurement, the way feet sit
+        beside miles - it reads correctly and nobody converts anything. Miles beside
+        leagues is one scale said two ways, which is the confusing one.
+
+        """
+        scale = pick_scale([8300.0, 900.0])
+        self.assertIn("cables", format_range(900.0, scale=scale))
+        self.assertIn("leagues", format_range(8300.0, scale=scale))
+
+    def test_the_scale_comes_from_the_furthest_range(self):
+        """
+        Chosen from the largest, so a report reaching out to leagues speaks in
+        leagues throughout rather than changing vocabulary partway down the column.
+
+        """
+        self.assertEqual(pick_scale([900.0, 8300.0]), pick_scale([8300.0, 900.0]))
+
+    def test_an_empty_report_still_chooses_something(self):
+        self.assertIsNotNone(pick_scale([]))
+
+    def test_a_single_range_still_picks_its_own(self):
+        """Without a scale each range decides for itself, which is right for one figure."""
+        self.assertIn("leagues", format_range(8300.0))
+        self.assertIn("miles", format_range(3000.0))
+
+    def test_a_scheme_with_nothing_to_choose_says_so(self):
+        """
+        Metric has one big unit and raw has none at all, so there is no pair to be
+        caught mixing. Saying None is more honest than handing back a scale the
+        caller would only ignore.
+
+        """
+        self.assertIsNone(pick_scale([8300.0, 900.0], units=METRIC))
+        self.assertIsNone(pick_scale([8300.0, 900.0], units=RAW))
+
+    def test_metric_is_left_alone(self):
+        scale = pick_scale([8300.0, 900.0], units=METRIC)
+        self.assertIn("km", format_range(8300.0, units=METRIC, scale=scale))
+        self.assertIn("m", format_range(900.0, units=METRIC, scale=scale))
