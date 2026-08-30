@@ -16,8 +16,8 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
 tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
-boarding, and who owns and commands a ship. Not
-built: crew and morale, damage, the strategic layer, and the service economy.
+boarding, who owns and commands a ship, and her company - quality, morale, exhaustion
+and mutiny. Not built: damage, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
@@ -189,7 +189,7 @@ across her beam, and from the west she makes 1.5 and the chain becomes a slog.
 
 ## Design
 
-Seventeen ideas do most of the work. `docs/architecture.md` has the rest.
+Eighteen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -291,6 +291,14 @@ on every call from how many decks answer to you rather than stored, so it arrive
 second ship and leaves with the loss of one. Whether a given person may give a given hull an
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
+
+**Morale is a standing condition, and it falls faster than it rises.** A crew is not
+asked "do you break?" at moments of crisis and found steady or wanting - they hold a state
+ground down by what happens and recovered slowly. The asymmetry is why a captain who spends
+his people cannot stop and have them back. Two collapses come out of it, told apart by whose
+fault it is: *striking* is what a crew does when the enemy has beaten them, *mutiny* is what
+they do when the captain has. Both need two gates, and an injected roll can add variance but
+cannot open a gate that is shut.
 
 **A pass is bounded by a clock, not a count.** What one vessel costs depends entirely on the
 world she is in — measured, a five-fold spread — so a fixed batch of twenty-five is
@@ -439,6 +447,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `look <direction>` | One quarter or compass point - `look se`, `look port` |
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
+| `crew` | Her company, how they are bearing it, and what they hold against you |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
 | `@ship` | Build ships, and set owner and captain (Builder+) |
 
@@ -598,11 +607,13 @@ would take half an hour of wall time runs in milliseconds.
 - Cargo has no price. Contracts, freight rates, who is buying and what a voyage is worth
   are the game's own economy, and shipping an opinion about them would collide with
   whatever it already has. Recorded in `DECISIONS.md`.
-- Nothing tires. A crew can hold a racing stroke across an ocean, because what that costs
-  them collides with whatever stamina the host game already has. `rowed_speed` takes the
-  crew count as an argument rather than reading it off the boat, so a game that wants a
-  tiring crew supplies a smaller number and everything downstream follows. In
+- Crews tire, people do not. Exhaustion is a number on the hull, never on a character -
+  what a stroke costs a *person* collides with whatever stamina the host game already has,
+  and at ship scale there is nothing to collide with. A game with no notion of tiredness
+  loses nothing: she pulls slower and her people are closer to breaking. Recorded in
   `DECISIONS.md`.
+- Morale has no effect on gunnery or sail handling yet. `hesitation` says how much of what
+  her people could do is not being done, and nothing consumes it until damage arrives.
 - Being tender is reported and costs her nothing. What top-heavy loading should actually
   do to a ship reaches into sailing and damage at once, and both of those decisions are
   the game's.

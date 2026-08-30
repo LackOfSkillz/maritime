@@ -13,6 +13,42 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add the ship's company, crew quality, morale and mutiny. A company is a number
+  on the hull rather than a crowd of objects, because a galley's two hundred
+  oarsmen as two hundred Evennia objects counted every tick would be absurd.
+  Quality is two claims rather than one - how well they work her, and how much
+  they will take before they stop - which are genuinely separate: a pressed crew
+  who cannot reef may still be too frightened to run, and a crack crew will still
+  not stand at any price.
+- Make morale a standing condition rather than a check. A crew is not asked "do
+  you break?" at moments of crisis; they hold a state that is ground down by what
+  happens and comes back slowly. It falls faster than it rises, which is why a
+  captain who spends his people cannot stop and have them back. The curve is
+  exponential in elapsed time, so a tick running twice as often does not tire a
+  crew twice as fast - the simulation must not change when the server gets busy.
+- Add the two collapses, told apart by whose fault it is. Striking is what a crew
+  does when the enemy has beaten them; mutiny is what they do when the captain
+  has, and every grievance is something command did. Casualties count as a
+  grievance only while she has *not* struck - the same crew cut to pieces in a
+  fight their captain ended have been unlucky, and the difference is whether he
+  would stop.
+- Gate both twice. A bad reading is necessary and nowhere near sufficient:
+  striking also needs casualties past a floor that scales with quality, so better
+  crews must be hurt more before the question is even asked, and mutiny needs
+  agreement rather than a complaint. An injected roll adds variance and cannot
+  open a gate that is shut.
+- Add exhaustion as a ship-level state, and let it cost her. A spent crew pull at
+  half speed - still pulling, because a boat rowed by exhausted men is slow rather
+  than stopped - and being driven past bearing becomes a grievance, which is what
+  makes a chase a decision rather than a free action.
+- Let a ship see her own conditions. Being aground, being boarded, having nobody
+  aft giving orders: a game should not have to remember to tell a ship she is on
+  the putty. What she cannot see - that these are her countrymen, that the enemy
+  has a reputation - is what a game hands in, and factors are data so it can.
+- Add `crew`, which reports her company and, if there is anything, what they hold
+  against you. That last part is the one worth reading: a morale number says his
+  people are unhappy, and this says what about.
+
 - Add ownership and command. `owner` is property and `captain` is command, and they
   are two references rather than one controller field because a merchant who owns
   four ships is aboard at most one of them, and a captain who owns nothing still
@@ -76,6 +112,13 @@ weather, crew, combat and damage are not.
   no mutation can kill is not insurance, it is a claim nobody is checking.
 
 ### Docs
+
+- Answer "what pulling an oar costs" in `DECISIONS.md`, with a fourth option none
+  of the three listed there: exhaustion at *ship* scale. That dissolves the
+  original difficulty rather than picking a side of it - the worry was colliding
+  with whatever stamina the host game has, and at ship scale there is nothing to
+  collide with.
+- Set down the crew and morale model in architecture section 10.
 
 - Correct architecture section 10, which said authority is evaluated per capability
   rather than held in a single slot - and what shipped holds two. That is not a

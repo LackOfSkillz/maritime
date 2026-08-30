@@ -177,37 +177,6 @@ logging out at sea is allowed at all, which is the same question from the other 
 
 ---
 
-## What pulling an oar costs
-
-**Raised by:** oars and paddles.
-**Blocks:** nothing built. It blocks whether a long pull is a decision or a formality.
-
-A crew can hold a working stroke for an hour and a racing stroke for a few minutes. The
-system knows the difference in *rate* - `STRETCH_OUT` is faster than `GIVE_WAY` - and
-nothing about the difference in cost, so at present a boat can be raced across an ocean.
-
-The trouble is the same one being in the water has: stamina, exhaustion and injury already
-exist in whatever game installs this, or are deliberately absent from it, and a maritime
-contrib that shipped its own would either duplicate the game's or argue with it.
-
-The options, as far as I can see them:
-
-1. **The contrib does nothing.** Rowing is free; the game tires people if it wants to.
-   Cleanest separation, and it makes the stroke orders decorative.
-2. **The contrib exposes a hook and no rule** - who is pulling, at what stroke, for how
-   long - and the game decides what that costs them.
-3. **A sustainable-stroke rule with configurable numbers**: above a named stroke, she
-   slows after a set time. Contained, and it makes an opinion about endurance the default
-   for every game.
-
-**What I did:** option 1, and the arithmetic is arranged so that any of them can be added
-without changing a call site. `rowed_speed` already takes the crew count as an argument
-rather than reading it off the boat, so a game that wants a tiring crew supplies a smaller
-effective number and everything downstream follows.
-
-**What it needs from you:** a direction. It pairs with the water-survival question rather
-than standing alone - both are about what a body can take.
-
 ---
 
 # Answered
@@ -271,3 +240,35 @@ would be trading the thing for the appearance of the thing.
 
 **What the PR branch drops:** `CHANGELOG.md`, `DECISIONS.md`, `docs/`, `.github/`. What it
 keeps is what the guidelines ask for: `README.md`, the modules, `tests/`, `LICENSE`.
+
+---
+
+## What pulling an oar costs
+
+**Was blocking:** whether a long pull is a decision or a formality. The system knew
+`STRETCH_OUT` was faster than `GIVE_WAY` and nothing about it being harder, so a boat could
+be raced across an ocean.
+
+**The options were:** do nothing and let the game tire people; expose a hook and no rule; or
+ship a sustainable-stroke rule with configurable numbers.
+
+**Decided:** none of those three, in the end — a fourth that only became visible once crew
+quality existed. **Exhaustion is a ship-level state.** Not how tired any person is: how spent
+the *company* is, as one number on the hull.
+
+That dissolves the original difficulty rather than choosing a side of it. The worry was that
+stamina already exists in whatever game installs this, or is deliberately absent, so a
+maritime contrib shipping its own would duplicate or argue with it. At ship scale there is
+nothing to duplicate. No character's stamina is touched, no health system is consulted, and
+a game with no notion of tiredness at all loses nothing — she simply pulls slower and her
+people are closer to breaking, and both of those are facts about the ship.
+
+**What it does:** `spend` tends the company towards the effort being asked rather than
+accumulating without limit, so easy oars all day tends towards rested and a racing stroke
+gets most of the way to spent in half an hour. A wholly spent crew have lost half their
+speed — still pulling, because a boat rowed by exhausted men is slow rather than stopped.
+And exhaustion past a threshold becomes a *grievance*, which is the part that makes it a
+decision: run your people into the ground in a chase and you may not have a crew afterwards.
+
+**Still yours, and unchanged:** what being in the water does to a person. That one was
+always the harder half of the pair, and nothing here touches it.

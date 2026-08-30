@@ -27,6 +27,38 @@ from .charts import (
     charted_terrain_z_at,
 )
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
+from .crew import (
+    ABLE,
+    CRACK,
+    DEFAULT_QUALITY,
+    LANDSMEN,
+    ORDINARY,
+    PICKED,
+    PRESSED,
+    QUALITIES,
+    SEASONED,
+    CrewQuality,
+    Crewed,
+    ShipsCompany,
+    blended,
+    spend,
+)
+
+# The five morale bands are deliberately *not* re-exported here. "steady" is already a
+# helm order in this package - "steady as she goes" - and a flat namespace that exports
+# both gives whoever writes `from maritime import STEADY` whichever one happened to be
+# imported second. Band names live in `maritime.morale` and are reached through it.
+from .morale import (
+    Factor,
+    band_of,
+    grievances,
+    hesitation,
+    mutinies,
+    reading,
+    settle,
+    strikes,
+    when_asked,
+)
 from .currents import (
     STILL,
     CurrentVector,
@@ -39,7 +71,7 @@ from .currents import (
 )
 from .events import bus, Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet, ShipwrightCmdSet
-from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
+from .commands import CmdAllStop, CmdCrew, CmdHelm, CmdPosition, CmdSpeed
 from .formatting import (
     METRES_PER_SECOND_PER_KNOT,
     DEPTH_UNITS,
@@ -422,6 +454,7 @@ __all__ = (
     # commands
     "HelmCmdSet",
     "ShipwrightCmdSet",
+    "CmdCrew",
     "CmdHelm",
     "CmdSpeed",
     "CmdAllStop",
@@ -561,6 +594,30 @@ __all__ = (
     "GRAPNEL_RANGE",
     "MAX_BOARDING_CLOSURE",
     "MAX_HOLDING_CLOSURE",
+    # crew, morale and mutiny
+    "Crewed",
+    "CrewQuality",
+    "ShipsCompany",
+    "blended",
+    "spend",
+    "QUALITIES",
+    "DEFAULT_QUALITY",
+    "PRESSED",
+    "LANDSMEN",
+    "ORDINARY",
+    "ABLE",
+    "SEASONED",
+    "PICKED",
+    "CRACK",
+    "Factor",
+    "reading",
+    "when_asked",
+    "settle",
+    "band_of",
+    "hesitation",
+    "strikes",
+    "grievances",
+    "mutinies",
     # ownership and command
     "Owned",
     "OwnershipTransferred",

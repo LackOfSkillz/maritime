@@ -30,6 +30,7 @@ from evennia.objects.objects import DefaultObject
 
 from .boarding import Boarded
 from .charts import Charted
+from .crew import Crewed
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
 from .oars import Oared, braking_limits
@@ -62,6 +63,7 @@ class Vessel(
     Conned,
     Owned,
     Boarded,
+    Crewed,
     Oared,
     Armed,
     Laden,
@@ -404,6 +406,11 @@ class Vessel(
             return False
 
         self.work_her()
+
+        # A watch passes over her people whether or not anything happens to them.
+        # Before movement, so a crew who have just been driven to a standstill pull
+        # the way exhausted men pull on this step rather than the next one.
+        self.stand_watch(elapsed)
 
         before = MotionState(position=position, heading=self.heading, speed=self.speed)
 

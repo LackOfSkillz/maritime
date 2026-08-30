@@ -67,6 +67,12 @@ STROKE_EFFORT = {
     STRETCH_OUT: 1.0,
 }
 
+#: How much of her speed a wholly spent crew have lost. Half: they are still pulling,
+#: and a boat rowed by exhausted men is slow rather than stopped. The number is what
+#: makes a chase a decision - run her people into the ground now and have nothing left
+#: when it matters, or hold something back and watch the other fellow open the range.
+EXHAUSTION_COST = 0.5
+
 #: How much harder she stops with the blades held against the water. A pulling boat
 #: can take her own way off in a couple of lengths, which is the one thing she can do
 #: that a ship under sail cannot.
@@ -150,7 +156,7 @@ def hands_available(plan, crew):
     return max(0.0, min(1.0, float(crew) / plan.positions))
 
 
-def rowed_speed(plan, stroke, crew):
+def rowed_speed(plan, stroke, crew, exhaustion=0.0):
     """
     How fast a boat is being pulled through the water.
 
@@ -158,6 +164,7 @@ def rowed_speed(plan, stroke, crew):
         plan (OarPlan): What she is fitted with.
         stroke (str): One of `STROKES`.
         crew (int): How many positions are filled.
+        exhaustion (float, optional): How spent the people pulling are, 0 to 1.
 
     Returns:
         speed (float): Metres per second through the water.
@@ -170,10 +177,17 @@ def rowed_speed(plan, stroke, crew):
         over the ground is that plus whatever the water is doing, which is the
         entire point of rowing up a river being harder than rowing down one.
 
+        A spent crew still pull; they pull worse. That is the whole of what
+        exhaustion does here - a racing stroke ordered from people who have been
+        holding one for an hour is answered, and answered badly. Ordering it is
+        still the captain's to do, and living with what it leaves him is the cost.
+
     """
     if stroke not in STROKE_EFFORT:
         raise ValueError(f"Unknown stroke {stroke!r}. Expected one of {STROKES}.")
-    return plan.rated_speed * STROKE_EFFORT[stroke] * hands_available(plan, crew)
+    spent = max(0.0, min(1.0, float(exhaustion)))
+    fading = 1.0 - spent * EXHAUSTION_COST
+    return plan.rated_speed * STROKE_EFFORT[stroke] * hands_available(plan, crew) * fading
 
 
 def braking_limits(limits, stroke, factor=HOLDING_WATER_BRAKING):
@@ -324,15 +338,23 @@ class Oared:
             crew (int): How many positions are filled.
 
         Notes:
-            Everybody aboard, capped by the number of oars. A crew system will
-            want to say who is *at* an oar rather than merely present - phase 14,
-            and yours - so this counts heads and says so rather than pretending to
-            know more.
+            Her ship's company if she has one, and otherwise everybody aboard -
+            capped either way by the number of oars, since a boat with six looms
+            cannot be pulled by seven people.
+
+            The two cases are both real and neither replaces the other. A galley's
+            two hundred oarsmen are a number on the hull, because two hundred
+            Evennia objects to be counted every tick would be absurd. A gig pulled
+            by whoever happened to climb into her is exactly the people standing in
+            her, and counting heads is the only way to know.
 
         """
         plan = self.oar_plan
         if plan is None:
             return 0
+        company = self.company
+        if company is not None:
+            return min(company.fit, plan.positions)
         aboard = sum(1 for room in self.ship_rooms for obj in room.contents if not obj.destination)
         return min(aboard, plan.positions)
 
@@ -406,7 +428,7 @@ class Oared:
         plan = self.oar_plan
         if plan is None:
             return 0.0
-        return rowed_speed(plan, self.stroke, self.rowing_crew)
+        return rowed_speed(plan, self.stroke, self.rowing_crew, self.exhaustion)
 
     def pull_for(self, distance):
         """

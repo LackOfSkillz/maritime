@@ -15,6 +15,7 @@ from evennia.commands.cmdset import CmdSet
 
 from .commands import (
     CmdAllStop,
+    CmdCrew,
     CmdShipwright,
     CmdWeighAnchor,
     CmdFire,
@@ -74,6 +75,7 @@ class HelmCmdSet(CmdSet):
     def at_cmdset_creation(self):
         """Populate the set."""
         self.add(CmdHelm())
+        self.add(CmdCrew())
         self.add(CmdGuns())
         self.add(CmdLoad())
         self.add(CmdFire())

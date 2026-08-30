@@ -741,6 +741,44 @@ with it.
 
 ---
 
+**A company is a number, not a crowd of objects.** A frigate carries three hundred people
+and a galley two hundred oarsmen. Creating those as individuals to be counted every tick
+would be absurd; named characters aboard remain the host game's, and this counts the rest,
+because the rest is what makes her work.
+
+**Crew quality is two claims.** How well they work her, and how much they will take before
+they stop. Genuinely separate — a pressed crew who cannot reef in a squall may still be too
+frightened of the alternative to run, and a crack crew who can do anything will still not
+stand at any price. One "veteran" number loses the more interesting of the two.
+
+**Morale is a standing condition, not a check.** A crew is not asked "do you break?" at
+moments of crisis and found steady or wanting; they hold a state that is ground down by
+what happens and comes back slowly when it stops. **It falls faster than it rises**, and
+that asymmetry is why a captain who spends his people cannot simply stop and have them
+back. The curve is exponential in elapsed time, so a tick that runs twice as often does not
+tire a crew twice as fast — the simulation must not change when the server gets busy.
+
+**Two collapses, told apart by whose fault it is.** *Striking* is what a crew does when the
+enemy has beaten them. *Mutiny* is what they do when the captain has, and every grievance is
+something command did — drove them past exhaustion, spent them past bearing and would not
+strike, or is not aboard at all. Casualties count as a grievance only while she has *not*
+struck: the same crew cut to pieces in a fight their captain ended have been unlucky, and
+the difference is whether he would stop. Modelling both as one "morale failure" loses the
+only part anybody cares about.
+
+**Both collapses need two gates.** A bad reading is necessary and nowhere near sufficient.
+Striking also needs casualties past a floor that scales with quality, so a better crew must
+be hurt more before the question is even asked; mutiny also needs agreement, which is more
+than one grievance. A roll may be injected for variance and cannot open a gate that is shut
+— a die that overrides the systems beneath it is a die that hollows them out.
+
+**Exhaustion is a ship-level state.** How spent the company is, not how tired any person is.
+That is the only honest place for it: what a stroke costs a *character* collides with
+whatever stamina the host game already has. At ship scale there is nothing to collide with —
+she pulls slower and her people are closer to breaking, and both of those are hers.
+
+---
+
 **Command has a succession.** Captain, first mate, officer of the watch, authorised crew,
 then voyage automation. A captain who logs out must not freeze the ship — a vessel at sea
 with nobody at the helm is a hazard to everyone else on the water, and "the owner is offline"

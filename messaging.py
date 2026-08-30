@@ -1169,6 +1169,87 @@ class VesselNarrator:
             return "she has cubed out - the holds are full"
         return "she will take more of either weight or measurement"
 
+    #: What each morale band looks like from the quarterdeck. The domain knows they
+    #: are wavering; this is the only place that knows what wavering looks like.
+    BEARING = {
+        "steady": "steady, and going about their work",
+        "uneasy": "uneasy - quieter than they were",
+        "shaken": "shaken. Orders are obeyed a beat late",
+        "wavering": "wavering. Some of them are looking to the boats",
+        "broken": "broken. Whatever is asked of them now will be half done",
+    }
+
+    #: And how spent they are. A scale rather than a number, because nobody standing
+    #: on a deck ever knew their crew were at sixty-one per cent.
+    SPENT = (
+        (0.85, "spent - there is nothing left in them"),
+        (0.65, "flagging badly"),
+        (0.40, "tiring"),
+        (0.15, "working hard, but holding it"),
+        (0.0, "fresh"),
+    )
+
+    #: What the company hold against their command, said plainly. These are the words
+    #: that turn a number into a warning a captain can act on.
+    GRIEVANCE = {
+        "driven": "they have been driven past what they have in them",
+        "butchered": "they are being spent, and the colours are still flying",
+        "leaderless": "there is nobody aft giving orders",
+    }
+
+    def crew_report(self, vessel):
+        """
+        Who she is manned by, and how they are bearing it.
+
+        Args:
+            vessel (Vessel): The ship.
+
+        Returns:
+            lines (tuple): Her company, or a single line if she has none.
+
+        Notes:
+            The grievances are the part worth having. A morale number tells a captain
+            his people are unhappy; this tells him what about, and every one of them
+            is something he did - which is the only kind of warning anybody can act
+            on before it becomes a rising.
+
+        """
+        company = vessel.company
+        if company is None:
+            return ("She has no ship's company. Whoever is aboard is who works her.",)
+
+        lines = [f"|w{vessel.key}|n - {company.fit} of {company.complement} hands"]
+        lines.append(f"  Rated      {company.quality.key}")
+        if company.casualties:
+            lines.append(
+                f"  Casualties {company.casualties} "
+                f"({company.casualty_fraction * 100:.0f}% of her company)"
+            )
+        lines.append(f"  Bearing    They are {self.BEARING[vessel.morale_band]}.")
+        lines.append(f"  Condition  They are {self.spent_words(vessel.exhaustion)}.")
+
+        held = vessel.held_against_command()
+        if held:
+            lines.append("")
+            lines.append("  |rWhat they hold against you:|n")
+            for grievance in held:
+                lines.append(f"    {self.GRIEVANCE[grievance]}")
+        return tuple(lines)
+
+    def spent_words(self, exhaustion):
+        """
+        Args:
+            exhaustion (float): How spent they are, 0 to 1.
+
+        Returns:
+            words (str): What that looks like from the deck.
+
+        """
+        for floor, words in self.SPENT:
+            if exhaustion >= floor:
+                return words
+        return self.SPENT[-1][1]
+
     def oar_report(self, vessel):
         """
         What she is being pulled by, and what it is making.
