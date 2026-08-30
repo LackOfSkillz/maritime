@@ -26,20 +26,7 @@ from ..ports import (
 from ..rooms import berths_near, rig_gangway
 from ..motion import HelmOrders
 from ..vessel import WEATHER_DECKS
-from .base import MaritimeCommand, ms_to_knots
-
-# One knot is one nautical mile per hour, and a nautical mile is 1852 metres.
-METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
-
-# How far off a landmark can be and still be worth a bearing, in metres. The
-# same reach as a berth search, because a quay you could tie up to is
-# unambiguously a quay you can identify.
-FIX_RANGE = 3000.0
-
-# Fastest a vessel may be moving and still bring up safely. Letting go with way
-# still on her is how cables part and anchors are left on the bottom.
-MAX_ANCHORING_SPEED = 1.0
-
+from .base import MAX_ANCHORING_SPEED, MaritimeCommand, ms_to_knots
 
 BERTH_REFUSALS = {
     TOO_FAR: "The berth is {distance} off. Work her in closer before you put lines ashore.",

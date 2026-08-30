@@ -13,6 +13,60 @@ combat and damage are not.
 
 ### Feat
 
+- Add human propulsion: oars and paddles. A sailing vessel is not asked how fast
+  to go - she goes as fast as the wind on that heading allows. A pulling boat is
+  the exact opposite, and that difference is the whole module.
+- Speed is a rated speed times the stroke times the fraction of oars actually
+  manned. **A six-oared gig pulled by two hands is not a six-oared gig**; she is a
+  slow boat with four oars stowed, and making the crew count matter is the point
+  of counting them.
+- A rated speed rather than a force. Turning strokes into newtons and newtons into
+  knots needs a drag model for every hull and every number in it would be
+  invented; a rated speed is one figure a builder can look up and argue with.
+- `easy oars` and `hold water` both order no speed and are different orders. Easy
+  oars means stop pulling and let her run on; hold water means put the blades in
+  and stop her, so it comes back as sharper deceleration rather than a smaller
+  number. It is the one thing a pulling boat can do that a ship under sail cannot.
+- Sail wins where a hull has both. A cutter carries a lug sail and twelve oars,
+  and which drives her depends on the wind - nobody rows a boat that is sailing,
+  and a hull doing both would be getting her speed twice. Oars take over in a calm
+  without anybody ordering it.
+- One model and two vocabularies. A kayak is a boat with one position and a double
+  blade; the plan carries which vocabulary applies and the messaging layer reads
+  it, so nobody tells a lone kayaker to give way together - and the paddled column
+  has no crew reply in it at all, because a kayaker talks to nobody.
+- Rowing is speed *through the water*, like everything else here, so rowing up a
+  stream and down it are the same work and different voyages with nothing
+  subtracting a current from anything. `pull_for` answers the question a crew
+  actually asks before setting out, including "we will never get up this river at
+  that stroke", which is a real answer worth having before an hour of trying.
+- Add `give way`, `paddle`, `stretch out`, `easy`, `hold water` and `oars`. The
+  verbs a coxswain says, rather than one verb with an argument - though `oars
+  <stroke>` exists too, for anyone driving this from a script.
+- A boat nobody is driving still goes somewhere. Sails furled and blades out of
+  the water is not the same as being moored: the stream carries her, and so does
+  the wind, in proportion to how much of her stands out of it. That is the same
+  windage a drifting cask has, from the same function, and it is why a kayak left
+  alone on a pond fetches up on the lee shore rather than staying where it was
+  let go. Skipped under canvas, where the wind is already driving her and leeway
+  says how much of that goes sideways - counting it twice would be counting the
+  same air twice.
+
+### Fix
+
+- **A vessel stopped in a tideway was not carried by it.** The tick decided
+  "she did not move" from her propulsion alone and returned before the stream was
+  ever applied, so a ship lying with no way on in a two-knot current stayed
+  exactly where she was. The early return now comes after the water and the air,
+  which is the only point at which it is fair to say nothing happened. Found while
+  giving an idle boat her windage, which had the same problem for the same reason
+  - and it had been there since currents landed.
+- `METRES_PER_SECOND_PER_KNOT` was defined in two command modules and about to be
+  needed in a third. Moved to `formatting`, once, along with a `format_speed` the
+  messaging layer needed and had no way to get - a speed formatted one way for a
+  report and another for a ship's own narration would be a tell. `commands/mooring`
+  was also redefining `FIX_RANGE` and `MAX_ANCHORING_SPEED` alongside it.
+
 - Run the LOGOUT-001 spike and write it up in `docs/logout.md`, with every claim
   pinned in `tests/test_logout.py` so that a change in Evennia shows up as a
   failing test rather than as a missing passenger. It was listed as an open

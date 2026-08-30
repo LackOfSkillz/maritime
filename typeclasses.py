@@ -31,6 +31,7 @@ from evennia.objects.objects import DefaultObject
 from .charts import Charted
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
+from .oars import Oared, braking_limits
 from .grounding import check_swept_grounding
 from .observation import Lookout
 from .sailing import Rigged, steerage_floor, leeway_angle
@@ -57,6 +58,7 @@ from .routes import Routed
 class Vessel(
     Navigator,
     Conned,
+    Oared,
     Armed,
     Laden,
     Charted,
@@ -375,9 +377,16 @@ class Vessel(
 
         orders = self.orders
         wind = self.wind_here()
+        limits = self.working_limits
         under_sail = self.sail_plan.area > 0.0 and wind.speed > 0.0
         if under_sail:
             orders = HelmOrders(heading=orders.heading, speed=self.sailing_speed())
+        elif self.under_oars:
+            # A pulling boat is the opposite of a sailing one: she is not asked how
+            # fast to go, she goes as fast as the people in her are working. Holding
+            # water is a braking order rather than a speed, so the limits move too.
+            orders = HelmOrders(heading=orders.heading, speed=self.rowing_speed())
+            limits = braking_limits(limits, self.stroke)
 
         # A crew with canvas aloft can back a headsail to shove her bow round, so
         # she is never wholly without steering. This goes in as a turn floor
@@ -392,7 +401,7 @@ class Vessel(
             orders = HelmOrders(heading=orders.heading, speed=orders.speed * (1.0 - drag))
 
         floor = steerage_floor(wind, self.sail_plan) if under_sail else 0.0
-        after = advance(before, orders, self.working_limits, elapsed, turn_floor=floor)
+        after = advance(before, orders, limits, elapsed, turn_floor=floor)
 
         if under_sail and after.speed > 0.0:
             slip = leeway_angle(after.heading, wind, self.sail_plan, after.speed)
@@ -405,13 +414,36 @@ class Vessel(
                     heading=after.heading,
                     speed=after.speed,
                 )
-        if after == before:
-            return False
-
         from . import config, environment
 
         world = self.map_here()
         now = config.time_provider().now()
+
+        # The water is moving too. She is carried in addition to whatever she is
+        # making through it, which is why her speed is untouched here - a log
+        # line measures the water going past the hull, not the ground going past
+        # the ship.
+        carried = environment.carried_from(after.position, now, elapsed)
+
+        # And so is the air. A hull with no sail set is still something standing
+        # up out of the water, so the wind pushes her - the same windage a
+        # drifting cask has. Under canvas this is skipped: the wind is already
+        # driving her, and leeway says how much of that goes sideways.
+        if not under_sail:
+            carried = self.blown_from(carried, elapsed)
+
+        after = MotionState(
+            position=carried,
+            heading=after.heading,
+            speed=after.speed,
+        )
+
+        # Only now is it fair to say nothing happened. Deciding that from her
+        # propulsion alone left a ship stopped in a tideway sitting exactly where
+        # she was, because the stream had not been applied yet - and the same
+        # would have been true of a boat blown across a pond.
+        if after == before:
+            return False
 
         # Course steered and distance logged, and nothing else. The gap this
         # opens against the truth is the current and the leeway - which is not a
@@ -419,16 +451,6 @@ class Vessel(
         dr = self.dead_reckoning
         if dr is not None:
             self.dead_reckoning = reckon(dr, after.heading, after.speed, elapsed)
-
-        # The water is moving too. She is carried in addition to whatever she is
-        # making through it, which is why her speed is untouched here - a log
-        # line measures the water going past the hull, not the ground going past
-        # the ship.
-        after = MotionState(
-            position=environment.carried_from(after.position, now, elapsed),
-            heading=after.heading,
-            speed=after.speed,
-        )
 
         # A surface vessel floats. Her elevation is decided by the water, not by
         # anything she does, so it is set rather than integrated - which is why

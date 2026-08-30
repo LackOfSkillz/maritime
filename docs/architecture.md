@@ -543,6 +543,54 @@ Set and drift come from a provider, so a tidal stream that reverses twice a day 
 steady set without any call site changing. A game that wants one steady stream sets
 `MARITIME_CURRENT_SET` and `MARITIME_CURRENT_DRIFT` and writes no code.
 
+### 8.1 Oars, paddles, and the arms behind them
+
+A sailing vessel is not asked how fast to go — she goes as fast as the wind on that
+heading allows. A pulling boat is the exact opposite: she goes as fast as the people in her
+are willing to work, and stops when they stop.
+
+```text
+speed through water = rated_speed  x  stroke effort  x  fraction of oars manned
+```
+
+Three factors, and the third is the interesting one. **A six-oared gig pulled by two hands
+is not a six-oared gig**; she is a slow boat with four oars stowed. Making the crew count
+matter is the point of counting them, and it is what makes finding a second pair of hands
+worth doing before a long pull.
+
+**A rated speed, not a force.** Turning strokes into newtons and newtons into knots needs a
+drag model for every hull, and every number in it would be invented. A rated speed is one
+figure a builder can look up, argue with, and set.
+
+**Easy oars and hold water are different orders.** Both produce no speed. Easy oars means
+stop pulling and let her run on; hold water means put the blades in and stop her — so it
+comes back as sharper deceleration rather than as a smaller number. That is the one thing a
+pulling boat can do that a ship under sail cannot.
+
+**Sail wins where both are available.** A cutter carries a lug sail and twelve oars, and
+which drives her depends on the wind: nobody rows a boat that is sailing, and a hull doing
+both would be getting her speed twice.
+
+**One model, two vocabularies.** A kayak is a boat with one position and a double blade;
+the arithmetic does not care and the words very much do, so the oar plan carries which
+vocabulary applies and the messaging layer reads it. Nobody ends up telling a lone kayaker
+to give way together.
+
+> **Invariant:** rowing is speed *through the water*, like every other speed here. Rowing
+> up a stream and down it are the same work and different voyages, and nothing subtracts a
+> current from anything to say so.
+
+**A boat nobody is driving still goes somewhere.** Sails furled and blades out of the water
+is not the same as being moored. The stream carries her and the wind pushes her, in
+proportion to how much of her stands out of the water — the same windage a drifting cask
+has, from the same function. Skipped under canvas, where the wind is already driving her.
+
+> **Invariant:** "nothing happened this tick" is decided *after* the water and the air have
+> been applied, never from her propulsion alone.
+
+Nothing here tires. What a racing stroke costs a crew is a statement about how harsh a game
+is and collides with whatever stamina the host game already has — see `DECISIONS.md`.
+
 ---
 
 ## 9. Navigation and observation

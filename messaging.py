@@ -28,8 +28,17 @@ hand differently, without reimplementing when to speak.
 from dataclasses import dataclass
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
-from .formatting import format_range
+from .formatting import format_range, format_speed
 from .cargo import VOLUME, WEIGHT, stowed_volume
+from .oars import (
+    EASY_OARS,
+    GIVE_WAY,
+    HOLD_WATER,
+    PADDLE,
+    PADDLED,
+    STRETCH_OUT,
+    hands_available,
+)
 from .observation import (
     CLASSIFIED,
     IDENTIFIED,
@@ -83,7 +92,27 @@ SINGLE_UP = "single_up"
 LET_GO = "let_go"
 WORK_THE_FIX = "work_the_fix"
 STOW_ORDER = "stow_order"
+STROKE_ORDER = "stroke_order"
 DISCHARGE_ORDER = "discharge_order"
+
+
+#: What each stroke order sounds like, called and answered, in each vocabulary.
+#:
+#: Two columns rather than one with substitutions, because they are not the same
+#: sentence with a word changed. A coxswain orders a boat's crew; a kayaker talks to
+#: nobody at all, and giving them a bowman to answer would be worse than silence.
+STROKE_CALLS = {
+    (GIVE_WAY, False): ("Give way together!", "The oars come down and she gathers way."),
+    (GIVE_WAY, True): ("You dig the blade in and settle to it.", ""),
+    (PADDLE, False): ("Paddle ahead.", "The stroke shortens and she eases off."),
+    (PADDLE, True): ("You ease off to a gentle stroke.", ""),
+    (STRETCH_OUT, False): ("Stretch out!", "Backs go into it and the boat lifts."),
+    (STRETCH_OUT, True): ("You put your back into it.", ""),
+    (EASY_OARS, False): ("Easy all.", "Blades come out and she runs on."),
+    (EASY_OARS, True): ("You lift the blade clear and let her run.", ""),
+    (HOLD_WATER, False): ("Hold water!", "Blades bite and she stops in a length and a half."),
+    (HOLD_WATER, True): ("You jam the blade in and she stops almost at once.", ""),
+}
 
 
 @dataclass(frozen=True)
@@ -538,6 +567,17 @@ class VesselNarrator:
                 called=f'You call out, "Break out {tonnes:.0f} tons of {what}."',
                 overheard=f'{who} calls out, "Break out {tonnes:.0f} tons of {what}."',
                 answered='The mate answers, "Aye sir - hands to the hatches."',
+            )
+
+        if event == STROKE_ORDER:
+            plan = detail["plan"]
+            called, answered = STROKE_CALLS[(detail["stroke"], plan.style == PADDLED)]
+            if plan.style == PADDLED:
+                return Order(called=called, overheard=f"{who} settles to a new stroke.")
+            return Order(
+                called=f'You call out, "{called}"',
+                overheard=f'{who} calls out, "{called}"',
+                answered=answered,
             )
 
         if event == ALL_STOP:
@@ -1103,6 +1143,44 @@ class VesselNarrator:
         if stowage.limit == VOLUME:
             return "she has cubed out - the holds are full"
         return "she will take more of either weight or measurement"
+
+    def oar_report(self, vessel):
+        """
+        What she is being pulled by, and what it is making.
+
+        Args:
+            vessel (Vessel): The boat.
+
+        Returns:
+            lines (tuple): Her arrangement, her crew, and both speeds.
+
+        Notes:
+            Both speeds, because in a river they are different numbers and the
+            difference is the whole story. A crew pulling two knots up a
+            one-knot stream is working exactly as hard as one making three knots
+            down it, and only the ground says so.
+
+        """
+        plan = vessel.oar_plan
+        crew = vessel.rowing_crew
+        hands = "paddler" if plan.style == PADDLED else "rower"
+        lines = [f"|w{vessel.key}|n - {plan.name}"]
+        lines.append(
+            f"  Crew       {crew} of {plan.positions} {hands}"
+            f"{'' if crew == 1 else 's'}"
+            f"  ({hands_available(plan, crew) * 100:.0f}% of her power)"
+        )
+        lines.append(f"  Stroke     {vessel.stroke.replace('_', ' ')}")
+        lines.append(f"  Through the water  {format_speed(vessel.rowing_speed())}")
+
+        made = vessel.made_good()
+        if made is not None:
+            course, over_ground = made
+            lines.append(
+                f"  Over the ground    {format_speed(over_ground)}, "
+                f"course {spell_bearing(course)}"
+            )
+        return tuple(lines)
 
     def passage_made(self):
         """

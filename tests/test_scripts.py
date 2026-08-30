@@ -200,6 +200,12 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "stow",
                 "discharge",
                 "manifest",
+                "give way",
+                "paddle",
+                "stretch out",
+                "easy",
+                "hold water",
+                "oars",
                 "@maritime",
             },
         )

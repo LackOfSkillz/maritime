@@ -41,6 +41,7 @@ from .events import Delivery, Event, EventBus
 from .cmdsets import HelmCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
 from .formatting import (
+    METRES_PER_SECOND_PER_KNOT,
     DEPTH_UNITS,
     DISTANCE_UNITS,
     FATHOMS,
@@ -274,6 +275,23 @@ from .spatial import (
     nearest_on_track,
     track_entry,
 )
+from .oars import (
+    EASY_OARS,
+    GIVE_WAY,
+    HOLD_WATER,
+    OAR_PLANS,
+    PADDLE,
+    PADDLED,
+    ROWED,
+    STRETCH_OUT,
+    STROKES,
+    OarPlan,
+    Oared,
+    braking_limits,
+    hands_available,
+    reach,
+    rowed_speed,
+)
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -369,6 +387,7 @@ __all__ = (
     "METRES_PER_CABLE",
     "METRES_PER_LEAGUE",
     "METRES_PER_FATHOM",
+    "METRES_PER_SECOND_PER_KNOT",
     "bearing_difference",
     # commands
     "HelmCmdSet",
@@ -483,6 +502,22 @@ __all__ = (
     "VOLUME",
     "NEITHER",
     "DEFAULT_BROKEN_STOWAGE",
+    # oars
+    "OarPlan",
+    "Oared",
+    "OAR_PLANS",
+    "STROKES",
+    "rowed_speed",
+    "hands_available",
+    "braking_limits",
+    "reach",
+    "ROWED",
+    "PADDLED",
+    "GIVE_WAY",
+    "PADDLE",
+    "STRETCH_OUT",
+    "EASY_OARS",
+    "HOLD_WATER",
     # weather
     "Weather",
     "MaritimeWeatherProvider",

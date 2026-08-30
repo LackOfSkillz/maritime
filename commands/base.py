@@ -5,10 +5,8 @@ The base every maritime command shares, and the units they speak in.
 
 from evennia.commands.command import Command
 
+from ..formatting import METRES_PER_SECOND_PER_KNOT
 from ..typeclasses import Vessel
-
-# One knot is one nautical mile per hour, and a nautical mile is 1852 metres.
-METRES_PER_SECOND_PER_KNOT = 1852.0 / 3600.0
 
 # How far off a landmark can be and still be worth a bearing, in metres. The
 # same reach as a berth search, because a quay you could tie up to is

@@ -38,6 +38,11 @@ _CABLE_NAMES = ("", "one", "two", "three", "four", "five", "six", "seven", "eigh
 # and named here for what it means when you are reading a position rather than a
 # distance.
 METRES_PER_MINUTE = METRES_PER_NAUTICAL_MILE
+
+# One knot is one nautical mile in an hour. Defined here, once, because three
+# separate modules had each worked it out for themselves - which is fine until one
+# of them is corrected and the others are not.
+METRES_PER_SECOND_PER_KNOT = METRES_PER_NAUTICAL_MILE / 3600.0
 MINUTES_PER_DEGREE = 60.0
 
 # Presentation styles for position. `nautical` is what a player should see; `raw`
@@ -217,6 +222,39 @@ def format_range(metres, units=None):
         leagues = metres / METRES_PER_LEAGUE
         return f"{leagues:.1f} leagues"
     return f"{miles:.1f} miles"
+
+
+def format_speed(metres_per_second, units=None):
+    """
+    Say a speed the way it would be reported.
+
+    Args:
+        metres_per_second (float): Speed through the water or over the ground.
+        units (str, optional): One of `DISTANCE_UNITS`. Defaults to the
+            configured scheme.
+
+    Returns:
+        text (str): e.g. `"6.6 knots"`, `"12.2 km/h"`, `"3.40 m/s"`.
+
+    Notes:
+        A knot is one nautical mile in an hour, which is why every distance
+        scheme except the metric one reports speed in knots - they all measure
+        distance in nautical miles underneath, and leagues are only a way of
+        saying three of them at once.
+
+        Lives here rather than in the command layer because the messaging layer
+        needs it too, and a speed formatted one way for a report and another way
+        for a ship's own narration would be a tell.
+
+    """
+    if units is None:
+        units = config.get_setting("DISTANCE_UNITS", LEAGUES)
+
+    if units == RAW:
+        return f"{metres_per_second:.2f} m/s"
+    if units == METRIC:
+        return f"{metres_per_second * 3.6:.1f} km/h"
+    return f"{metres_per_second / METRES_PER_SECOND_PER_KNOT:.1f} knots"
 
 
 def format_depth(metres, units=None):

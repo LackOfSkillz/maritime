@@ -15,7 +15,8 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 **Early development.** Working and tested: the foundations, the spatial model and a tiled
 seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
-tactical geometry, weapons, the projected ocean for anyone in the water, and cargo. Not
+tactical geometry, weapons, the projected ocean for anyone in the water, cargo, and
+oars. Not
 built: crew and authority, damage, boarding, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
@@ -148,7 +149,7 @@ spare — the same water, and the cargo is the whole difference.
 
 ## Design
 
-Thirteen ideas do most of the work. `docs/architecture.md` has the rest.
+Fourteen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -213,6 +214,15 @@ on her outline and something small enough fits between them — two metres of ro
 metres off the centreline of a six-metre beam, as it turns out — so an authored hazard is
 tested against the whole corridor she swept instead. She is stopped where she *enters* it,
 because closest approach is on the far side of a rock she has by then sailed through.
+
+**A pulling boat is the opposite of a sailing one.** A ship is not asked how fast to go —
+she goes as fast as the wind on that heading allows. A boat under oars goes as fast as the
+people in her are working, so her speed is a rated speed times the stroke times the
+*fraction of oars actually manned*: a six-oared gig pulled by two hands is a slow boat with
+four oars stowed. Sail wins where a hull has both, because nobody rows a boat that is
+sailing — and oars take over in a calm without anybody ordering it. A boat nobody is
+driving is not a boat that stays put: the stream carries her and the wind nudges her by her
+own windage, which is why a kayak left alone on a pond ends up against the lee shore.
 
 **A hull has two capacities and they are not interchangeable.** Deadweight is the mass she
 can carry before she is too deep; hold volume is the space the cargo occupies. Stowage
@@ -446,7 +456,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1550 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1620 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -456,6 +466,11 @@ would take half an hour of wall time runs in milliseconds.
 - Cargo has no price. Contracts, freight rates, who is buying and what a voyage is worth
   are the game's own economy, and shipping an opinion about them would collide with
   whatever it already has. Recorded in `DECISIONS.md`.
+- Nothing tires. A crew can hold a racing stroke across an ocean, because what that costs
+  them collides with whatever stamina the host game already has. `rowed_speed` takes the
+  crew count as an argument rather than reading it off the boat, so a game that wants a
+  tiring crew supplies a smaller number and everything downstream follows. In
+  `DECISIONS.md`.
 - Being tender is reported and costs her nothing. What top-heavy loading should actually
   do to a ship reaches into sailing and damage at once, and both of those decisions are
   the game's.

@@ -393,3 +393,31 @@ class TestCmdCurrent(EmptySeaMixin, BaseEvenniaCommandTest):
         with override_settings(MARITIME_CURRENT_SET=EAST, MARITIME_CURRENT_DRIFT=2.0):
             output = self.call(CmdCurrent(), "")
         self.assertNotIn("makes good", output)
+
+
+class TestStoppedInATideway(EmptySeaMixin, BaseEvenniaTest):
+    """
+    A vessel with no way on is not a vessel nothing is happening to.
+
+    Notes:
+        The tick used to decide "she did not move" from her propulsion alone and
+        return before the stream was ever applied, so a ship lying stopped in a
+        two-knot tideway stayed exactly where she was. Found while giving an idle
+        boat her windage, which had the same problem for the same reason.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Hoy")
+        self.hull.length, self.hull.beam = 20.0, 6.0
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.hull.motion_limits = MotionLimits(max_speed=5.0, acceleration=0.5, turn_rate=5.0)
+
+    @override_settings(MARITIME_CURRENT_SET=90.0, MARITIME_CURRENT_DRIFT=1.0)
+    def test_the_stream_carries_her_with_no_way_on(self):
+        self.assertTrue(self.hull.at_maritime_tick(60.0))
+        self.assertAlmostEqual(self.hull.maritime_position.x, 60.0, places=3)
+
+    def test_slack_water_leaves_her_alone(self):
+        self.assertFalse(self.hull.at_maritime_tick(60.0))

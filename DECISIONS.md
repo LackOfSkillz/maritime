@@ -174,3 +174,36 @@ happens by default.
 
 **What it needs from you:** a direction, before damage. It also interacts with whether
 logging out at sea is allowed at all, which is the same question from the other end.
+
+---
+
+## What pulling an oar costs
+
+**Raised by:** oars and paddles.
+**Blocks:** nothing built. It blocks whether a long pull is a decision or a formality.
+
+A crew can hold a working stroke for an hour and a racing stroke for a few minutes. The
+system knows the difference in *rate* - `STRETCH_OUT` is faster than `GIVE_WAY` - and
+nothing about the difference in cost, so at present a boat can be raced across an ocean.
+
+The trouble is the same one being in the water has: stamina, exhaustion and injury already
+exist in whatever game installs this, or are deliberately absent from it, and a maritime
+contrib that shipped its own would either duplicate the game's or argue with it.
+
+The options, as far as I can see them:
+
+1. **The contrib does nothing.** Rowing is free; the game tires people if it wants to.
+   Cleanest separation, and it makes the stroke orders decorative.
+2. **The contrib exposes a hook and no rule** - who is pulling, at what stroke, for how
+   long - and the game decides what that costs them.
+3. **A sustainable-stroke rule with configurable numbers**: above a named stroke, she
+   slows after a set time. Contained, and it makes an opinion about endurance the default
+   for every game.
+
+**What I did:** option 1, and the arithmetic is arranged so that any of them can be added
+without changing a call site. `rowed_speed` already takes the crew count as an argument
+rather than reading it off the boat, so a game that wants a tiring crew supplies a smaller
+effective number and everything downstream follows.
+
+**What it needs from you:** a direction. It pairs with the water-survival question rather
+than standing alone - both are about what a body can take.

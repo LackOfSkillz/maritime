@@ -41,6 +41,14 @@ from .pilotage import (
     CmdWeather,
     CmdWind,
 )
+from .rowing import (
+    CmdEasyOars,
+    CmdGiveWay,
+    CmdHoldWater,
+    CmdOars,
+    CmdPaddleStroke,
+    CmdStretchOut,
+)
 from .mooring import BERTH_REFUSALS, CmdAnchor, CmdCastOff, CmdDock, CmdWeighAnchor
 from .sail import CmdSail
 from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
@@ -48,6 +56,12 @@ from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
 __all__ = (
     "MaritimeCommand",
     "CmdStow",
+    "CmdGiveWay",
+    "CmdPaddleStroke",
+    "CmdStretchOut",
+    "CmdEasyOars",
+    "CmdHoldWater",
+    "CmdOars",
     "CmdDischarge",
     "CmdManifest",
     "vessel_of",
