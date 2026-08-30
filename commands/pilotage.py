@@ -271,3 +271,157 @@ class CmdSound(MaritimeCommand):
             self.aboard(vessel, f"{report} That is {under}. Shoal water, sir.")
             return
         self.aboard(vessel, f"{report} That is {under}.")
+
+
+class CmdChart(MaritimeCommand):
+    """
+    Read what the chart says about the water here.
+
+    Usage:
+      chart
+
+    A chart is knowledge, not the sea. It covers only where somebody surveyed, it
+    is only as good as they were, and it has been going out of date since the day
+    it was drawn. Its soundings are against the datum, so the tide is yours to
+    apply - which is how a careful sailor still goes aground on a bank marked
+    deep enough.
+
+    Compare it with `sound`, which is the truth and reaches only as far as the
+    lead line.
+
+    """
+
+    key = "chart"
+    aliases = ("read chart", "charts")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        from ..config import time_provider
+
+        position = vessel.maritime_position
+        if position is None:
+            self.caller.msg("She is not afloat anywhere a chart covers.")
+            return
+
+        chart = vessel.chart_here()
+        if chart is None:
+            if not vessel.charts:
+                self.caller.msg("There is not a chart aboard her.")
+            else:
+                self.caller.msg(
+                    "You are off the edge of every chart she carries. "
+                    "There are no soundings here at all."
+                )
+            return
+
+        now = time_provider().now()
+        quality = chart.quality_at(now)
+        depth = vessel.charted_depth()
+
+        self.caller.msg(f"{chart.key}, surveyed by {chart.maker}.")
+        self.caller.msg(f"  Charted depth at datum   {format_depth(depth)}")
+        self.caller.msg(f"  Confidence               {self.confidence(quality)}")
+
+    def confidence(self, quality):
+        """
+        Args:
+            quality (float): How good the chart is now, from 0 to 1.
+
+        Returns:
+            text (str): What a navigator would say about it.
+
+        """
+        if quality >= 0.9:
+            return "a good survey, recently made"
+        if quality >= 0.7:
+            return "sound enough, though not new"
+        if quality >= 0.4:
+            return "old, and not to be leaned on"
+        return "a rumour with a compass rose on it"
+
+
+class CmdPlot(MaritimeCommand):
+    """
+    Plot a course to a mark, by way of safe water.
+
+    Usage:
+      plot <mark>
+      plot
+
+    Lays a route from the nearest mark to the one you name, following the water
+    somebody has said is passable rather than a straight line across a headland.
+    With no argument, reports the course she is already following.
+
+    """
+
+    key = "plot"
+    aliases = ("course", "route")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        from ..config import navigation_network
+
+        position = vessel.maritime_position
+        if position is None:
+            self.caller.msg("She is not afloat.")
+            return
+
+        if not self.args.strip():
+            self.report(vessel)
+            return
+
+        network = navigation_network()
+        here = network.nearest(position)
+        if here is None:
+            self.caller.msg("There is not a mark laid in these waters.")
+            return
+
+        wanted = self.args.strip().lower()
+        destination = network.waypoint(wanted)
+        if destination is None:
+            self.caller.msg(f"No mark called '{self.args.strip()}'.")
+            return
+
+        route = network.plan(here.key, destination.key)
+        if not route:
+            self.caller.msg(
+                f"There is no safe water laid between {here.key} and {destination.key}."
+            )
+            return
+
+        vessel.route = route
+        self.caller.msg(
+            f"Course plotted by way of {len(route)} marks, "
+            f"{format_range(route.distance)} in all:"
+        )
+        for mark in route.waypoints:
+            self.caller.msg(f"  {mark.key}")
+
+    def report(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull.
+
+        """
+        if not vessel.route:
+            self.caller.msg("She is following no course.")
+            return
+        mark = vessel.next_mark()
+        if mark is None:
+            self.caller.msg("She has run her course; there is no mark left to make.")
+            return
+        position = vessel.maritime_position
+        bearing = spell_bearing(position.bearing_to(mark.position))
+        self.caller.msg(
+            f"Making for {mark.key}, {bearing}, "
+            f"{format_range(position.horizontal_distance_to(mark.position))}. "
+            f"{format_range(vessel.passage_remaining())} to run in all."
+        )

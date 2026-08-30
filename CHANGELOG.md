@@ -13,6 +13,25 @@ combat and damage are not.
 
 ### Feat
 
+- Add charts, which are knowledge of the sea rather than the sea. A chart covers
+  a rectangle, was made by somebody at a moment, and is wrong - but wrong in the
+  *same places every time*, because the error is a deterministic function of its
+  seed and the position rather than fresh noise per reading. Noise regenerated on
+  every glance would be unlearnable; this way a bad patch is a place on the paper
+  and a pilot who has caught it out once knows to sound there.
+- Charted soundings are given at the datum, never at the present tide. Applying
+  the state of the tide is the navigator's job, and doing it for them would
+  remove the commonest way a careful sailor still goes aground.
+- Being off the chart is its own state. A vessel outside her coverage has no
+  soundings at all, which reads very differently from having bad ones.
+- Add routes: marks a game has authored, and Dijkstra over the safe water between
+  them, weighted by real distance. Which channels are passable is knowledge a
+  pilot has and an algorithm does not - a planner that searched the seabed would
+  find every gap a hull could theoretically fit through, including the ones no
+  master would take at night.
+- Add `chart` and `plot`, and `MARITIME_NAVIGATION_NETWORK` for a game to lay its
+  own marks. Phase 9 is complete.
+
 - Add `scan`, which sweeps the whole horizon quarter by quarter and names the
   empty quarters as well as the full ones. A lookout who only mentions what he
   can see leaves you unable to tell "nothing there" from "nobody looked".
@@ -217,6 +236,11 @@ combat and damage are not.
   by, below you feel her heel and hear water on the planking.
 
 ### Fix
+
+- Progress along a route is carried rather than derived from position. Taking
+  "the first mark she is not near" looks right until she reaches the end, at
+  which point the first mark is the furthest away and she is sent back to the
+  beginning of the passage. Found by the tests before it ever ran.
 
 - A vessel could not find her own compartments after `ShipRoom` moved module.
   Evennia stores a typeclass as a dotted path and the manager filters on that

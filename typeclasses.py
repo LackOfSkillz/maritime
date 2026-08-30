@@ -25,6 +25,7 @@ side effect of assignment.
 
 from evennia.objects.objects import DefaultObject
 
+from .charts import Charted
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
 from .grounding import check_swept_grounding
@@ -42,9 +43,20 @@ from .traffic import traffic
 # fail at startup; it would produce rooms that fail to resolve their typeclass one at
 # a time as they are loaded, which is a considerably worse way to find out.
 from .rooms import Compartmented, ShipRoom  # noqa: F401
+from .routes import Routed
 
 
-class Vessel(Navigator, Berthing, Lookout, Rigged, Situated, Compartmented, DefaultObject):
+class Vessel(
+    Navigator,
+    Charted,
+    Routed,
+    Berthing,
+    Lookout,
+    Rigged,
+    Situated,
+    Compartmented,
+    DefaultObject,
+):
     """
     A ship, as an Evennia object.
 

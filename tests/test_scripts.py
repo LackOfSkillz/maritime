@@ -185,6 +185,8 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "weigh anchor",
                 "dock",
                 "fix",
+                "chart",
+                "plot",
                 "look",
                 "watch",
                 "cast off",

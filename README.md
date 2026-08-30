@@ -193,6 +193,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_CURRENT_SET` | `0.0` | Bearing the water flows *towards* |
 | `MARITIME_CURRENT_DRIFT` | `0.0` | How fast it flows, in metres per second |
 | `MARITIME_CURRENT_PROVIDER` | slack water | Dotted path, for a tidal stream |
+| `MARITIME_NAVIGATION_NETWORK` | no marks | Dotted path to the game's marks and channels |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
@@ -211,6 +212,8 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `wind` | Where the wind is from and how she lies to it |
 | `current` | Set and drift, and the course she is making good |
 | `fix` | Fix her position off a landmark, and learn the set |
+| `chart` | What the paper says is under her, and how far to trust it |
+| `plot <mark>` | Lay a course by way of safe water |
 | `speed <knots>` | Order a speed, for vessels not under sail |
 | `allstop` | Take the way off her |
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
@@ -357,7 +360,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1030 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1080 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations

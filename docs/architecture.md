@@ -457,6 +457,26 @@ quarters over because it is shorter and harder to mishear than the alternative, 
 bottom with this line"* past twenty fathoms. The distinction is not decoration: it is the
 difference between a depth a leadsman felt and one he counted.
 
+Built, in `charts.py`. A chart covers a rectangle of sea, was made by somebody at a moment,
+and is wrong — but **wrong in the same places every time**, because the error is a
+deterministic function of the chart's seed and the position rather than fresh noise per
+reading. That distinction is the whole feature: noise regenerated on every glance would be
+unlearnable, and a navigator could never come to distrust one particular approach. Age
+degrades a survey but never to nothing, because the coast stays where it was.
+
+Being *off* the chart is its own state, and reads very differently from having bad
+soundings.
+
+Routes, in `routes.py`, are laid over marks a game has authored rather than pathfound across
+the seabed. Which waters are passable is knowledge a pilot has and an algorithm does not — a
+planner that searched the ground would find every gap a hull could theoretically fit
+through, including the ones no master would take at night. Dijkstra over the authored links,
+weighted by real distance, planned once and then sailed continuously.
+
+**Progress along a route is state, not geometry.** Deriving it from position — "the first
+mark she is not near" — looks right until she reaches the end, at which point the first mark
+is the furthest away and she is sent back to the beginning. Tests caught exactly that.
+
 Charts are *knowledge of* the world, not the world. A chart's soundings are surveyed values
 against the datum; applying the tide is the navigator's job, and a bad chart is a real
 hazard.
@@ -714,7 +734,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
 | 7 | Ports | done | Sized berths, approach preconditions, gangway as a real exit, `dock` and `cast off` |
 | 8 | Observation | done | Horizon, height of eye, contacts, `lookout`, and a deck that describes the sea outside it |
-| 9 | Navigation | partial | Dead reckoning, estimated position, error that is the water she could not see, and fixes off known landmarks. Charts and route planning do not exist |
+| 9 | Navigation | done | Dead reckoning, estimated position, error that is the water she could not see, fixes off landmarks, charts that are wrong in fixed places, and routes laid over authored marks |
 | 10 | Minimal crew automation | — | Hold a heading, manage sail, follow a route, approach a destination |
 | 11 | Strategic representation | — | Strategic records, analytical travel, materialisation, benchmarks at 100/500/1000 |
 | 12 | Weather and sea state | — | Replaces the single global wind and the single global visibility |

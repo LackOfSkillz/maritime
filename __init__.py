@@ -19,6 +19,13 @@ from .bathymetry import (
     MaritimeMapProvider,
     MaritimeTideProvider,
 )
+from .charts import (
+    Chart,
+    best_chart_for,
+    charted_bottom_at,
+    charted_depth_at,
+    charted_terrain_z_at,
+)
 from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
 from .currents import (
     STILL,
@@ -135,6 +142,7 @@ from .ports import (
     can_dock,
     nearest_berth,
 )
+from .routes import NavigationNetwork, Route, Waypoint
 from .rooms import PortRoom, ShipRoom, berths_near, rig_gangway, unrig_gangway
 from .scheduler import FairQueue
 from .sailing import (
@@ -207,6 +215,14 @@ __all__ = (
     "ShipRoom",
     "PortRoom",
     # navigation
+    "Chart",
+    "charted_depth_at",
+    "charted_terrain_z_at",
+    "charted_bottom_at",
+    "best_chart_for",
+    "Waypoint",
+    "Route",
+    "NavigationNetwork",
     "DeadReckoning",
     "reckon",
     "take_fix",

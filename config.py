@@ -32,6 +32,7 @@ from evennia.utils.utils import class_from_module
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
 from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
 from .messaging import VesselNarrator
+from .routes import NavigationNetwork
 from .observation import DEFAULT_VISIBILITY
 from .clock import MaritimeTimeProvider
 from .rng import RNGContext
@@ -229,3 +230,26 @@ def current_provider():
             )
         )
     return load_class(path, expected=MaritimeCurrentProvider)()
+
+
+def navigation_network():
+    """
+    Build the game's network of navigational marks.
+
+    Returns:
+        network (NavigationNetwork): The marks and the safe water between them.
+            Empty if the game has laid none, which simply means no route can be
+            plotted rather than that plotting is broken.
+
+    Raises:
+        TypeError: If the configured class is not a navigation network.
+
+    Notes:
+        Which waters are passable is a game's statement about its own world, so
+        the network is authored and loaded rather than derived from the seabed.
+
+    """
+    path = get_setting("NAVIGATION_NETWORK")
+    if not path:
+        return NavigationNetwork()
+    return load_class(path, expected=NavigationNetwork)()
