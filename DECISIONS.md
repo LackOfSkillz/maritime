@@ -135,3 +135,42 @@ is already there. `stowed_moment` is signed relative to the main deck, so a stow
 high is a positive number rather than a flag somebody has to set.
 
 **What it needs from you:** a direction, and probably alongside damage rather than before it.
+
+---
+
+## What becomes of an offline player when she sinks
+
+**Raised by:** the LOGOUT-001 spike.
+**Blocks:** nothing built. It blocks phase 17, which cannot break a hull up without
+deciding this.
+
+The spike answered the engine half and it turned out to matter more than expected. Evennia
+takes an unpuppeted character off the grid entirely - `location` becomes `None` and the
+room is remembered in `prelogout_location`. When that room is deleted, the attribute reads
+back as `None` and the character is put in their `home` room the next time they log in,
+with no message and nothing anybody can hook.
+
+So there is already a policy, and nobody chose it: **everyone aboard survives, and is
+teleported home without being told.** A game that never decides this will ship that.
+
+The options, as far as I can see them:
+
+1. **Keep the engine's default.** Foundering is survivable if you were offline. Cheapest,
+   and quietly makes logging out the safest thing you can do in a storm.
+2. **Resolve them like anybody else** - put them in the water, in a boat, or drowned, at
+   the moment she goes, whether or not they are logged in. Consistent, and it means a
+   player can lose a character while asleep.
+3. **Hold them.** Do not resolve an offline passenger at all; leave the compartment alive
+   until they log in and then tell them what happened. Kindest, and it means a sunk ship's
+   rooms cannot be cleaned up on a schedule.
+4. **Do not allow logging out at sea** in the first place, the way some games only let you
+   quit in an inn.
+
+**What I did:** nothing that presumes an answer, and one thing that makes any of them
+possible. `Vessel.ships_company()` and `rooms.absent_from()` find the offline passengers
+that `room.contents` cannot see, so whichever policy you pick, the people it applies to can
+actually be enumerated. Without that, options 2 and 3 are not implementable and option 1
+happens by default.
+
+**What it needs from you:** a direction, before damage. It also interacts with whether
+logging out at sea is allowed at all, which is the same question from the other end.

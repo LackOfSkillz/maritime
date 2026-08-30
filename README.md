@@ -446,7 +446,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1530 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1550 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -490,6 +490,11 @@ would take half an hour of wall time runs in milliseconds.
   actually sailed.
 - Spatial indexes are a linear scan. The interface is settled; the structure behind it
   lands when there is real traffic to measure it against.
+- Nothing decides what happens to an offline passenger aboard a vessel that founders.
+  Evennia's default is that they survive and are teleported home without being told, which
+  is a policy nobody chose; `Vessel.ships_company()` exists so that any other policy is
+  implementable, and the question is in `DECISIONS.md`. The engine behaviour behind it is
+  written up in `docs/logout.md`.
 - Narration is addressed to compartments, not to people. A ship can tell the deck one
   thing and the hold another, but cannot yet tell the captain and a deck hand standing
   side by side two different things. The ship's own cry uses her highest weather deck, so

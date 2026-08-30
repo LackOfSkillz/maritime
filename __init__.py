@@ -217,7 +217,15 @@ from .ports import (
     nearest_berth,
 )
 from .routes import NavigationNetwork, Route, Waypoint
-from .rooms import PortRoom, ShipRoom, berths_near, rig_gangway, unrig_gangway
+from .rooms import (
+    PortRoom,
+    ShipRoom,
+    absent_from,
+    berths_near,
+    everyone_in,
+    rig_gangway,
+    unrig_gangway,
+)
 from .scheduler import FairQueue
 from .sailing import (
     FULL,
@@ -331,6 +339,8 @@ __all__ = (
     "nearest_berth",
     "alongside_side",
     "berths_near",
+    "absent_from",
+    "everyone_in",
     "rig_gangway",
     "unrig_gangway",
     "APPROACH_RANGE",

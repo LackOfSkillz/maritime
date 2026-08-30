@@ -753,6 +753,12 @@ mid-loop leaves some occupants moved and others sitting in rooms already marked 
 
 > **Invariant:** ship rooms are never deleted while occupants or contents remain unresolved.
 
+That invariant cannot be enforced by reading `room.contents`, which is the obvious way to
+try. Evennia takes an unpuppeted character off the grid entirely, so an offline passenger is
+in no room's contents at all — measured in `docs/logout.md`. `Vessel.ships_company()` is the
+list that has to be resolved; walking the compartments finds only whoever happened to be
+logged in.
+
 ---
 
 ## 13. Boarding
@@ -990,15 +996,17 @@ at the repository root. This section is the design's own list; that file is the 
 
 Unresolved on purpose. Recording them beats settling them badly.
 
+**LOGOUT-001 is answered** and has moved out of this list — see `docs/logout.md`, with the
+behaviour pinned in `tests/test_logout.py`. The headline: an unpuppeted character is taken
+off the grid entirely, so `room.contents` is *not* the list of people aboard, and no leave
+hook fires. Reconnect restores the room, and because a compartment holds no position that
+restores the right position for free. A deleted room sends offline passengers home,
+silently, which is a policy nobody chose.
+
 **Tactical pacing.** Does close-quarters play stay at the host game's time ratio, or slow?
 At 4:1 a player may not have the reaction time for close manoeuvring, collision avoidance or
 a boarding approach. World travel stays tied to world time regardless; only tactical pacing
 is in question.
-
-**LOGOUT-001.** What Evennia actually does when a character disconnects — does an unpuppeted
-character stay in its room, does reconnect restore location, what happens if that room is
-gone, which hooks fire. A prerequisite spike for passenger persistence, and cheaper to
-answer than to guess.
 
 **Offline loss policy.** What becomes of an offline player aboard a vessel that founders.
 Game policy, not engine behaviour, but the engine has to expose the seam.

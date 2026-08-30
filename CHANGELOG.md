@@ -13,6 +13,34 @@ combat and damage are not.
 
 ### Feat
 
+- Run the LOGOUT-001 spike and write it up in `docs/logout.md`, with every claim
+  pinned in `tests/test_logout.py` so that a change in Evennia shows up as a
+  failing test rather than as a missing passenger. It was listed as an open
+  question because guessing would have been cheap now and expensive later; it
+  turned out to matter more than expected.
+- **`room.contents` is not the list of people aboard.** Evennia takes an
+  unpuppeted character off the grid entirely - `location` becomes `None` and the
+  room is remembered in `prelogout_location` - so an offline passenger is in no
+  room's contents at all. Every obvious way of asking who is on this ship misses
+  them, including the one the architecture's own destruction invariant invites.
+- Add `rooms.absent_from`, `rooms.everyone_in` and `Vessel.ships_company()`, which
+  find them. Without these, the invariant about resolving everyone aboard before a
+  hull is broken up is unenforceable by the means anybody would reach for.
+- **No hook fires when a character logs out.** `at_post_unpuppet` sets
+  `location = None` directly, and Evennia's location setter fires no move hooks at
+  all - it updates the foreign key and returns. `at_object_receive` is then called
+  explicitly on the way back in. A room hears people arrive and never hears them
+  leave, so anything counting occupants from move hooks over-counts by exactly the
+  number of players who logged out there.
+- The good half, and it is genuinely good: a passenger restored to a remembered
+  cabin arrives wherever the ship has since sailed. Nothing stored a coordinate
+  for them and nothing had to, because a compartment holds no position. Measured -
+  logged out at x=1000, ship sailed to x=5000, logged in at 5000. Had ships been
+  moving rooms this would have needed a reconciliation pass on every login.
+- A deleted room sends offline passengers home, silently. That is a policy arrived
+  at by accident, and it is now in `DECISIONS.md` with the engine's actual
+  behaviour attached rather than a guess.
+
 - Add map tiles, which completes phase 2. The seabed is authored a square at a
   time: a base elevation, what the ground is made of, and whatever discrete
   hazards stand on it. A vessel loads only the tiles her track crosses, which is

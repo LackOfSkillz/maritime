@@ -355,6 +355,64 @@ class PortRoom(DefaultRoom):
         return f"<PortRoom {self.key} at {self.maritime_position}>"
 
 
+def absent_from(room):
+    """
+    Characters who are logged out but belong in this room.
+
+    Args:
+        room (Object): The compartment to ask about.
+
+    Returns:
+        absent (tuple): Characters whose last location was here.
+
+    Notes:
+        **`room.contents` is not the list of people aboard.** Evennia takes an
+        unpuppeted character off the grid entirely - `at_post_unpuppet` sets
+        `location = None` and remembers the room in `prelogout_location` - so
+        somebody who logged out in a cabin is in no room's contents at all. That
+        was measured rather than assumed; see `docs/logout.md`.
+
+        This matters most where it is least visible. Enumerating a ship's
+        compartments to resolve everybody aboard before she is broken up would
+        find every passenger who happened to be online and silently miss every
+        one who was not.
+
+        Implemented as an indexed query for off-grid objects, then a check in
+        Python. The set of logged-out characters is small and the alternative -
+        filtering on the attribute value - would mean matching Evennia's own
+        packing of an object reference, which is an implementation detail and
+        not a promise.
+
+    """
+    from evennia.objects.models import ObjectDB
+
+    return tuple(
+        obj
+        for obj in ObjectDB.objects.filter(db_location__isnull=True)
+        if obj.db.prelogout_location == room
+    )
+
+
+def everyone_in(room):
+    """
+    Everybody who belongs in a room, present or logged out.
+
+    Args:
+        room (Object): The compartment to ask about.
+
+    Returns:
+        occupants (tuple): Its contents, then whoever is stowed away from it.
+
+    Notes:
+        What "who is aboard" has to mean anywhere it decides a fate - flooding,
+        capture, breaking a hull up. Exits are left out, since a gangway is not a
+        passenger.
+
+    """
+    present = tuple(obj for obj in room.contents if not obj.destination)
+    return present + absent_from(room)
+
+
 def rig_gangway(deck, quay):
     """
     Put a gangway between a ship's deck and a quay.
@@ -541,3 +599,23 @@ class Compartmented:
         """
         rooms = [room for room in (self.db.compartments or ()) if room and room.pk]
         return tuple(sorted(rooms, key=lambda room: room.deck_level))
+
+    def ships_company(self):
+        """
+        Everybody aboard her, logged in or not.
+
+        Returns:
+            aboard (tuple): Every character and object in her compartments,
+                including those Evennia has stowed away on logout.
+
+        Notes:
+            The list that has to be resolved before she is ever broken up. Walking
+            `room.contents` alone would miss every offline passenger, because an
+            unpuppeted character is in no room at all - see `absent_from` and
+            `docs/logout.md`.
+
+        """
+        aboard = []
+        for room in self.ship_rooms:
+            aboard.extend(everyone_in(room))
+        return tuple(aboard)
