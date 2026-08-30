@@ -188,6 +188,8 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "fix",
                 "chart",
                 "plot",
+                "follow",
+                "belay",
                 "look",
                 "watch",
                 "cast off",

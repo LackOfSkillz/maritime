@@ -35,6 +35,7 @@ from .position import WorldPosition, normalize_bearing
 from .environment import Situated
 from .ports import Berthing
 from .traffic import traffic
+from .voyage import Conned
 from .weather import sea_drag
 
 # ShipRoom lives in rooms.py now, and is imported here for `ship_rooms` below - but
@@ -49,6 +50,7 @@ from .routes import Routed
 
 class Vessel(
     Navigator,
+    Conned,
     Charted,
     Routed,
     Berthing,
@@ -384,6 +386,8 @@ class Vessel(
         if self.held_by():
             self.take_way_off()
             return False
+
+        self.work_her()
 
         before = MotionState(position=position, heading=self.heading, speed=self.speed)
 

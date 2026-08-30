@@ -129,6 +129,74 @@ class CmdWind(MaritimeCommand):
         )
 
 
+class CmdFollow(MaritimeCommand):
+    """
+    Hand the course to the sailing master.
+
+    Usage:
+      follow
+
+    He steers for the next mark of the plotted course, allowing for the set,
+    carries whatever the wind will let her carry, and takes the way off her
+    coming up to the last one. He gives the con back when the passage is made.
+
+    He does nothing else. He will not evade, divert, shorten for a lee shore or
+    make any judgement beyond the four above - those are standing orders, and
+    they are not his to give.
+
+    """
+
+    key = "follow"
+    aliases = ("follow course", "make passage")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        if not vessel.route:
+            self.caller.msg("There is no course plotted for him to follow.")
+            return
+        if vessel.next_mark() is None:
+            self.caller.msg("The course is run; there is no mark left to make.")
+            return
+
+        vessel.under_con = True
+        self.caller.msg('You call out, "Sailing master, take the con."')
+        self.announce(f'{self.caller.key} calls out, "Sailing master, take the con."')
+        self.aboard(vessel, 'The sailing master answers, "I have her, sir."')
+
+
+class CmdBelay(MaritimeCommand):
+    """
+    Take the con back from the sailing master.
+
+    Usage:
+      belay
+
+    She holds whatever heading and canvas she had, and answers you again.
+
+    """
+
+    key = "belay"
+    aliases = ("take the con", "stand down")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        if not vessel.under_con:
+            self.caller.msg("You have the con already.")
+            return
+        vessel.under_con = False
+        self.caller.msg('You call out, "I have her."')
+        self.announce(f'{self.caller.key} calls out, "I have her."')
+        self.aboard(vessel, 'The sailing master answers, "You have her, sir."')
+
+
 class CmdWeather(MaritimeCommand):
     """
     Report the weather: the wind, the sea and how far you can see.

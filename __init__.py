@@ -121,6 +121,7 @@ from .resolver import (
     has_world_position,
     resolve_chain,
 )
+from .voyage import approach_speed, course_for_mark, sail_for_wind
 from .weather import (
     SEA_STATES,
     FlatWeatherProvider,
@@ -313,6 +314,10 @@ __all__ = (
     "drift_offset",
     "made_good",
     "course_to_steer",
+    # the sailing master
+    "course_for_mark",
+    "sail_for_wind",
+    "approach_speed",
     # weather
     "Weather",
     "MaritimeWeatherProvider",

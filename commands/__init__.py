@@ -20,9 +20,11 @@ package, which is exactly how the first attempt at this split broke.
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
 from .lookout import CmdLookAround, CmdLookout, CmdScan, CmdWatch, sightings_toward
 from .pilotage import (
+    CmdBelay,
     CmdChart,
     CmdCurrent,
     CmdFix,
+    CmdFollow,
     CmdMaritimeStatus,
     CmdPlot,
     CmdPosition,
@@ -50,6 +52,8 @@ __all__ = (
     "CmdWeather",
     "CmdWind",
     "CmdChart",
+    "CmdFollow",
+    "CmdBelay",
     "CmdPlot",
     "CmdCurrent",
     "CmdFix",

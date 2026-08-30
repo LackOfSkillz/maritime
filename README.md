@@ -217,6 +217,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `fix` | Fix her position off a landmark, and learn the set |
 | `chart` | What the paper says is under her, and how far to trust it |
 | `plot <mark>` | Lay a course by way of safe water |
+| `follow` / `belay` | Hand the sailing master the con, and take it back |
 | `speed <knots>` | Order a speed, for vessels not under sail |
 | `allstop` | Take the way off her |
 | `drop anchor` / `weigh anchor` | Bring up, and get under way again |
@@ -363,7 +364,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1110 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1140 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations

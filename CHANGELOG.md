@@ -13,6 +13,24 @@ combat and damage are not.
 
 ### Feat
 
+- Add the sailing master: the smallest automation that gets her from one mark to
+  the next. He steers for the mark allowing for the set, carries the most canvas
+  the wind permits, takes the way off her coming up to the last mark, and hands
+  the con back when the passage is made. Four judgements, which is what a
+  competent hand does without being told.
+- Deliberately not standing orders. No evading, no diverting for shelter, no
+  conditions or priorities - those need a rules engine with conflict resolution
+  and are their own phase. A first version of them smuggled into the mate's
+  judgement is how a small honest automation becomes an unreviewable one.
+- He works her through the same properties a player uses, so he cannot exceed the
+  rig, cannot ignore the weather, and is as stuck as anybody when she is anchored
+  or aground. He has no private channel to the hull.
+- `course_for_mark` is the first caller `course_to_steer` has had since it was
+  written two phases ago, which is the point of building the seam first.
+- Add `follow` and `belay`. Proved live: she sailed all five marks of a plotted
+  course round the rock ledge unattended, shortening sail as the wind asked, and
+  reported the passage made.
+
 - Add weather. Wind, visibility and sea state now arrive together from one
   provider sampled at a place and a moment, rather than being read separately
   from three settings wherever somebody happened to need them. They are not

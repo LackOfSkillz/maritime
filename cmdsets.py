@@ -26,7 +26,9 @@ from .commands import (
     CmdLookAround,
     CmdFix,
     CmdWatch,
+    CmdBelay,
     CmdChart,
+    CmdFollow,
     CmdCurrent,
     CmdPlot,
     CmdSail,
@@ -71,6 +73,8 @@ class HelmCmdSet(CmdSet):
         self.add(CmdWeather())
         self.add(CmdCurrent())
         self.add(CmdChart())
+        self.add(CmdFollow())
+        self.add(CmdBelay())
         self.add(CmdPlot())
         self.add(CmdSound())
         self.add(CmdMaritimeStatus())

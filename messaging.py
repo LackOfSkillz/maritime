@@ -915,6 +915,34 @@ class VesselNarrator:
         """
         return f"The sail you were watching {self.direction_phrase(where)} sinks from sight."
 
+    def passage_made(self):
+        """
+        Tell the ship the sailing master has run out of marks.
+
+        Notes:
+            He gives up the con rather than holding it and doing nothing. A mate
+            who has finished should say so, or nobody knows whether she is being
+            steered.
+
+        """
+        self.deliver(
+            "The sailing master reports the passage made, and hands back the con.",
+            "Word comes down that the passage is made.",
+        )
+
+    def trimmed(self, plan):
+        """
+        Tell the ship the watch has changed her canvas.
+
+        Args:
+            plan (SailPlan): What she is carrying now.
+
+        """
+        self.deliver(
+            f"Without being told, the watch shortens to {plan.name}.",
+            f"You hear the watch working aloft; she is under {plan.name} now.",
+        )
+
     # --- transitions --------------------------------------------------------
 
     def _transition(self, before, after):
