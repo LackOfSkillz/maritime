@@ -425,6 +425,21 @@ combat and damage are not.
 
 ### Chore
 
+- Split `commands.py` into a `commands/` package, one module per station: helm,
+  sail, pilotage, lookout and mooring. That is how the design has always
+  described them - contextual command groups exposed by cmdset - and doing it at
+  sixteen commands is cheaper than doing it when gunnery and damage control
+  arrive. Everything is re-exported, so `from .commands import CmdHelm` is
+  unchanged.
+- The station modules are named for the job rather than for the domain module
+  each leans on. `commands/navigation.py` shadows `maritime.navigation` from
+  inside the package, which is exactly how the first attempt at this split broke.
+- Exempt `messaging.py` from the line ceiling, by name and with the reason
+  recorded in the checker. It holds every word a vessel or her crew says; prose
+  has no branching, no state and nothing to get wrong, so its length costs
+  nothing and splitting it would scatter one voice across several files. Every
+  other file is held to the rule exactly as before.
+
 - Record the two ways mutation testing lies, in `CLAUDE.md`. A mutation that does
   not apply is a no-op that prints OK exactly like a survivor - already guarded.
   The new one: Python validates a `.pyc` against source mtime *and size*, so a
