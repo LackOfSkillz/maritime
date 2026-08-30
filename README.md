@@ -189,7 +189,7 @@ across her beam, and from the west she makes 1.5 and the chain becomes a slog.
 
 ## Design
 
-Fourteen ideas do most of the work. `docs/architecture.md` has the rest.
+Fifteen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -277,6 +277,13 @@ somebody in it. Because a swimmer's truth is their position and the room only sh
 cell it falls in, releasing one loses nothing — and a lone drifter never changes room at
 all, since the room can simply pan to the new water instead.
 
+**A pass is bounded by a clock, not a count.** What one vessel costs depends entirely on the
+world she is in — measured, a five-fold spread — so a fixed batch of twenty-five is
+somewhere between 6.5 ms and 33 ms of held reactor and nothing about the number tells you
+which. Twisted runs everything in one thread, so that is time in which nobody's command is
+processed. The budget is checked after an update rather than before, because checking first
+would let one slow vessel starve herself out of the rotation forever.
+
 **One scheduler, bounded and fair.** Not a ticker per vessel: Evennia's `TickerHandler`
 keys subscriptions on callback and interval but not arguments, so a fleet subscribing one
 method silently overwrites itself and most ships stop moving. A single service processes
@@ -361,6 +368,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |
 | `MARITIME_COMMODITIES` | a standard stowage table | The cargoes this game trades in |
+| `MARITIME_TICK_BUDGET_MS` | `10.0` | How long one simulation pass may hold the reactor; 0 disables the limit |
 | `MARITIME_CELL_SIZE` | `100.0` | How wide a projected square of open water is, in metres |
 | `MARITIME_OCEAN_ROOM_TYPECLASS` | `OceanRoom` | Dotted path to the class pool rooms are built from |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
@@ -531,7 +539,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1665 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1695 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -569,7 +577,11 @@ would take half an hour of wall time runs in milliseconds.
 - Ranges and bearings in a sighting are true, not estimated. The vessel's *position* is now
   reckoned rather than known, but a lookout's range to a contact is still exact.
 - Every vessel scans every tick, against a linear index. Fine for a harbour, and the reason
-  the index interface exists separately from what is behind it.
+  the index interface exists separately from what is behind it. Measured at roughly a
+  millisecond a vessel with fifty sail in company - see `docs/performance.md`.
+- The performance figures were taken on a development machine. The ratios are what the
+  design rests on; a game expecting a large fleet should re-run the benchmark on the box it
+  will actually run on.
 - A hull is sampled at seven points on her outline, not swept as a continuous shape, so
   *unauthored terrain* small enough to fit between those points can still pass between
   them. A hazard a game has actually drawn cannot: it has a radius and is tested against

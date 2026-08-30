@@ -155,9 +155,22 @@ def rng_context():
     return RNGContext(seed=rng_seed())
 
 
+#: The one live map provider, keyed by the settings that made it.
+#:
+#: Every other provider here is built fresh per call and should be - they hold no
+#: state, and a cached instance would outlive a settings change during development.
+#: A tiled map is the exception: it holds a cache of loaded tiles, which is state very
+#: much worth sharing, and rebuilding it per call threw that cache away every time
+#: anybody asked the depth of anything.
+#:
+#: Keyed on the settings rather than merely remembered, so a game that changes its map
+#: gets the new one and a test using `override_settings` is not handed the old one.
+_MAP_PROVIDER = {}
+
+
 def map_provider():
     """
-    Build the configured map provider.
+    The configured map provider.
 
     Returns:
         provider (MaritimeMapProvider): The world's terrain. Defaults to a
@@ -167,11 +180,52 @@ def map_provider():
     Raises:
         TypeError: If the configured class is not a map provider.
 
+    Notes:
+        Kept, not rebuilt, and that turned out to matter a great deal. A
+        `TiledMapProvider` loads squares of seabed on demand and caches them; a
+        fresh instance per call discarded that cache every single time, so a
+        vessel reloaded every tile she was over on every tick. Measuring the
+        reactor cost is what found it - a tiled world cost more per vessel with
+        one ship on it than with twenty, which is not a thing that can be true.
+
+        The other providers are still built per call, deliberately. They hold
+        nothing, and a cached instance would outlive a settings change in a way
+        that wastes an afternoon.
+
     """
     path = get_setting("MAP_PROVIDER")
+    key = (path, get_setting("DEFAULT_DEPTH", 200.0))
+    provider = _MAP_PROVIDER.get(key)
+    if provider is not None:
+        return provider
+
     if not path:
-        return FlatSeaMapProvider(depth=float(get_setting("DEFAULT_DEPTH", 200.0)))
-    return load_class(path, expected=MaritimeMapProvider)()
+        provider = FlatSeaMapProvider(depth=float(key[1]))
+    else:
+        provider = load_class(path, expected=MaritimeMapProvider)()
+
+    _MAP_PROVIDER.clear()
+    _MAP_PROVIDER[key] = provider
+    return provider
+
+
+def forget_map_provider():
+    """
+    Drop the cached map provider and everything it has loaded.
+
+    Returns:
+        dropped (bool): True if there was one to drop.
+
+    Notes:
+        For a game that has rebuilt its world under a running server, and for a
+        test that wants to prove the cache is a cache. Not needed on a settings
+        change - that produces a different key and a different provider on its
+        own.
+
+    """
+    had = bool(_MAP_PROVIDER)
+    _MAP_PROVIDER.clear()
+    return had
 
 
 def narrator_class():
@@ -368,3 +422,22 @@ def commodities():
                 f"found {type(commodity).__name__}."
             )
     return configured
+
+
+def tick_budget_ms():
+    """
+    How long one simulation pass may hold the reactor, in milliseconds.
+
+    Returns:
+        budget (float): Milliseconds of wall clock. Zero or less means no limit.
+
+    Notes:
+        The one figure in this contrib measured in wall clock rather than game
+        time, because it is about a real thread being held up for a real number of
+        real milliseconds. See `docs/performance.md` for how the default was
+        arrived at and what it costs at various fleet sizes.
+
+    """
+    from .simulation import DEFAULT_BUDGET_MS
+
+    return float(get_setting("TICK_BUDGET_MS", DEFAULT_BUDGET_MS))

@@ -13,6 +13,51 @@ combat and damage are not.
 
 ### Feat
 
+- Measure what a vessel tick costs and give the simulation pass a wall-clock
+  budget, which closes the reactor-budget open question. Written up in
+  `docs/performance.md`, with the behaviour it justified asserted in
+  `tests/test_budget.py`.
+- **A fixed batch of 25 turned out to cost between 6.5 ms and 33 ms** depending
+  on the world - a five-fold spread between the cheapest vessel and the dearest -
+  and nothing about the number 25 tells you which. Twisted runs everything in one
+  thread, so 33 ms is 33 ms in which no command is processed and no login
+  completes. A count cannot protect against that because it does not know what a
+  vessel costs; only a clock does.
+- `MARITIME_TICK_BUDGET_MS`, defaulting to 10 ms. The batch count stays as a
+  backstop, because a budget alone would let one pathological entity be visited
+  alone forever.
+- The budget is checked *after* an update, never before. Checking first would let
+  one slow vessel starve herself out of the rotation permanently, which is a
+  livelock rather than a limit.
+- Add `FairQueue.rewind`. `next_batch` advances the cursor over the whole batch,
+  which is right when the whole batch is processed and wrong the moment a budget
+  stops the loop early - the untouched tail would be skipped and wait a full
+  rotation, which is exactly the unfairness the cursor exists to prevent. A test
+  caught it.
+
+### Fix
+
+- **`monotonic` cannot see a ten-millisecond budget.** The first implementation
+  used `time.monotonic()`, which on Windows ticks at about 15.6 ms - coarser than
+  the limit it was enforcing, so the budget would never once have fired. The
+  benchmark's first run made it plain: four of six cases read exactly 0.00 ms and
+  the rest exactly 16.00. `perf_counter` is the right clock for short intervals
+  and is now used by both the service and the benchmark.
+- **The tile cache was being thrown away on every call.** `config.map_provider()`
+  built a fresh provider each time, on the documented grounds that providers hold
+  no state worth sharing. That was true when it was written and stopped being true
+  the moment tiles landed - a `TiledMapProvider` caches the squares it has loaded,
+  and rebuilding it discarded that cache every time anything asked the depth of
+  anything. It surfaced as an anomaly rather than a slowdown: a tiled world
+  costing *more* per vessel with one ship on it than with twenty, which is not a
+  thing that can be true. Measured directly, five ticks of one vessel: three tile
+  loads kept against six rebuilt, and for a vessel at anchor it is the difference
+  between one load ever and one per tick forever.
+- The map provider is now kept, keyed on the settings that made it, so a settings
+  change still yields a new one and a test using `override_settings` is never
+  handed the old one. `config.forget_map_provider()` drops it on purpose. Every
+  other provider is still built per call - they hold nothing.
+
 - Add the example world, and with it real installation instructions. The README
   has said "full installation instructions will accompany the first release"
   since the beginning, which for a contrib whose acceptance bar is skeptical

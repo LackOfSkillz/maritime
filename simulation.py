@@ -17,11 +17,34 @@ Work is tiered, because not everything deserves the same attention:
     ACTIVE      a player is aboard or nearby. Normal simulation.
     TACTICAL    combat, collision, boarding. Highest frequency.
 
-Each pass is bounded. The service processes what fits in its budget and resumes from
-where it stopped, so a large fleet lengthens the interval before any one vessel is
-revisited rather than blocking the reactor while everything is served at once.
+Each pass is bounded twice over, and the two bounds answer different questions.
+
+    batch size    how many entities one pass will *look at*
+    time budget   how long one pass will *take*
+
+A batch count alone is a guess dressed as a limit. What one vessel costs depends
+entirely on the world she is in - open sea with nobody about is a fraction of a
+millisecond, and a hull picking her way through authored hazards with a dozen sail in
+sight is many times that - so twenty-five of them is somewhere between nothing and far
+too long, and which one it is nobody knows until it is too late.
+
+The time budget is what actually protects the reactor. Twisted runs everything in one
+thread: a pass that takes a hundred milliseconds has held up every command, every login
+and every other script in the game for a hundred milliseconds. The batch count stays as a
+backstop, because a budget alone would let one pathological entity be visited alone
+forever.
+
+**At least one entity always runs.** The budget is checked after an update, never before.
+Checking first would let a single slow vessel starve herself out of the rotation
+permanently, which is a livelock rather than a limit.
+
+The service processes what fits and resumes from where it stopped, so a large fleet
+lengthens the interval before any one vessel is revisited rather than blocking the reactor
+while everything is served at once.
 
 """
+
+import time
 
 from evennia.utils import logger
 
@@ -49,8 +72,18 @@ TIER_INTERVALS = {
 MAX_CATCHUP_SECONDS = 3600.0
 
 # How many entries one pass will touch before yielding the reactor. Deliberately small:
-# a pass that blocks is worse than a vessel updated a moment late.
+# a pass that blocks is worse than a vessel updated a moment late. A backstop rather
+# than the real limit - see DEFAULT_BUDGET_MS.
 DEFAULT_BATCH_SIZE = 25
+
+# How long one pass may take, in milliseconds of wall clock. Measured rather than
+# guessed; see docs/performance.md for the numbers and how they were taken.
+#
+# Ten milliseconds is about a fifth of a frame at the rate a MUD's other work arrives,
+# and it is small enough that a player typing a command never waits on the sea. It is
+# also comfortably more than a busy vessel costs, so a fleet of any realistic size is
+# served in one or two passes rather than starved.
+DEFAULT_BUDGET_MS = 10.0
 
 # The hook an entity may implement to be simulated.
 TICK_HOOK = "at_maritime_tick"
@@ -76,28 +109,47 @@ class MaritimeSimulationService:
 
     """
 
-    def __init__(self, time_provider, batch_size=DEFAULT_BATCH_SIZE):
+    def __init__(self, time_provider, batch_size=DEFAULT_BATCH_SIZE, budget_ms=DEFAULT_BUDGET_MS):
         """
         Args:
             time_provider (MaritimeTimeProvider): Supplies game time. The service
                 never reads a clock directly, so a test can drive a fleet through
                 a week of simulation in milliseconds.
-            batch_size (int, optional): Entries touched per pass.
+            batch_size (int, optional): Entries touched per pass, as a backstop.
+            budget_ms (float, optional): How long a pass may take, in
+                milliseconds of wall clock. Zero or less means no time limit,
+                which is what a test measuring the batch behaviour wants and what
+                a production server does not.
 
         Raises:
             ValueError: If `batch_size` is not positive. A batch of zero would
                 register vessels that are never once simulated.
+
+        Notes:
+            Wall clock here, and only here. Everything else in this contrib runs
+            on game time supplied by a provider, because game time is what a
+            voyage is measured in - but the reactor is a real thread being held
+            up for a real number of real milliseconds, and pretending otherwise
+            would measure the wrong thing.
+
+            `perf_counter` rather than `monotonic`, and that is not a detail.
+            `monotonic` on Windows ticks at about 15.6 milliseconds, so a budget
+            of ten would never once have fired - the clock cannot see a interval
+            that short. Measuring the tick cost is what found it.
 
         """
         if batch_size <= 0:
             raise ValueError(f"batch_size must be positive, got {batch_size!r}.")
         self.time = time_provider
         self.batch_size = batch_size
+        self.budget_ms = float(budget_ms)
         self._entries = {}
         self._queue = FairQueue()
         self.ticks_run = 0
         self.updates_run = 0
         self.failures = 0
+        self.overruns = 0
+        self.last_pass_ms = 0.0
 
     # --- registration -------------------------------------------------------
 
@@ -217,9 +269,18 @@ class MaritimeSimulationService:
 
         Notes:
             Takes a batch from the rotation, skips whatever is not yet due, and
-            updates the rest. Because the rotation's cursor persists, a fleet
-            larger than the batch is served across successive passes rather than
-            having its tail ignored.
+            updates the rest until the batch runs out or the time budget does.
+            Because the rotation's cursor persists, a fleet larger than one pass
+            is served across successive passes rather than having its tail
+            ignored.
+
+            The budget is checked *after* each update. Checking before would let
+            one slow vessel starve herself out of the rotation forever, which is a
+            livelock rather than a limit - at least one entity always runs.
+
+            When the budget stops the pass, whatever it never reached is wound
+            back onto the rotation. Nothing is dropped; it is deferred by one
+            pass rather than by a whole circuit.
 
             A hook that raises is logged and skipped. One vessel with a broken
             update must not stop every other vessel in the world.
@@ -227,9 +288,11 @@ class MaritimeSimulationService:
         """
         self.ticks_run += 1
         now = self.time.now()
+        started = time.perf_counter()
         updated = []
 
-        for entity in self._queue.next_batch(self.batch_size):
+        batch = self._queue.next_batch(self.batch_size)
+        for index, entity in enumerate(batch):
             entry = self._entries.get(entity)
             if entry is None or entry.tier == DORMANT:
                 continue
@@ -239,8 +302,37 @@ class MaritimeSimulationService:
             entry.last_tick = now
             if self._update(entity, min(elapsed, MAX_CATCHUP_SECONDS)):
                 updated.append(entity)
+            if self.over_budget(started):
+                self.overruns += 1
+                # Put back everything this pass never got to. The cursor was
+                # advanced over the whole batch, so without this the untouched
+                # tail waits a full rotation - the exact unfairness the cursor
+                # exists to prevent.
+                self._queue.rewind(len(batch) - index - 1)
+                break
 
+        self.last_pass_ms = (time.perf_counter() - started) * 1000.0
         return tuple(updated)
+
+    def over_budget(self, started):
+        """
+        Whether this pass has used its share of the reactor.
+
+        Args:
+            started (float): The `perf_counter` reading when the pass began.
+
+        Returns:
+            spent (bool): True if the pass should yield.
+
+        Notes:
+            A budget of zero or less means no limit. That is what a test wanting
+            to measure batching behaviour asks for, and what a production server
+            must never be given.
+
+        """
+        if self.budget_ms <= 0.0:
+            return False
+        return (time.perf_counter() - started) * 1000.0 >= self.budget_ms
 
     def _update(self, entity, elapsed):
         """

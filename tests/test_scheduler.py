@@ -210,3 +210,51 @@ class TestCursorSurvivesChanges(BaseEvenniaTestCase):
             queue.add(transient)
             queue.remove(transient)
         self.assertTrue(stayers.issubset(seen))
+
+
+class TestRewinding(BaseEvenniaTestCase):
+    """
+    Putting back what was taken and never looked at.
+
+    Notes:
+        `next_batch` advances over the whole batch, which is right when the whole
+        batch is processed. A pass stopped early by a time budget has not
+        processed its tail, and without winding back those entities would wait a
+        full rotation - the exact unfairness the cursor exists to prevent.
+
+    """
+
+    def queue(self, count=5):
+        found = FairQueue()
+        for index in range(count):
+            found.add(f"item {index}")
+        return found
+
+    def test_it_puts_the_cursor_back(self):
+        queue = self.queue()
+        queue.next_batch(5)
+        queue.rewind(3)
+        self.assertEqual(queue.next_batch(3), ("item 2", "item 3", "item 4"))
+
+    def test_rewinding_nothing_moves_nothing(self):
+        queue = self.queue()
+        first = queue.next_batch(2)
+        queue.rewind(0)
+        self.assertNotEqual(queue.next_batch(2), first)
+
+    def test_it_wraps_backwards(self):
+        queue = self.queue(3)
+        queue.next_batch(1)
+        queue.rewind(2)
+        self.assertEqual(queue.peek(), "item 2")
+
+    def test_it_cannot_rewind_further_than_the_queue(self):
+        queue = self.queue(3)
+        self.assertEqual(queue.rewind(99), 3)
+
+    def test_an_empty_queue_rewinds_nothing(self):
+        self.assertEqual(FairQueue().rewind(3), 0)
+
+    def test_a_negative_rewind_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.queue().rewind(-1)

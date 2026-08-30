@@ -469,6 +469,24 @@ game's to decide. See `DECISIONS.md`.
 
 One scheduler. Never a ticker per cannon, mast, ship or fire.
 
+**A pass is bounded twice, and the two answer different questions.**
+
+```text
+batch size    how many entities one pass will look at   (backstop)
+time budget   how long one pass will take               (the real limit)
+```
+
+A batch count is a guess dressed as a limit: what one vessel costs depends entirely on the
+world she is in, and a measured five-fold spread means twenty-five of them is somewhere
+between 6.5 ms and 33 ms of held reactor. Only a clock knows which. See
+`docs/performance.md` for the numbers.
+
+> **Invariant:** the budget is checked *after* an update, never before. Checking first would
+> let one slow vessel starve herself out of the rotation permanently.
+
+> **Invariant:** whatever a pass never reached is wound back onto the rotation. Nothing is
+> dropped; it is deferred by one pass rather than by a whole circuit.
+
 **Strategic advancement** is analytical:
 
 ```text
@@ -906,7 +924,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 1 | Coordinates and navigational surface | done | `WorldPosition`, distance, bearing, terrain Z, derived depth, map provider, resolver |
 | 2 | Hazard geometry and spatial foundation | done | Indexes, hull footprint, swept envelope, and a tiled seabed whose authored hazards are tested against the whole corridor rather than sampled |
 | 3 | Vessel foundation | done | `Vessel`, `VesselTemplate`, `ShipRoom`, creation, persistence |
-| 4 | Simulation service | partial | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore. The budget is a batch count, not a measured millisecond budget |
+| 4 | Simulation service | done | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore, and a measured millisecond budget with the tail wound back on overrun |
 | 5 | Basic safe movement | done | Movement, helm, swept grounding against a hull footprint, reload survival |
 | 6 | Sailing | done | Wind, relative wind, polar curve, sail plans, leeway, anchoring, set and drift, course and speed made good |
 | 7 | Ports | done | Sized berths, approach preconditions, gangway as a real exit, `dock` and `cast off` |
@@ -1044,6 +1062,14 @@ at the repository root. This section is the design's own list; that file is the 
 
 Unresolved on purpose. Recording them beats settling them badly.
 
+**The reactor budget is answered** and has moved out of this list — see
+`docs/performance.md`. A fixed batch of 25 turned out to cost anywhere between 6.5 ms and
+33 ms depending on the world, which is the whole argument for bounding a pass by a clock
+rather than by a count. `MARITIME_TICK_BUDGET_MS` defaults to 10 ms. Measuring it also
+found two bugs that reading the code would not have: `monotonic` is too coarse on Windows
+to see a ten-millisecond budget at all, and the map provider was being rebuilt on every
+call, discarding its tile cache each time.
+
 **LOGOUT-001 is answered** and has moved out of this list — see `docs/logout.md`, with the
 behaviour pinned in `tests/test_logout.py`. The headline: an unpuppeted character is taken
 off the grid entirely, so `room.contents` is *not* the list of people aboard, and no leave
@@ -1058,9 +1084,6 @@ is in question.
 
 **Offline loss policy.** What becomes of an offline player aboard a vessel that founders.
 Game policy, not engine behaviour, but the engine has to expose the seam.
-
-**Reactor budget.** The actual millisecond budget that is safe on a production server. The
-current batch size is a stand-in for a measurement nobody has taken.
 
 **Long-downtime catch-up.** How much strategic time to reconcile after a prolonged outage.
 Capped at an hour today, which is a placeholder and not an answer.

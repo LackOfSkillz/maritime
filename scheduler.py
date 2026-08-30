@@ -123,6 +123,36 @@ class FairQueue:
         self._cursor = (self._cursor + count) % len(self._order)
         return tuple(batch)
 
+    def rewind(self, count):
+        """
+        Put back items that were taken but never looked at.
+
+        Args:
+            count (int): How many to return to the front of the rotation.
+
+        Returns:
+            returned (int): How many were actually put back.
+
+        Raises:
+            ValueError: If `count` is negative.
+
+        Notes:
+            `next_batch` advances the cursor over the whole batch, which is right
+            when the whole batch gets processed and wrong the moment something
+            stops the loop early. Without this, a pass that ran out of time would
+            skip its untouched tail entirely and those entities would wait a full
+            rotation for another turn - which is precisely the unfairness the
+            cursor exists to prevent.
+
+        """
+        if count < 0:
+            raise ValueError(f"Rewind count cannot be negative, got {count!r}.")
+        if not self._order or count == 0:
+            return 0
+        count = min(count, len(self._order))
+        self._cursor = (self._cursor - count) % len(self._order)
+        return count
+
     def peek(self):
         """
         The item that would come next, without advancing.

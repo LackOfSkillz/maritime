@@ -69,7 +69,7 @@ class MaritimeDriver(DefaultScript):
 
         """
         clock = self.ndb.time_provider or config.time_provider()
-        self.ndb.service = MaritimeSimulationService(clock)
+        self.ndb.service = MaritimeSimulationService(clock, budget_ms=config.tick_budget_ms())
         self.rebuild_registry()
 
     def rebuild_registry(self):
