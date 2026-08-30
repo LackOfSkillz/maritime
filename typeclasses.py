@@ -33,6 +33,7 @@ from .charts import Charted
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
 from .oars import Oared, braking_limits
+from .ownership import Owned
 from .grounding import check_swept_grounding
 from .observation import Lookout
 from .sailing import Rigged, steerage_floor, leeway_angle
@@ -59,6 +60,7 @@ from .routes import Routed
 class Vessel(
     Navigator,
     Conned,
+    Owned,
     Boarded,
     Oared,
     Armed,

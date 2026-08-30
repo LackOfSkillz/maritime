@@ -210,33 +210,64 @@ than standing alone - both are about what a body can take.
 
 ---
 
+# Answered
+
+Kept rather than deleted. What was decided is less useful than what the alternatives were
+and why one was picked - the next person to ask "why does capture work like that?" deserves
+the argument, not just the outcome.
+
+---
+
 ## What a captor may do with a prize
 
-**Raised by:** phase 18, boarding.
-**Blocks:** capture meaning anything. Two ships can be lashed together, people can cross,
-and she can strike - and then nothing changes.
+**Was blocking:** capture meaning anything. Two ships could be lashed together, people could
+cross, and she could strike - and then nothing changed.
 
-Striking is recorded as a fact, because it is one. What follows is not: who may give a
-struck ship her orders, whether her own crew can still work her, whether a prize crew has to
-be aboard for the claim to hold, and what becomes of the people who were on her.
+**The options were:** striking as flavour and the game does what it likes with the fact; a
+prize master who holds her without owning her; or ownership transferring outright.
 
-Every one of those is a question about *authority*, which is phase 14 - roles, staffing,
-command succession - and phase 14 is yours. Answering it here would mean inventing a
-concept of "side" that the contrib does not have and that would collide with whatever
-factions, permissions or ownership the host game already runs.
+**Decided:** ownership transfers, and command with it. A captured ship passes to the owner
+and the captain of the vessel that took her - both, and to those two people rather than to a
+side, because "side" is a concept this contrib does not have and the host game does.
 
-The options, as far as I can see them:
+**And it must be hard.** Harder than sinking her, which is the point that makes the rest of
+it work: a capture is worth more than a wreck, so if capture were the easier road nobody
+would ever fight to sink anything. Four conditions, all of them:
 
-1. **Striking is flavour.** It is recorded and the game does what it likes with the fact.
-   What stands today, and it makes capture a roleplay convention rather than a mechanic.
-2. **A prize master.** A named character holds the ship, and only orders from them are
-   obeyed. Contained, and it needs a way to say who that is - which is phase 14's job.
-3. **Ownership transfers.** She becomes the captor's, whatever "the captor" means to the
-   game. Strongest, and it reaches into phase 24 as well.
+1. She is grappled and held alongside.
+2. She has struck.
+3. The boarding party carried her deck.
+4. Her captain is subdued or killed.
 
-**What I did:** option 1, and both directions are representable. `strike` records who she
-struck to; `rehoist` takes it back, because a prize crew can be overwhelmed and a state that
-could only be entered would make that unrepresentable.
+The fourth is what stops a capture being paperwork. A ship whose captain is still on his
+feet has not been taken, however many people are standing on her deck.
 
-**What it needs from you:** a direction, and it will not be answerable before phase 14 -
-"who may command her" has no meaning until there is a notion of who commands anything.
+**What is built:** the machinery to receive it. `transfer_ownership(character, reason=CAPTURED)`
+moves property and announces why, `pass_command` moves command, and the four conditions have
+somewhere to be checked. Boarding melee wires them together.
+
+**Still yours:** how a *player* captain is subdued. Resolving that at ship scale would mean
+this contrib deciding when a player character is beaten, which is the one thing it must never
+do. The default resolves NPC captains at ship scale so NPC ships can be taken at all, and a
+game overrides one seam for the case where the captain is somebody with a keyboard.
+
+---
+
+## What goes upstream, and what stays here
+
+**Was blocking:** nothing yet, but it would have at submission time.
+
+Evennia's contrib guidelines want a folder with a README, the code, and tests. This repo
+also carries a changelog, a decisions log, `docs/architecture.md` and a `.github/` holding
+the discipline checker. None of that is forbidden - but merged into `evennia/evennia`, a
+nested `.github/` does nothing at all, because only the repository root's counts. To a
+reviewer it reads as clutter shipped by somebody who did not check.
+
+**Decided:** they stay here and are stripped in the branch that becomes the pull request.
+This repo is where the work is done and the discipline lives - `check_discipline.py` is one
+of the three commands that must pass before anything is pushed, and the changelog is the
+record of why every decision went the way it did. Losing either to tidy up for a reviewer
+would be trading the thing for the appearance of the thing.
+
+**What the PR branch drops:** `CHANGELOG.md`, `DECISIONS.md`, `docs/`, `.github/`. What it
+keeps is what the guidelines ask for: `README.md`, the modules, `tests/`, `LICENSE`.

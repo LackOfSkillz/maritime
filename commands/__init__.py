@@ -57,11 +57,13 @@ from .rowing import (
 )
 from .mooring import BERTH_REFUSALS, CmdAnchor, CmdCastOff, CmdDock, CmdWeighAnchor
 from .sail import CmdSail
+from .shipwright import CmdShipwright
 from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
 
 __all__ = (
     "MaritimeCommand",
     "CmdStow",
+    "CmdShipwright",
     "CmdGrapple",
     "CmdCutGrapples",
     "CmdStrike",

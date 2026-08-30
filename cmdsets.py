@@ -15,6 +15,7 @@ from evennia.commands.cmdset import CmdSet
 
 from .commands import (
     CmdAllStop,
+    CmdShipwright,
     CmdWeighAnchor,
     CmdFire,
     CmdGuns,
@@ -112,3 +113,27 @@ class HelmCmdSet(CmdSet):
         self.add(CmdPlot())
         self.add(CmdSound())
         self.add(CmdMaritimeStatus())
+
+
+class ShipwrightCmdSet(CmdSet):
+    """
+    The builder's tools.
+
+    Notes:
+        Separate from `HelmCmdSet` because it is the one maritime command that must
+        work with no deck under you. A world is built from dry land - usually from a
+        batch file - and a set that only appeared aboard would be useless for the job
+        it exists to do.
+
+        Add it to the game's character or account cmdset rather than to a room. The
+        command locks itself to Builders; the cmdset does not, so a game wanting it
+        somewhere narrower can say so without editing this.
+
+    """
+
+    key = "maritime_shipwright"
+    priority = 1
+
+    def at_cmdset_creation(self):
+        """Populate the set."""
+        self.add(CmdShipwright())

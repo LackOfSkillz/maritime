@@ -170,3 +170,28 @@ class EventBus:
         """
         self._handlers.clear()
         return self
+
+
+#: The process-wide bus. One per process, because there is one simulation per process.
+_BUS = EventBus()
+
+
+def bus():
+    """
+    The bus everything publishes to.
+
+    Returns:
+        bus (EventBus): The register of subscribers.
+
+    Notes:
+        Held behind a function rather than exported as a name, so that reaching
+        for it is a call rather than an import-time binding - a module that
+        grabbed the object at import would keep pointing at a bus that tests had
+        cleared.
+
+        A test that subscribes should clear it again afterwards. Nothing here
+        does that automatically, because a bus that emptied itself between uses
+        would be useless to the long-running server this is actually for.
+
+    """
+    return _BUS

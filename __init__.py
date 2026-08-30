@@ -37,8 +37,8 @@ from .currents import (
     drift_offset,
     made_good,
 )
-from .events import Delivery, Event, EventBus
-from .cmdsets import HelmCmdSet
+from .events import bus, Delivery, Event, EventBus
+from .cmdsets import HelmCmdSet, ShipwrightCmdSet
 from .commands import CmdAllStop, CmdHelm, CmdPosition, CmdSpeed
 from .formatting import (
     METRES_PER_SECOND_PER_KNOT,
@@ -306,6 +306,21 @@ from .boarding import (
     velocity,
     within_reach,
 )
+from .ownership import (
+    ADMIRAL,
+    CAPTAIN,
+    CAPTURED,
+    GRANTED,
+    SOLD,
+    UNRANKED,
+    CommandPassed,
+    Owned,
+    OwnershipTransferred,
+    fleet_of,
+    is_admiral,
+    may_command,
+    rank_of,
+)
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -406,6 +421,7 @@ __all__ = (
     "bearing_difference",
     # commands
     "HelmCmdSet",
+    "ShipwrightCmdSet",
     "CmdHelm",
     "CmdSpeed",
     "CmdAllStop",
@@ -545,6 +561,20 @@ __all__ = (
     "GRAPNEL_RANGE",
     "MAX_BOARDING_CLOSURE",
     "MAX_HOLDING_CLOSURE",
+    # ownership and command
+    "Owned",
+    "OwnershipTransferred",
+    "CommandPassed",
+    "fleet_of",
+    "is_admiral",
+    "rank_of",
+    "may_command",
+    "ADMIRAL",
+    "CAPTAIN",
+    "UNRANKED",
+    "SOLD",
+    "GRANTED",
+    "CAPTURED",
     # weather
     "Weather",
     "MaritimeWeatherProvider",
@@ -612,6 +642,7 @@ __all__ = (
     "DEFAULT_REGION",
     # events
     "Event",
+    "bus",
     "EventBus",
     "Delivery",
     # results

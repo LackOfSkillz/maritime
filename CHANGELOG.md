@@ -8,10 +8,38 @@ Entry prefixes follow Evennia's own changelog convention (`Feat:`, `Fix:`, `Docs
 ## Unreleased
 
 Nothing released yet. Foundations, the spatial model, vessels, the simulation
-service, sailing and grounding are in place; ports, navigation, weather, crew,
-combat and damage are not.
+service, sailing, grounding and who owns a ship are in place; ports, navigation,
+weather, crew, combat and damage are not.
 
 ### Feat
+
+- Add ownership and command. `owner` is property and `captain` is command, and they
+  are two references rather than one controller field because a merchant who owns
+  four ships is aboard at most one of them, and a captain who owns nothing still
+  gives the orders on the deck he stands on. A captain can `pass_command` - to his
+  mate for the night watch, to a prize crew - which is what makes the role a role
+  rather than a label. One ship per captain, both ways: a man cannot be on two decks.
+- Derive ADMIRAL rather than granting it. Hold more than one ship and you are one;
+  lose one and you are not. A stored rank is a fact that can disagree with the world,
+  and this one changes every time a ship is bought, sold, taken or sunk. What an
+  admiral may *do* with a fleet is the game's to decide.
+- Add `MARITIME_COMMAND_POLICY`, one function deciding whether a character may give a
+  hull an order, replaceable whole rather than extended by hooks. Every order in the
+  contrib routes through it, so a game where the mate may steer but not fire replaces
+  it once and is obeyed everywhere. The default is deliberately small: her captain, or
+  her owner if nobody has been appointed, or anybody aboard a ship that belongs to
+  nobody - because a game that has not adopted ownership must still be able to sail.
+- Refuse an order by naming who *may* give it. "You cannot do that" is the least useful
+  refusal there is; the player wants to know who to find.
+- Add `transfer_ownership`, which records *why* she changed hands and publishes it. No
+  money changes hands and none ever will - what a ship is worth is the host game's
+  economy, and a contrib that shipped a price would be arguing with it.
+- Add `@ship`, the builder's command for making hulls and saying who they belong to.
+  Subcommands rather than a menu, because a menu cannot be scripted and a world is
+  usually built by a batch file at three in the morning. It ships in its own
+  `ShipwrightCmdSet`, because it is the one maritime command that must work with no
+  deck under you - every other one needs a deck by design, and this one is used from
+  dry land.
 
 - Add the scenario suite the design has listed since the beginning. Sixteen named
   voyages in `tests/test_scenarios.py`, each one a passage rather than an
@@ -26,6 +54,42 @@ combat and damage are not.
 - Add `charted-approach`, which the design's list did not have and should have.
   That a chart is wrong in *fixed* places rather than randomly is the one part of
   navigation where correct behaviour looks like a bug.
+
+### Fix
+
+- `@ship list` was unbounded. Sixty-two unit tests passed over it because each built
+  two ships; a testbed with a hundred and sixty-eight in it scrolled a builder's screen
+  off the top. It now takes an optional name to narrow by, shows a screenful, and says
+  how many it held back - a list that silently stopped short would be worse than no
+  list at all.
+- `CmdShipwright` was in no cmdset, so it worked perfectly in every test and did not
+  exist in the game. Found by typing it at a running server, which is the only way it
+  could have been found.
+
+### Chore
+
+- Drop the `.pk` half of every deleted-object guard in `ownership.py`. A mutant
+  survived - replacing the owner property's guard with a bare read changed nothing -
+  and the reason turned out to be worth knowing: Evennia unpacks a reference to a
+  deleted object as None, on its own and inside a list, in the same process that
+  deleted it. The `.pk` half was guarding a state that cannot be stored. Code that
+  no mutation can kill is not insurance, it is a claim nobody is checking.
+
+### Docs
+
+- Correct architecture section 10, which said authority is evaluated per capability
+  rather than held in a single slot - and what shipped holds two. That is not a
+  retreat from the principle, it is where the principle actually lives: two slots
+  are the two facts about a ship the world needs to agree on, and per-capability
+  authority is the *policy*, not the storage. The section now says so rather than
+  describing a design that is not the one in the tree.
+- Answer "what a captor may do with a prize" in `DECISIONS.md` and start an
+  **Answered** section to hold it. Ownership and command pass to the owner and the
+  captain of the vessel that took her. Capture must be harder than sinking, which is
+  the point that makes the rest work - a capture is worth more than a wreck, so if it
+  were the easier road nobody would ever fight to sink anything. The alternatives are
+  kept rather than deleted; the next person to ask why capture works like that
+  deserves the argument, not just the outcome.
 
 ### Fix
 

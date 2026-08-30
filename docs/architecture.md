@@ -711,9 +711,33 @@ same mechanics. **Solo operation is a baseline case, not an edge case**; a syste
 works with six players online is a system most players never see.
 
 **Ownership is not authority.** Registered owner, current master, command authority and crew
-roles are separate concepts, and authority is evaluated *per capability* rather than held in
-a single slot. Modelling it as one current-holder field produces a mate who "has command" and
-cannot do most of what command implies.
+roles are separate concepts. Modelling them as one current-holder field produces an owner who
+must be aboard to sail her and a captain who cannot be dismissed, and neither is a ship.
+
+This section used to say authority is evaluated *per capability* rather than held in a slot,
+and what shipped holds two: `owner` and `captain`. That is not a retreat from the principle,
+it is where the principle actually lives. Two slots are the two facts about a ship the world
+needs to agree on — who she belongs to, and whose orders she takes — and a game asking either
+question wants an answer, not a permission calculation. **Per-capability authority is the
+policy, not the storage.** `MARITIME_COMMAND_POLICY` names one function that decides whether a
+character may give a hull an order, and every order in the contrib routes through it. A game
+where the mate may steer but not fire replaces that function and is obeyed everywhere without
+the vessel knowing it happened.
+
+The default policy is deliberately small: her captain, or her owner if nobody has been
+appointed, or **anybody aboard a ship that belongs to nobody**. That last case is not an
+oversight. A game that has not adopted ownership at all must still be able to sail, and a boat
+drawn up on a beach with nobody's name on her is anybody's to work.
+
+**Rank is derived, never granted.** Hold more than one ship and you are an admiral; lose one
+and you are not. A stored rank is a fact that can disagree with the world, and this one changes
+every time a ship is bought, sold, taken or sunk — exactly the sort nobody remembers to keep in
+step. What an admiral may *do* with a fleet is the game's to decide.
+
+**Ownership moves by event, not by money.** `transfer_ownership` records *why* she changed
+hands — sold, granted, captured, inherited — and publishes it. What a ship is worth and who can
+afford her is the host game's economy, and a contrib that shipped a price would be arguing
+with it.
 
 ---
 

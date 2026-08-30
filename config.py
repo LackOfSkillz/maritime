@@ -52,6 +52,7 @@ DEFAULT_NARRATOR = f"{__package__}.messaging.VesselNarrator"
 DEFAULT_CURRENT_PROVIDER = f"{__package__}.currents.FlatCurrentProvider"
 DEFAULT_WATER_NARRATOR = f"{__package__}.messaging.WaterNarrator"
 DEFAULT_OCEAN_ROOM = f"{__package__}.projection.OceanRoom"
+DEFAULT_COMMAND_POLICY = f"{__package__}.ownership.may_command"
 
 
 def get_setting(name, default=None):
@@ -441,3 +442,33 @@ def tick_budget_ms():
     from .simulation import DEFAULT_BUDGET_MS
 
     return float(get_setting("TICK_BUDGET_MS", DEFAULT_BUDGET_MS))
+
+
+def command_policy():
+    """
+    The function that decides who may give a ship orders.
+
+    Returns:
+        policy (callable): Takes `(character, vessel)` and returns a bool.
+
+    Raises:
+        TypeError: If the configured value is not callable.
+
+    Notes:
+        A whole function rather than a hook or a chain, because authority is the
+        kind of rule that grows teeth. A game wanting the mate to steer but not
+        fire, or a passenger to do neither, replaces this outright and the
+        default is never called again - which is a cleaner seam than a default
+        that tries to anticipate what those rules will be.
+
+        The shipped default is small on purpose: her captain, or her owner when
+        no captain has been appointed, or anybody aboard a ship nobody owns.
+
+    """
+    policy = load_class(get_setting("COMMAND_POLICY", DEFAULT_COMMAND_POLICY))
+    if not callable(policy):
+        raise TypeError(
+            f"MARITIME_COMMAND_POLICY must point at a callable taking "
+            f"(character, vessel), got {type(policy).__name__}."
+        )
+    return policy

@@ -15,9 +15,9 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 **Early development.** Working and tested: the foundations, the spatial model and a tiled
 seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
-tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars
-and boarding. Not
-built: crew and authority, damage, the strategic layer, and the service economy.
+tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
+boarding, and who owns and commands a ship. Not
+built: crew and morale, damage, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
@@ -189,7 +189,7 @@ across her beam, and from the west she makes 1.5 and the chain becomes a slog.
 
 ## Design
 
-Sixteen ideas do most of the work. `docs/architecture.md` has the rest.
+Seventeen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -284,6 +284,14 @@ Matching her course and speed *is* the manoeuvre. And the crossing is two ordina
 `board` is not a command, it is the exit's name — so a hostile traversal can be followed,
 blocked, watched and locked like any other, and none of that needed designing twice.
 
+**Owner is property; captain is command; admiral is neither.** A merchant who owns four
+ships is aboard at most one of them, and a captain who owns nothing still gives the orders on
+the deck he stands on — so they are two references, not one controller field. Rank is derived
+on every call from how many decks answer to you rather than stored, so it arrives with the
+second ship and leaves with the loss of one. Whether a given person may give a given hull an
+order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
+may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
+
 **A pass is bounded by a clock, not a count.** What one vessel costs depends entirely on the
 world she is in — measured, a five-fold spread — so a fixed batch of twenty-five is
 somewhere between 6.5 ms and 33 ms of held reactor and nothing about the number tells you
@@ -352,6 +360,25 @@ room.cmdset.add("evennia.contrib.full_systems.maritime.cmdsets.HelmCmdSet", pers
 On the compartments rather than on the character, so that a helm order needs a deck under
 you and cannot be given from a tavern.
 
+### The builder's command
+
+`@ship` is the one maritime command that must work with *no* deck under you — a world is
+built from dry land, usually from a batch file — so it lives in its own set, which goes on
+your character cmdset rather than on a room:
+
+```python
+from evennia.contrib.full_systems.maritime import ShipwrightCmdSet
+
+
+class CharacterCmdSet(default_cmds.CharacterCmdSet):
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+        self.add(ShipwrightCmdSet)
+```
+
+The command locks itself to Builders; the cmdset does not, so a game wanting it somewhere
+narrower can say so without editing the contrib.
+
 ## Settings
 
 All optional. Every one is prefixed `MARITIME_`.
@@ -372,6 +399,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_WEATHER_PROVIDER` | from the settings below | Dotted path to the game's weather |
 | `MARITIME_SEA_STATE` | follows the wind | Override the sea the wind would raise |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry - a `TiledMapProvider` subclass for an authored seabed |
+| `MARITIME_COMMAND_POLICY` | captain, else owner, else anybody aboard an unowned ship | Dotted path to `(character, vessel) -> bool` |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |
 | `MARITIME_COMMODITIES` | a standard stowage table | The cargoes this game trades in |
@@ -412,6 +440,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
+| `@ship` | Build ships, and set owner and captain (Builder+) |
 
 ## Examples
 
@@ -559,6 +588,13 @@ would take half an hour of wall time runs in milliseconds.
 
 - No crew or damage yet. Guns fire and hit; what a hit *does* to a hull is the damage
   phase, and `ShotResult` is deliberately something nothing consumes.
+- A ship has no price either, and ownership carries no money. `transfer_ownership` moves
+  the property and publishes why — sold, granted, captured, inherited — and a game wires its
+  own purchase to that event. What a ship is worth is the host game's economy.
+- Capture does not yet transfer anything. She can be grappled and she can strike, and the
+  machinery to hand her over exists, but the four conditions that make a capture — held
+  alongside, struck, her deck carried, her captain subdued — need the boarding melee that is
+  not built. The ruling on what capture means is in `DECISIONS.md`.
 - Cargo has no price. Contracts, freight rates, who is buying and what a voyage is worth
   are the game's own economy, and shipping an opinion about them would collide with
   whatever it already has. Recorded in `DECISIONS.md`.

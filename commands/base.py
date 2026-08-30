@@ -79,7 +79,34 @@ class MaritimeCommand(Command):
         if vessel is None:
             self.caller.msg("You are not aboard a vessel.")
             return
+        if not vessel.may_be_commanded_by(self.caller):
+            self.caller.msg(self.refused(vessel))
+            return
         self.at_helm(vessel)
+
+    def refused(self, vessel):
+        """
+        Why an order was not obeyed.
+
+        Args:
+            vessel (Vessel): The hull that would not answer.
+
+        Returns:
+            text (str): Something a player can act on.
+
+        Notes:
+            Names whoever *may* give the order, because "you cannot do that" is
+            the least useful refusal there is - the player wants to know who to
+            find or what to ask for.
+
+        """
+        captain = vessel.captain
+        if captain is not None:
+            return f"{vessel.key} answers to {captain.key}, not to you."
+        owner = vessel.owner
+        if owner is not None:
+            return f"{vessel.key} belongs to {owner.key}, and has no captain appointed."
+        return f"{vessel.key} does not answer to you."
 
     def at_helm(self, vessel):
         """
