@@ -12,6 +12,12 @@ range is a surface question. Boarding cares about metres, and a diver thirty met
 beneath a hull is horizontally on top of it while being nowhere near it. Serve both from
 one measure and one of them is always wrong.
 
+**A grid is the other half of this file.** An index answers "what is near this
+thing?"; a grid answers "which square of the world is this point in?", and two systems
+already need the second - the projected ocean lends one room per occupied cell, and the
+map is authored one tile at a time. Both want the same flooring arithmetic at different
+scales, so it is written once here rather than twice at either end of the contrib.
+
 **Both produce candidates, never answers.** An index says "these are worth examining";
 whether a lookout can actually see a hull depends on weather, light, height of eye and
 the target's size, none of which an index knows. Treating a candidate list as a result is
@@ -24,6 +30,8 @@ The interface is what matters at this stage; the structure behind it is replacea
 without any caller noticing, which is the whole reason for defining it first.
 
 """
+
+import math
 
 from .position import WorldPosition
 
@@ -238,3 +246,229 @@ class ProximityIndex(SpatialIndex):
 
         """
         return first.distance_to(second)
+
+
+def cell_of(position, size):
+    """
+    Which cell of a grid a position falls in.
+
+    Args:
+        position (WorldPosition): Where it is.
+        size (float): How wide a cell is, in metres.
+
+    Returns:
+        cell (tuple): `(region, x_index, y_index)`.
+
+    Notes:
+        Integer division by flooring, including for negative coordinates -
+        truncation would make the two cells either side of zero share an index,
+        so the seam at the origin would be a cell twice as wide as every other
+        one and nothing would notice until something sailed across it.
+
+        Regions are part of the key, because positions in different regions are
+        not comparable and a grid that ignored that would put two unrelated
+        worlds in the same square.
+
+    """
+    return (
+        position.region,
+        int(math.floor(position.x / size)),
+        int(math.floor(position.y / size)),
+    )
+
+
+def cell_centre(cell, size):
+    """
+    The middle of a cell, at the datum.
+
+    Args:
+        cell (tuple): `(region, x_index, y_index)`.
+        size (float): Cell width in metres.
+
+    Returns:
+        position (WorldPosition): The centre.
+
+    """
+    region, x_index, y_index = cell
+    return WorldPosition(
+        x=(x_index + 0.5) * size,
+        y=(y_index + 0.5) * size,
+        z=0.0,
+        region=region,
+    )
+
+
+def cell_bounds(cell, size):
+    """
+    The edges of a cell.
+
+    Args:
+        cell (tuple): `(region, x_index, y_index)`.
+        size (float): Cell width in metres.
+
+    Returns:
+        bounds (tuple): `(west, south, east, north)` in metres.
+
+    """
+    _region, x_index, y_index = cell
+    return (x_index * size, y_index * size, (x_index + 1) * size, (y_index + 1) * size)
+
+
+def cells_touching(before, after, size, margin=0.0):
+    """
+    Every cell a track passes through.
+
+    Args:
+        before (WorldPosition): Where the track starts.
+        after (WorldPosition): Where it ends.
+        size (float): Cell width in metres.
+        margin (float, optional): How far either side of the track to include -
+            half a beam, when the track is a ship's.
+
+    Returns:
+        cells (tuple): The cells, in no particular order.
+
+    Raises:
+        ValueError: If the two ends are in different regions, which is not a
+            track but two unrelated points.
+
+    Notes:
+        The bounding box of the track rather than the cells the line strictly
+        crosses. For a track shorter than a cell - which is nearly all of them,
+        since a tile is a kilometre and a tick is metres - the two are the same
+        answer, and where they differ the box is at most a few extra cells whose
+        contents are then tested properly anyway. A DDA walk would be exact,
+        slower, and correct about something nothing downstream is asking.
+
+    """
+    before._require_same_region(after)
+    reach = max(0.0, margin)
+    west = min(before.x, after.x) - reach
+    east = max(before.x, after.x) + reach
+    south = min(before.y, after.y) - reach
+    north = max(before.y, after.y) + reach
+
+    first_x = int(math.floor(west / size))
+    last_x = int(math.floor(east / size))
+    first_y = int(math.floor(south / size))
+    last_y = int(math.floor(north / size))
+
+    return tuple(
+        (before.region, x_index, y_index)
+        for x_index in range(first_x, last_x + 1)
+        for y_index in range(first_y, last_y + 1)
+    )
+
+
+def distance_to_track(point, before, after):
+    """
+    How far a point lies from a track, at its closest.
+
+    Args:
+        point (WorldPosition): The thing being measured.
+        before (WorldPosition): Where the track starts.
+        after (WorldPosition): Where it ends.
+
+    Returns:
+        distance (float): Metres, in the horizontal plane.
+
+    Notes:
+        The distance to the *segment*, not to the infinite line through it - a
+        rock a mile astern is a mile away, not on the track extended backwards.
+
+        This is what makes an authored hazard exact rather than sampled. A hull
+        tested at seven points along her length can step over something smaller
+        than the gaps between them; a hazard with a radius, measured against the
+        whole corridor she swept, cannot be missed however fast she was going.
+
+    """
+    return point.horizontal_distance_to(nearest_on_track(point, before, after))
+
+
+def nearest_on_track(point, before, after):
+    """
+    The place on a track that passes closest to a point.
+
+    Args:
+        point (WorldPosition): The thing being passed.
+        before (WorldPosition): Where the track starts.
+        after (WorldPosition): Where it ends.
+
+    Returns:
+        position (WorldPosition): The point of closest approach, at the datum.
+
+    Notes:
+        Clamped to the segment, so a track that has already gone by returns its
+        own end rather than a point beyond it.
+
+    """
+    before._require_same_region(after)
+    run_x, run_y = after.x - before.x, after.y - before.y
+    length_squared = run_x * run_x + run_y * run_y
+    if length_squared <= 0.0:
+        return before
+
+    along = ((point.x - before.x) * run_x + (point.y - before.y) * run_y) / length_squared
+    along = max(0.0, min(1.0, along))
+    return WorldPosition(
+        x=before.x + along * run_x,
+        y=before.y + along * run_y,
+        z=0.0,
+        region=before.region,
+    )
+
+
+def track_entry(point, before, after, radius):
+    """
+    Where a track first comes within a given distance of a point.
+
+    Args:
+        point (WorldPosition): What is being approached.
+        before (WorldPosition): Where the track starts.
+        after (WorldPosition): Where it ends.
+        radius (float): How close counts, in metres.
+
+    Returns:
+        position (WorldPosition or None): The first place on the track inside
+            that radius, or None if it never gets there.
+
+    Notes:
+        The *entry*, not the closest approach, and the difference matters. Stopping
+        a ship where she passed nearest a rock puts her on the far side of it,
+        which reads as having sailed through the thing that stopped her. She
+        strikes it going in.
+
+        Solved as a segment against a circle rather than by walking the track in
+        steps, because stepping reintroduces exactly the sampling gap that
+        authored hazards exist to close.
+
+    """
+    before._require_same_region(after)
+    run_x, run_y = after.x - before.x, after.y - before.y
+    offset_x, offset_y = before.x - point.x, before.y - point.y
+
+    a = run_x * run_x + run_y * run_y
+    if a <= 0.0:
+        inside = offset_x * offset_x + offset_y * offset_y <= radius * radius
+        return before if inside else None
+
+    b = 2.0 * (offset_x * run_x + offset_y * run_y)
+    c = offset_x * offset_x + offset_y * offset_y - radius * radius
+
+    # Already inside it when the step began. She does not enter; she is there.
+    if c <= 0.0:
+        return before
+
+    discriminant = b * b - 4.0 * a * c
+    if discriminant < 0.0:
+        return None
+
+    entry = (-b - math.sqrt(discriminant)) / (2.0 * a)
+    if entry < 0.0 or entry > 1.0:
+        return None
+    return WorldPosition(
+        x=before.x + entry * run_x,
+        y=before.y + entry * run_y,
+        z=0.0,
+        region=before.region,
+    )

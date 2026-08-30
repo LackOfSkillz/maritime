@@ -181,18 +181,12 @@ from .floating import (
     RAFT_WINDAGE,
     SWIMMER_WINDAGE,
     UPTURNED_HULL_WINDAGE,
-    cell_of,
     drift,
     separation,
     sinking_depth,
     wind_drift,
 )
-from .projection import (
-    CELL_SIZE,
-    OceanProjection,
-    OceanRoom,
-    cell_centre,
-)
+from .projection import CELL_SIZE, OceanProjection, OceanRoom
 from .weather import (
     SEA_STATES,
     FlatWeatherProvider,
@@ -251,7 +245,27 @@ from .simulation import (
     TIER_INTERVALS,
     MaritimeSimulationService,
 )
-from .spatial import ContactIndex, ProximityIndex, SpatialIndex
+from .tiles import (
+    DEFAULT_TILE_SIZE,
+    UNMAPPED_TERRAIN_Z,
+    DictTileSource,
+    Hazard,
+    Tile,
+    TileSource,
+    TiledMapProvider,
+)
+from .spatial import (
+    ContactIndex,
+    ProximityIndex,
+    SpatialIndex,
+    cell_bounds,
+    cell_centre,
+    cell_of,
+    cells_touching,
+    distance_to_track,
+    nearest_on_track,
+    track_entry,
+)
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -410,6 +424,19 @@ __all__ = (
     "sinking_depth",
     "cell_of",
     "cell_centre",
+    "cell_bounds",
+    "cells_touching",
+    "distance_to_track",
+    "nearest_on_track",
+    "track_entry",
+    # map tiles
+    "Tile",
+    "Hazard",
+    "TileSource",
+    "DictTileSource",
+    "TiledMapProvider",
+    "DEFAULT_TILE_SIZE",
+    "UNMAPPED_TERRAIN_Z",
     "SWIMMER_WINDAGE",
     "DEBRIS_WINDAGE",
     "BARREL_WINDAGE",

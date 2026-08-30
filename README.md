@@ -12,8 +12,8 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 
 ## Status
 
-**Early development.** Working and tested: the foundations and spatial model, vessels and
-their interiors, the simulation service, sailing, currents, grounding, observation, ports,
+**Early development.** Working and tested: the foundations, the spatial model and a tiled
+seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
 tactical geometry, weapons, the projected ocean for anyone in the water, and cargo. Not
 built: crew and authority, damage, boarding, the strategic layer, and the service economy.
@@ -148,7 +148,7 @@ spare — the same water, and the cargo is the whole difference.
 
 ## Design
 
-Twelve ideas do most of the work. `docs/architecture.md` has the rest.
+Thirteen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -205,6 +205,14 @@ water, so how far you can see depends on how high your eye is — and how far yo
 *particular* ship depends on how high she is too, because her masthead is over your horizon
 looking back. Height of eye comes from the compartment you are standing in, so a masthead
 is worth building rather than worth mentioning.
+
+**The seabed is authored a square at a time, and a drawn hazard is exact.** A vessel loads
+only the tiles her track crosses, so finding what is on this stretch of bottom does not
+mean searching every rock in the world. More than that: a hull is sampled at seven points
+on her outline and something small enough fits between them — two metres of rock four
+metres off the centreline of a six-metre beam, as it turns out — so an authored hazard is
+tested against the whole corridor she swept instead. She is stopped where she *enters* it,
+because closest approach is on the far side of a rock she has by then sailed through.
 
 **A hull has two capacities and they are not interchangeable.** Deadweight is the mass she
 can carry before she is too deep; hold volume is the space the cargo occupies. Stowage
@@ -264,7 +272,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_NAVIGATION_NETWORK` | no marks | Dotted path to the game's marks and channels |
 | `MARITIME_WEATHER_PROVIDER` | from the settings below | Dotted path to the game's weather |
 | `MARITIME_SEA_STATE` | follows the wind | Override the sea the wind would raise |
-| `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
+| `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry - a `TiledMapProvider` subclass for an authored seabed |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |
 | `MARITIME_COMMODITIES` | a standard stowage table | The cargoes this game trades in |
@@ -438,7 +446,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1450 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1530 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -472,9 +480,11 @@ would take half an hour of wall time runs in milliseconds.
   reckoned rather than known, but a lookout's range to a contact is still exact.
 - Every vessel scans every tick, against a linear index. Fine for a harbour, and the reason
   the index interface exists separately from what is behind it.
-- A hull is sampled at seven points along her track, not swept as a continuous shape, so
-  a hazard smaller than the gaps between those points can still pass between them. A
-  vessel with no measured length or beam is tested at her centre alone.
+- A hull is sampled at seven points on her outline, not swept as a continuous shape, so
+  *unauthored terrain* small enough to fit between those points can still pass between
+  them. A hazard a game has actually drawn cannot: it has a radius and is tested against
+  the whole corridor she swept. A vessel with no measured length or beam is tested at her
+  centre alone.
 - The world is a plane. Longitude does not narrow towards the poles, deliberately —
   a cosine correction would make the displayed position disagree with the distance
   actually sailed.

@@ -13,6 +13,63 @@ combat and damage are not.
 
 ### Feat
 
+- Add map tiles, which completes phase 2. The seabed is authored a square at a
+  time: a base elevation, what the ground is made of, and whatever discrete
+  hazards stand on it. A vessel loads only the tiles her track crosses, which is
+  the difference between an O(n x m) sweep over every hazard in the world and one
+  over the few on this stretch of bottom.
+- A flat base with things standing on it, rather than a grid of soundings. A
+  sounding grid is the obvious model and the wrong one for authoring: it makes a
+  builder fill in a hundred identical numbers to describe one shelf, and still
+  cannot say "there is a rock here that dries at low water" without inventing a
+  resolution fine enough to hold it.
+- **What tiles bought is exactness, not only speed.** The swept envelope samples a
+  hull at seven points on her outline, and something small enough fits between
+  them. An authored hazard has a position and a radius and is tested against the
+  whole corridor she swept, so a rock inside the water she displaces cannot be
+  missed. That was a named limitation in the README and is now gone for anything
+  a game has actually drawn.
+- How small "small enough" is got measured rather than argued. The first draft of
+  that claim said the gap widened with speed, which is wrong - the sweep steps by
+  half her length whatever she is doing - and the first rock chosen to demonstrate
+  it turned out to be caught by sampling after all. The test that stands walks the
+  sampled pass itself: two metres of rock, four metres off the centreline of a
+  six-metre beam, invisible to all 567 points it looks at, and stopped by the
+  corridor.
+- She is stopped where she *enters* a hazard rather than where she passes closest
+  to it, which needed a segment-against-circle solution rather than a walk along
+  the track - stepping would have reintroduced exactly the sampling gap hazards
+  exist to close. Closest approach is on the far side of a rock she has by then
+  sailed through, which is a strange thing to show a player.
+- `hazards_touching` is on `MaritimeMapProvider` itself and answers with nothing
+  by default, so grounding asks every provider unconditionally instead of
+  guessing whether this one can answer.
+- Unauthored water is not a hole in the world. A square nobody has drawn falls
+  through to a base provider - deep open sea by default - so a game maps its
+  coastline and its approaches and leaves the ocean alone, which is how real
+  charts work: the detail is where the danger is.
+- Tiles load on demand and can be released, and a *miss* is cached as well as a
+  hit. Open ocean is the commonest answer there is, and a cache that only
+  remembered tiles would ask the source about the same empty square on every tick
+  of a long passage.
+- A hazard answers for its own material. Touching sand is an inconvenience and
+  touching rock holes her, so a reef head standing on a sandy shelf cannot be
+  reported as sand.
+
+### Changed
+
+- The grid arithmetic moved from `floating` to `spatial`, and grew. `cell_of` was
+  in `floating` only because the ocean projection needed it first; map tiles want
+  the same flooring at a different scale, and a second copy would have been two
+  places for one seam at the origin to be wrong. `spatial` now also holds
+  `cell_centre`, `cell_bounds`, `cells_touching`, `distance_to_track`,
+  `nearest_on_track` and `track_entry`, which are one coherent group: the grid,
+  and the geometry over it.
+- `severity_of` extracted from `check_grounding`, so terrain and authored hazards
+  decide severity the same way. Two copies would drift, and the symptom would be a
+  rock that holes her when she is sampled onto it and merely holds her when the
+  corridor test catches her.
+
 - Add cargo. A hold has two capacities that are not interchangeable - the mass she
   can carry before she is too deep, and the space the cargo occupies - and which
   one binds depends entirely on what you are carrying. Iron stows at about a third

@@ -11,7 +11,6 @@ from ..floating import (
     RAFT_WINDAGE,
     SWIMMER_WINDAGE,
     Buoyancy,
-    cell_of,
     drift,
     separation,
     sinking_depth,
@@ -119,29 +118,3 @@ class TestSinking(BaseEvenniaTestCase):
 
     def test_a_zero_rate_never_goes_down(self):
         self.assertEqual(sinking_depth(0.0, 600.0, Buoyancy(floats=False), 50.0), 0.0)
-
-
-class TestCells(BaseEvenniaTestCase):
-    """Which square of water a position falls in."""
-
-    def test_a_position_inside_a_cell(self):
-        self.assertEqual(cell_of(WorldPosition(250.0, 350.0), 100.0), ("default", 2, 3))
-
-    def test_the_lower_edge_belongs_to_its_own_cell(self):
-        self.assertEqual(cell_of(WorldPosition(200.0, 300.0), 100.0), ("default", 2, 3))
-
-    def test_negative_coordinates_floor_rather_than_truncate(self):
-        """Truncation would make the two cells either side of zero share an index."""
-        self.assertEqual(cell_of(WorldPosition(-50.0, -150.0), 100.0), ("default", -1, -2))
-
-    def test_either_side_of_zero_are_different_cells(self):
-        self.assertNotEqual(
-            cell_of(WorldPosition(-1.0, 0.0), 100.0),
-            cell_of(WorldPosition(1.0, 0.0), 100.0),
-        )
-
-    def test_regions_are_separate_grids(self):
-        self.assertNotEqual(
-            cell_of(WorldPosition(250.0, 350.0, region="north"), 100.0),
-            cell_of(WorldPosition(250.0, 350.0, region="south"), 100.0),
-        )

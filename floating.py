@@ -20,7 +20,6 @@ searching for something you dropped a solvable problem.
 
 """
 
-import math
 from dataclasses import dataclass
 
 # How much of the wind each kind of floating thing catches, as a fraction of wind
@@ -166,30 +165,6 @@ def sinking_depth(started_at, now, buoyancy, seabed_depth):
         return 0.0
     fallen = max(0.0, now - started_at) * buoyancy.sink_rate
     return min(fallen, max(0.0, seabed_depth))
-
-
-def cell_of(position, size):
-    """
-    Which cell of the projection grid a position falls in.
-
-    Args:
-        position (WorldPosition): Where it is.
-        size (float): How wide a cell is, in metres.
-
-    Returns:
-        cell (tuple): `(region, x_index, y_index)`.
-
-    Notes:
-        Integer division on purpose, including for negative coordinates - floor
-        rather than truncation, so that the cell boundary at zero is a boundary
-        like any other and not a seam where two cells share an index.
-
-    """
-    return (
-        position.region,
-        int(math.floor(position.x / size)),
-        int(math.floor(position.y / size)),
-    )
 
 
 class Floating:

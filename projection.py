@@ -36,9 +36,8 @@ class.
 from evennia.objects.objects import DefaultRoom
 from evennia.utils import create
 
-from .floating import cell_of
-from .position import WorldPosition
 from .resolver import NoWorldPosition, get_world_position
+from .spatial import cell_centre, cell_of
 
 # How wide a projected cell is, in metres. A hundred metres is about as far as you can
 # usefully throw a line, which makes "in the same cell" mean roughly "close enough to
@@ -55,34 +54,6 @@ POOL_TAG = "ocean"
 
 # What a freshly built pool room is called before anybody sees it.
 POOL_ROOM_KEY = "Open water"
-
-
-def cell_centre(cell, size=CELL_SIZE):
-    """
-    The middle of a projected cell, at the surface.
-
-    Args:
-        cell (tuple): `(region, x_index, y_index)`.
-        size (float, optional): Cell width in metres.
-
-    Returns:
-        position (WorldPosition): The centre, at the sea-level datum.
-
-    Notes:
-        The centre rather than the corner, so that a room standing in for a cell
-        is wrong by at most half a cell in each direction rather than by a whole
-        one. Nothing that matters reads it - a swimmer carries their own precise
-        position and resolves to that - but the room needs *some* position for
-        anyone looking around who has none of their own.
-
-    """
-    region, x_index, y_index = cell
-    return WorldPosition(
-        x=(x_index + 0.5) * size,
-        y=(y_index + 0.5) * size,
-        z=0.0,
-        region=region,
-    )
 
 
 class OceanRoom(DefaultRoom):
@@ -146,7 +117,7 @@ class OceanRoom(DefaultRoom):
 
         """
         cell = self.db.showing
-        return None if cell is None else cell_centre(tuple(cell))
+        return None if cell is None else cell_centre(tuple(cell), CELL_SIZE)
 
     def return_appearance(self, looker, **kwargs):
         """

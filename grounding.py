@@ -30,7 +30,9 @@ column phase; the interface here does not change when it lands.
 from dataclasses import dataclass
 
 from .bathymetry import FOUL_GROUND, UNKNOWN
+from .position import WorldPosition
 from .results import Result
+from .spatial import track_entry
 
 # Severity of a contact with the ground, in increasing order of regret.
 TOUCHED = "touched"
@@ -128,6 +130,85 @@ def is_shoaling(position, draft, map_provider, game_time, warning=SHOAL_WARNING_
     return keel_clearance(position, draft, map_provider, game_time) < warning
 
 
+def severity_of(speed, bottom):
+    """
+    How bad a contact with this ground at this speed is.
+
+    Args:
+        speed (float): How fast she was going, in metres per second.
+        bottom (str): What she found.
+
+    Returns:
+        severity (str): `TOUCHED`, `AGROUND` or `HOLED`.
+
+    Notes:
+        Mud and sand hold a hull and usually give her back on the next tide; reef
+        and rock struck with way on open her. That distinction is why bottom type
+        is worth modelling at all - otherwise every grounding is the same event.
+
+        Extracted so that terrain and authored hazards answer the same way. Two
+        copies of this would drift, and the symptom would be a rock that holes
+        her when she is sampled onto it and merely holds her when she is caught
+        by the corridor test.
+
+    """
+    if bottom in FOUL_GROUND and speed > HOLING_SPEED:
+        return HOLED
+    if speed > HOLING_SPEED:
+        return AGROUND
+    return TOUCHED
+
+
+def check_hazards(before, after, draft, speed, beam, map_provider, game_time):
+    """
+    Test the authored hazards along a track, exactly rather than by sampling.
+
+    Args:
+        before (WorldPosition): Where she started the step.
+        after (WorldPosition): Where she is proposing to end it.
+        draft (float): How deep she sits, in metres.
+        speed (float): How fast she is going, in metres per second.
+        beam (float): Her beam, in metres.
+        map_provider (MaritimeMapProvider): The world's terrain.
+        game_time (float): Game time in seconds.
+
+    Returns:
+        result (GroundingResult or None): The first hazard she cannot clear, or
+            None if the track is free of them.
+
+    Notes:
+        She is stopped where she *enters* the hazard rather than where she passes
+        closest to it. Closest approach is on the far side of a rock she has by
+        then sailed through, which is a strange thing to show a player.
+
+        Providers with no authored hazards return nothing from
+        `hazards_touching`, so this costs an empty loop and is worth running
+        unconditionally.
+
+    """
+    half_beam = max(0.0, beam) / 2.0
+    for hazard in map_provider.hazards_touching(before, after, beam):
+        centre = WorldPosition(x=hazard.x, y=hazard.y, z=0.0, region=hazard.region)
+        struck = track_entry(centre, before, after, hazard.radius + half_beam)
+        if struck is None:
+            continue
+        surface = map_provider.sea_surface_z_at(struck, game_time)
+        clearance = (surface - float(draft)) - hazard.top_z
+        if clearance > 0.0:
+            continue
+        severity = severity_of(speed, hazard.bottom)
+        return GroundingResult.failed(
+            severity,
+            clearance=clearance,
+            depth=clearance + float(draft),
+            bottom=hazard.bottom,
+            speed=speed,
+            severity=severity,
+            position=struck,
+        )
+    return None
+
+
 def check_grounding(position, draft, speed, map_provider, game_time):
     """
     Test a vessel against the ground beneath her.
@@ -157,13 +238,7 @@ def check_grounding(position, draft, speed, map_provider, game_time):
     if clearance > 0.0:
         return GroundingResult.ok(clearance=clearance, depth=depth, bottom=bottom, speed=speed)
 
-    if bottom in FOUL_GROUND and speed > HOLING_SPEED:
-        severity = HOLED
-    elif speed > HOLING_SPEED:
-        severity = AGROUND
-    else:
-        severity = TOUCHED
-
+    severity = severity_of(speed, bottom)
     return GroundingResult.failed(
         severity,
         clearance=clearance,
@@ -324,6 +399,13 @@ def check_swept_grounding(
         three - which is the number that decides anything.
 
     """
+    # The authored hazards first, and exactly. Anything a game has drawn as a
+    # rock is tested against the whole corridor she swept, so it cannot fall into
+    # the gaps between her seven outline points.
+    struck = check_hazards(before, after, draft, speed, beam, map_provider, game_time)
+    if struck is not None:
+        return struck
+
     thinnest = None
     for centre in sweep_positions(before, after, length):
         for point in hull_points(centre, heading, length, beam):

@@ -1,12 +1,23 @@
 """
-Tests for the spatial indexes.
+Tests for the spatial indexes, and for the grid they share the file with.
 
 """
 
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from ..position import WorldPosition
-from ..spatial import ContactIndex, ProximityIndex, SpatialIndex
+from ..spatial import (
+    ContactIndex,
+    ProximityIndex,
+    SpatialIndex,
+    cell_bounds,
+    cell_centre,
+    cell_of,
+    cells_touching,
+    distance_to_track,
+    nearest_on_track,
+    track_entry,
+)
 
 
 class TestSpatialIndexBase(BaseEvenniaTestCase):
@@ -212,3 +223,171 @@ class TestSharedBehaviour(BaseEvenniaTestCase):
         index.insert("shallow", WorldPosition(0.0, 0.0, -5.0))
         origin = WorldPosition(0.0, 0.0, 0.0)
         self.assertEqual(index.near(origin, 200.0), ("shallow", "deep"))
+
+
+class TestCells(BaseEvenniaTestCase):
+    """Which square of the world a position falls in."""
+
+    def test_a_position_inside_a_cell(self):
+        self.assertEqual(cell_of(WorldPosition(250.0, 350.0), 100.0), ("default", 2, 3))
+
+    def test_the_lower_edge_belongs_to_its_own_cell(self):
+        self.assertEqual(cell_of(WorldPosition(200.0, 300.0), 100.0), ("default", 2, 3))
+
+    def test_negative_coordinates_floor_rather_than_truncate(self):
+        """Truncation would make the two cells either side of zero share an index."""
+        self.assertEqual(cell_of(WorldPosition(-50.0, -150.0), 100.0), ("default", -1, -2))
+
+    def test_either_side_of_zero_are_different_cells(self):
+        self.assertNotEqual(
+            cell_of(WorldPosition(-1.0, 0.0), 100.0),
+            cell_of(WorldPosition(1.0, 0.0), 100.0),
+        )
+
+    def test_regions_are_separate_grids(self):
+        self.assertNotEqual(
+            cell_of(WorldPosition(250.0, 350.0, region="north"), 100.0),
+            cell_of(WorldPosition(250.0, 350.0, region="south"), 100.0),
+        )
+
+
+class TestCellGeometry(BaseEvenniaTestCase):
+    """Where a cell is, and how big."""
+
+    def test_the_centre_is_the_middle(self):
+        centre = cell_centre(("default", 2, 3), 100.0)
+        self.assertAlmostEqual(centre.x, 250.0)
+        self.assertAlmostEqual(centre.y, 350.0)
+
+    def test_the_centre_sits_at_the_datum(self):
+        self.assertEqual(cell_centre(("default", 0, 0), 100.0).z, 0.0)
+
+    def test_the_centre_keeps_the_region(self):
+        self.assertEqual(cell_centre(("north", 0, 0), 100.0).region, "north")
+
+    def test_the_bounds(self):
+        self.assertEqual(cell_bounds(("default", 2, 3), 100.0), (200.0, 300.0, 300.0, 400.0))
+
+    def test_negative_bounds(self):
+        self.assertEqual(cell_bounds(("default", -1, -2), 100.0), (-100.0, -200.0, 0.0, -100.0))
+
+    def test_a_centre_is_inside_its_own_cell(self):
+        cell = ("default", 7, -4)
+        self.assertEqual(cell_of(cell_centre(cell, 250.0), 250.0), cell)
+
+
+class TestCellsTouching(BaseEvenniaTestCase):
+    """Which squares a track passes through."""
+
+    def test_a_track_inside_one_cell(self):
+        cells = cells_touching(WorldPosition(10.0, 10.0), WorldPosition(20.0, 20.0), 100.0)
+        self.assertEqual(cells, (("default", 0, 0),))
+
+    def test_a_track_across_a_boundary(self):
+        cells = cells_touching(WorldPosition(90.0, 10.0), WorldPosition(110.0, 10.0), 100.0)
+        self.assertEqual(set(cells), {("default", 0, 0), ("default", 1, 0)})
+
+    def test_a_diagonal_track_covers_the_box(self):
+        cells = cells_touching(WorldPosition(90.0, 90.0), WorldPosition(110.0, 110.0), 100.0)
+        self.assertEqual(len(cells), 4)
+
+    def test_a_margin_widens_it(self):
+        """Half a beam, when the track is a ship's."""
+        narrow = cells_touching(WorldPosition(50.0, 95.0), WorldPosition(60.0, 95.0), 100.0)
+        wide = cells_touching(
+            WorldPosition(50.0, 95.0), WorldPosition(60.0, 95.0), 100.0, margin=20.0
+        )
+        self.assertEqual(len(narrow), 1)
+        self.assertEqual(len(wide), 2)
+
+    def test_a_track_of_no_length_is_still_one_cell(self):
+        here = WorldPosition(50.0, 50.0)
+        self.assertEqual(cells_touching(here, here, 100.0), (("default", 0, 0),))
+
+    def test_two_regions_are_not_a_track(self):
+        with self.assertRaises(ValueError):
+            cells_touching(
+                WorldPosition(0.0, 0.0, region="north"),
+                WorldPosition(100.0, 0.0, region="south"),
+                100.0,
+            )
+
+
+class TestDistanceToTrack(BaseEvenniaTestCase):
+    """How close a track passes to something."""
+
+    def setUp(self):
+        super().setUp()
+        self.before = WorldPosition(0.0, 0.0)
+        self.after = WorldPosition(100.0, 0.0)
+
+    def test_a_point_beside_the_middle(self):
+        point = WorldPosition(50.0, 30.0)
+        self.assertAlmostEqual(distance_to_track(point, self.before, self.after), 30.0)
+
+    def test_a_point_on_the_track(self):
+        self.assertAlmostEqual(
+            distance_to_track(WorldPosition(50.0, 0.0), self.before, self.after), 0.0
+        )
+
+    def test_a_point_beyond_the_end_measures_to_the_end(self):
+        """The segment, not the line through it - a rock astern is astern."""
+        point = WorldPosition(200.0, 0.0)
+        self.assertAlmostEqual(distance_to_track(point, self.before, self.after), 100.0)
+
+    def test_a_point_behind_the_start(self):
+        point = WorldPosition(-50.0, 0.0)
+        self.assertAlmostEqual(distance_to_track(point, self.before, self.after), 50.0)
+
+    def test_a_track_of_no_length_is_a_point(self):
+        point = WorldPosition(30.0, 40.0)
+        self.assertAlmostEqual(distance_to_track(point, self.before, self.before), 50.0)
+
+    def test_the_nearest_place_on_it(self):
+        nearest = nearest_on_track(WorldPosition(50.0, 30.0), self.before, self.after)
+        self.assertAlmostEqual(nearest.x, 50.0)
+        self.assertAlmostEqual(nearest.y, 0.0)
+
+    def test_the_nearest_place_is_clamped_to_the_segment(self):
+        nearest = nearest_on_track(WorldPosition(500.0, 0.0), self.before, self.after)
+        self.assertAlmostEqual(nearest.x, 100.0)
+
+
+class TestTrackEntry(BaseEvenniaTestCase):
+    """Where a track first comes within reach of something."""
+
+    def setUp(self):
+        super().setUp()
+        self.before = WorldPosition(0.0, 0.0)
+        self.after = WorldPosition(100.0, 0.0)
+        self.rock = WorldPosition(50.0, 0.0)
+
+    def test_she_enters_before_she_is_abreast_of_it(self):
+        """The whole reason this exists rather than closest approach."""
+        entry = track_entry(self.rock, self.before, self.after, 10.0)
+        self.assertAlmostEqual(entry.x, 40.0)
+
+    def test_a_track_that_never_reaches_it(self):
+        self.assertIsNone(track_entry(WorldPosition(50.0, 200.0), self.before, self.after, 10.0))
+
+    def test_a_track_that_stops_short_of_it(self):
+        self.assertIsNone(track_entry(WorldPosition(500.0, 0.0), self.before, self.after, 10.0))
+
+    def test_already_inside_it_when_the_step_began(self):
+        """She does not enter. She is there."""
+        entry = track_entry(WorldPosition(5.0, 0.0), self.before, self.after, 10.0)
+        self.assertEqual(entry, self.before)
+
+    def test_a_glancing_track(self):
+        entry = track_entry(WorldPosition(50.0, 9.0), self.before, self.after, 10.0)
+        self.assertIsNotNone(entry)
+        self.assertLess(entry.x, 50.0)
+
+    def test_a_track_of_no_length_that_is_clear(self):
+        self.assertIsNone(track_entry(self.rock, self.before, self.before, 10.0))
+
+    def test_a_track_of_no_length_that_is_on_it(self):
+        self.assertEqual(track_entry(self.rock, self.rock, self.rock, 10.0), self.rock)
+
+    def test_the_entry_is_at_the_datum(self):
+        self.assertEqual(track_entry(self.rock, self.before, self.after, 10.0).z, 0.0)

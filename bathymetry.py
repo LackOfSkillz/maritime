@@ -162,6 +162,32 @@ class MaritimeMapProvider:
         """
         return SAND
 
+    def hazards_touching(self, before, after, width=0.0):
+        """
+        Discrete hazards a hull would sweep through on this track.
+
+        Args:
+            before (WorldPosition): Where the step started.
+            after (WorldPosition): Where it would end.
+            width (float, optional): Her beam, in metres.
+
+        Returns:
+            hazards (tuple): What she would touch, shallowest first.
+
+        Notes:
+            Nothing, unless a provider authors real hazards - see `tiles`. It is
+            on the base class rather than duck-typed so that grounding can ask
+            every provider unconditionally instead of guessing whether this one
+            answers.
+
+            The point of asking at all: a hull is sampled at seven points on
+            her outline, and something small enough fits between them. A hazard
+            with a position and a radius is measured against the whole corridor
+            she swept and cannot.
+
+        """
+        return ()
+
     def sea_surface_z_at(self, position, game_time):
         """
         Elevation of the water surface at a point and time.

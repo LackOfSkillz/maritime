@@ -260,8 +260,39 @@ queries only the tiles its movement envelope touches. The alternative — search
 hazard in the world for every vessel every step — is the shape of an O(n·m) sweep that
 looks fine with one ship and a reef and stops being fine with a fleet and a coastline.
 
-Not built. The map provider currently answers point queries against whatever the game
-supplies, which is correct and does not change when tiles land behind it.
+A tile is a square of authored seabed: a base elevation, what the ground is made of, and
+whatever discrete hazards stand on it. A flat base with things on it rather than a grid of
+soundings, because a sounding grid makes a builder fill in a hundred identical numbers to
+describe one shelf and *still* cannot say "there is a rock here that dries at low water"
+without inventing a resolution fine enough to hold it.
+
+**Tiling did not change what a depth query means.** `TiledMapProvider` is an ordinary
+`MaritimeMapProvider`; every existing caller of `terrain_z_at` gets the same kind of answer
+from the same interface, which is what the original note above promised.
+
+**What tiles bought is exactness, not only speed.** The swept envelope samples a hull at
+seven points on her outline, and something small enough fits between them. How small was
+measured rather than argued: two metres of rock, four metres off the centreline of a
+six-metre beam, is invisible to all 567 points a sampled pass looks at along an 800-metre
+track. An authored hazard has a position and a radius, and is tested against the *whole
+corridor she swept*:
+
+```text
+hazards_touching(before, after, beam)  ->  the ones the corridor reaches
+track_entry(hazard, before, after, r)  ->  where she strikes it
+```
+
+She is stopped where she **enters** it, not where she passes closest to it. Closest
+approach is on the far side of a rock she has by then sailed through.
+
+> **Invariant:** a hazard inside the water a hull displaces is never missed, however
+> small it is and wherever it falls relative to her sample points.
+
+**Unauthored water is not a hole in the world.** A square nobody has drawn falls through to
+a base provider — deep open sea by default. A game maps its coastline and its approaches
+and leaves the ocean alone, which is how real charts work: the detail is where the danger
+is. Tiles load on demand and can be released, so a world of ten thousand keeps resident
+only the ones being sailed over.
 
 ---
 
@@ -819,7 +850,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | --- | --- | --- | --- |
 | 0 | Foundation | done | Package, clock, `TimeProvider`, RNG streams, results, events, config, test harness |
 | 1 | Coordinates and navigational surface | done | `WorldPosition`, distance, bearing, terrain Z, derived depth, map provider, resolver |
-| 2 | Hazard geometry and spatial foundation | partial | Indexes, hull footprint and swept envelope done. Map tiles are not |
+| 2 | Hazard geometry and spatial foundation | done | Indexes, hull footprint, swept envelope, and a tiled seabed whose authored hazards are tested against the whole corridor rather than sampled |
 | 3 | Vessel foundation | done | `Vessel`, `VesselTemplate`, `ShipRoom`, creation, persistence |
 | 4 | Simulation service | partial | Scheduler, fair cursor, dirty tracking, checkpoint, flush, restore. The budget is a batch count, not a measured millisecond budget |
 | 5 | Basic safe movement | done | Movement, helm, swept grounding against a hull footprint, reload survival |
