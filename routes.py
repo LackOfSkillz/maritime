@@ -29,6 +29,8 @@ nothing to re-plan.
 import heapq
 from dataclasses import dataclass
 
+from .buoyage import BUOY_HEIGHT, SAFE_WATER
+
 # How close counts as having reached a mark, in metres. A buoy is a place you
 # pass, not a place you touch, and a vessel that had to hit one exactly would
 # circle it forever.
@@ -43,11 +45,24 @@ class Waypoint:
     Attributes:
         key (str): What it is called.
         position (WorldPosition): Where it is.
+        kind (str): What kind of mark it is, from `buoyage.KINDS`. The kind is what
+            carries the *meaning* - which side to leave it on, or which way the safe
+            water lies - and a mark without one is just a place with a name.
+        height (float): How high it stands above the water, in metres. A buoy is a
+            low thing and drops below the horizon quickly, which is exactly why
+            landfall is made on a light or a beacon rather than on a can.
+
+    Notes:
+        `kind` defaults to a safe-water mark, which is the honest default: it says
+        "the channel is here" and nothing more, so a world that has not thought about
+        buoyage gets marks that make no claims rather than marks that make wrong ones.
 
     """
 
     key: str
     position: object
+    kind: str = SAFE_WATER
+    height: float = BUOY_HEIGHT
 
 
 @dataclass(frozen=True)
@@ -214,6 +229,14 @@ class NavigationNetwork:
         self._links[second].add(first)
         return self
 
+    def marks(self):
+        """
+        Returns:
+            marks (tuple): Every mark in the network, in the order they were laid.
+
+        """
+        return tuple(self._waypoints.values())
+
     def waypoint(self, key):
         """
         Args:
@@ -366,6 +389,45 @@ class Routed:
 
         """
         self.db.route_index = int(index)
+
+    def marks_in_sight(self, height_of_eye=None):
+        """
+        Which of this world's marks can be seen from her.
+
+        Args:
+            height_of_eye (float, optional): How high the observer's eye is, in
+                metres. Defaults to her own lookout's.
+
+        Returns:
+            sightings (tuple): `Sighting` objects, nearest first.
+
+        Notes:
+            Marks are reported apart from vessels rather than mixed in with them,
+            because they are a different kind of news. A sail on the horizon is a
+            question; a buoy on the horizon is an answer.
+
+            They go through the same horizon arithmetic as everything else, so a
+            low can drops out of sight long before a beacon does - which is the
+            reason landfall was made on lights and steeples rather than on buoys.
+
+        """
+        from . import config, environment
+
+        network = config.navigation_network()
+        if network is None:
+            return ()
+        position = self.maritime_position
+        if position is None:
+            return ()
+        if height_of_eye is None:
+            height_of_eye = self.height_of_eye
+
+        candidates = tuple(
+            (mark, mark.position, mark.height)
+            for mark in network.marks()
+            if mark.position is not None and mark.position.region == position.region
+        )
+        return environment.contacts_from(position, self.heading, height_of_eye, candidates)
 
     def next_mark(self):
         """

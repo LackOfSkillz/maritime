@@ -1,175 +1,37 @@
 """
 The scenario suite: named voyages, run end to end.
 
-Every other test file here checks a piece. These check a *passage* - set sail, stand on,
-and see where she ends up - because a system can pass every unit test it has and still be
-unable to get a ship from one place to another. The names are the design's own, from
-section 20 of the architecture, so that "which of these actually run?" has an answer that
-is not somebody's memory.
-
-Each scenario is a voyage rather than an assertion about a function. They tick real time
-through real typeclasses and read the result off the ship, which makes them slower than the
-rest of the suite and worth every second: three separate bugs this contrib has shipped
-would have been caught here rather than by somebody sailing about in the testbed.
-
-Not built, and why:
-
-    flooding, fire, collision            damage, phase 17
-    strategic-advance, materialize       phase 11
-    passenger-*, service-partial         phases 21 and 23
-
-Those are Gary's, and a scenario that pretended to exercise them would be worse than a gap.
+The harness lives in `scenario_base`; these are the passages. See that module for what a
+scenario *is* and why the suite is worth its runtime.
 
 """
 
 from django.test import override_settings
 
 from evennia.utils import create
-from evennia.utils.test_resources import BaseEvenniaTest
 
-from ..bathymetry import MaritimeMapProvider, ROCK, SAND
 from ..boarding import relative_speed
 from ..charts import Chart
 from ..clock import ManualTimeProvider
 from ..grounding import HOLED
-from ..motion import HelmOrders, MotionLimits
+from ..motion import HelmOrders
 from ..navigation import DeadReckoning
 from ..position import WorldPosition
 from ..ports import Berth
-from ..rooms import PortRoom, ShipRoom, rig_gangway
+from ..rooms import PortRoom, rig_gangway
 from ..routes import ARRIVAL_RANGE, NavigationNetwork, Waypoint
-from ..sailing import FULL, FURLED, PolarCurve, WORKING
+from ..sailing import FULL, FURLED, WORKING
 from ..tactical import STARBOARD_BROADSIDE
 from ..simulation import ACTIVE, MaritimeSimulationService
 from ..traffic import traffic
-from ..typeclasses import Vessel
-from ..vessel import OPEN, VesselCapacity
 from ..weapons import Mount, WeaponType, fire
-from .base import EmptySeaMixin
+from ..bathymetry import ROCK
+from . import scenario_base
+from .scenario_base import BREEZE, GALE, ScenarioTestCase
 
-#: A steady working breeze from the south, so an easterly course is a beam reach.
-BREEZE = {"MARITIME_WIND_BEARING": 180.0, "MARITIME_WIND_SPEED": 8.0}
-
-#: A gale from the same quarter. Same direction on purpose - the only thing that
-#: changes between `sailing-basic` and `storm-delay` is how hard it is blowing.
-GALE = {"MARITIME_WIND_BEARING": 180.0, "MARITIME_WIND_SPEED": 22.0}
-
-
-class Shoal(MaritimeMapProvider):
-    """Deep water with a sandbank in it, east of x=2000."""
-
-    def terrain_z_at(self, position):
-        return -1.0 if position.x >= 2000.0 else -30.0
-
-    def bottom_type_at(self, position):
-        return SAND
-
-
-class Reef(Shoal):
-    """The same bank, made of rock."""
-
-    def bottom_type_at(self, position):
-        return ROCK
-
-
-class Ledge(MaritimeMapProvider):
-    """
-    A rock ledge with open water round its southern end.
-
-    Notes:
-        The channel is the point. Standing straight east runs onto it; going south
-        round the end does not, and that is what makes a chart worth having.
-
-    """
-
-    def terrain_z_at(self, position):
-        on_it = 2000.0 <= position.x <= 2600.0 and abs(position.y) <= 800.0
-        return -1.2 if on_it else -30.0
-
-    def bottom_type_at(self, position):
-        return ROCK
-
-
-class ScenarioTestCase(EmptySeaMixin, BaseEvenniaTest):
-    """
-    A sloop, and a way to sail her.
-
-    Notes:
-        Weather is a class attribute rather than an `override_settings`
-        decorator, and that is not a style choice. `EmptySeaMixin` enables its
-        own flat, still, windless sea inside `setUp`, which runs *after* a class
-        decorator has been applied - so a scenario asking for a working breeze by
-        decorator got a dead calm and every ship in it sat still. Enabling it
-        here, after the empty sea, is the only ordering that works.
-
-    """
-
-    #: What the sky is doing. Applied after the empty sea so it wins.
-    weather = {}
-
-    def setUp(self):
-        super().setUp()
-        if self.weather:
-            sky = override_settings(**self.weather)
-            sky.enable()
-            self.addCleanup(sky.disable)
-
-    def a_sloop(self, key="Kittiwake", position=None, sails=True):
-        """
-        Returns:
-            vessel (Vessel): A working sloop with a deck and a masthead.
-
-        """
-        hull = create.create_object(Vessel, key=key)
-        hull.length, hull.beam = 18.0, 5.4
-        hull.light_draft = 2.2
-        hull.air_draft = 20.0
-        hull.capacity = VesselCapacity(displacement=40000.0, internal_volume=90.0)
-        hull.motion_limits = MotionLimits(max_speed=6.0, acceleration=0.5, turn_rate=6.0)
-        hull.maritime_position = position or WorldPosition(0.0, 0.0)
-        if sails:
-            hull.polar_curve = PolarCurve()
-            hull.sail_plan = FURLED
-
-        deck = create.create_object(ShipRoom, key=f"{key} Deck")
-        deck.vessel = hull
-        deck.exposure = OPEN
-        deck.height_of_eye = 2.0
-
-        top = create.create_object(ShipRoom, key=f"{key} Masthead")
-        top.vessel = hull
-        top.exposure = OPEN
-        top.deck_level = 3
-        top.height_of_eye = 18.0
-
-        traffic().note(hull, hull.maritime_position)
-        return hull
-
-    def sail(self, vessel, seconds, step=15.0):
-        """
-        Advance a vessel through a stretch of time, a tick at a time.
-
-        Args:
-            vessel (Vessel): The hull.
-            seconds (float): How long to sail.
-            step (float, optional): Tick length.
-
-        Returns:
-            ticks (int): How many ticks ran before she stopped or the time ran out.
-
-        Notes:
-            Stops early if she goes aground, because a scenario that kept ticking a
-            stranded ship would be measuring nothing.
-
-        """
-        ticks = 0
-        for _ in range(int(seconds / step)):
-            vessel.at_maritime_tick(step)
-            ticks += 1
-            if vessel.aground:
-                break
-        return ticks
-
+#: Where the authored seabeds live, so the settings that name them keep pointing at
+#: them after the harness moved out of this file. Derived, never written out.
+SEABEDS = scenario_base.__name__
 
 # --- sailing ---------------------------------------------------------------
 
@@ -253,7 +115,7 @@ class TestCurrentDrift(ScenarioTestCase):
 class TestGroundingShoal(ScenarioTestCase):
     """`grounding-shoal`: sand holds her."""
 
-    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{__name__}.Shoal")
+    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{SEABEDS}.Shoal")
 
     def test_she_runs_onto_it(self):
         hull = self.a_sloop(position=WorldPosition(1500.0, 0.0))
@@ -277,7 +139,7 @@ class TestGroundingShoal(ScenarioTestCase):
 class TestGroundingReef(ScenarioTestCase):
     """`grounding-reef`: the same bank, made of rock, opens her."""
 
-    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{__name__}.Reef")
+    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{SEABEDS}.Reef")
 
     def test_rock_at_speed_holes_her(self):
         hull = self.a_sloop(position=WorldPosition(1500.0, 0.0))
@@ -316,7 +178,7 @@ class TestGroundingReef(ScenarioTestCase):
 
     def test_the_bottom_is_what_decides_it(self):
         """Identical geometry, identical speed. Only the ground changed."""
-        with override_settings(MARITIME_MAP_PROVIDER=f"{__name__}.Shoal"):
+        with override_settings(MARITIME_MAP_PROVIDER=f"{SEABEDS}.Shoal"):
             soft = self.a_sloop(key="Soft", position=WorldPosition(1500.0, 0.0))
             soft.sail_plan = FULL
             soft.orders = HelmOrders(heading=90.0, speed=0.0)
@@ -327,7 +189,7 @@ class TestGroundingReef(ScenarioTestCase):
 class TestSafeChannel(ScenarioTestCase):
     """`safe-channel`: the way round is clear where the way through is not."""
 
-    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{__name__}.Ledge")
+    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{SEABEDS}.Ledge")
 
     def test_standing_straight_at_it_grounds_her(self):
         hull = self.a_sloop(position=WorldPosition(1200.0, 0.0))
@@ -824,7 +686,7 @@ class TestChartedApproach(ScenarioTestCase):
 
     """
 
-    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{__name__}.Ledge")
+    weather = dict(BREEZE, MARITIME_MAP_PROVIDER=f"{SEABEDS}.Ledge")
 
     def test_the_same_chart_is_wrong_in_the_same_place_twice(self):
         hull = self.a_sloop()
@@ -846,3 +708,162 @@ class TestChartedApproach(ScenarioTestCase):
         hull.maritime_position = WorldPosition(3000.0, 0.0)
         hull.maritime_position = WorldPosition(1500.0, 200.0)
         self.assertAlmostEqual(first, hull.charted_depth())
+
+
+class MarkedApproaches(NavigationNetwork):
+    """
+    A leg with a rock squarely across it, and a cardinal to say which way round.
+
+    Notes:
+        A module-level class because `MARITIME_NAVIGATION_NETWORK` is a dotted path
+        and a network built inside a test method is invisible to the ship - which is
+        exactly the mistake that made the first draft of this scenario pass for the
+        wrong reason.
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        from ..buoyage import NORTH_CARDINAL, SAFE_WATER
+
+        self.add(Waypoint("start", WorldPosition(0.0, 0.0), SAFE_WATER))
+        self.add(Waypoint("the offing", WorldPosition(4000.0, 0.0), SAFE_WATER))
+        # The safe water is NORTH of this, so she has to pass above it.
+        self.add(Waypoint("north cardinal", WorldPosition(2000.0, 0.0), NORTH_CARDINAL))
+        self.link("start", "the offing")
+
+
+#: Derived from `__package__` rather than written out, so the contrib still works when
+#: it is dropped somewhere other than the path it happens to live on today.
+MARKED = {"MARITIME_NAVIGATION_NETWORK": f"{__package__}.test_scenarios.MarkedApproaches"}
+
+
+class TestGivingABerth(ScenarioTestCase):
+    """
+    `marked-danger`: the sailing master steers round what the marks warn of.
+
+    The strongest test of the buoyage work, because it is the one that sails. The
+    cardinals were built inverted first time and every unit test of the surrounding
+    machinery passed - a voyage is what notices that she went the wrong way round.
+
+    """
+
+    weather = BREEZE
+
+    def setUp(self):
+        super().setUp()
+        marked = override_settings(**MARKED)
+        marked.enable()
+        self.addCleanup(marked.disable)
+        self.marks = MarkedApproaches()
+        self.danger = self.marks.waypoint("north cardinal")
+
+    def a_passage(self):
+        """
+        Returns:
+            vessel (Vessel): A sloop under the sailing master, bound down the leg.
+
+        """
+        hull = self.a_sloop()
+        hull.sail_plan = WORKING
+        hull.route = self.marks.plan("start", "the offing")
+        hull.route_index = 0
+        hull.under_con = True
+        return hull
+
+    def a_listening_passage(self):
+        """
+        Returns:
+            pair (tuple): A sloop under the sailing master, and a list that
+                collects what is said on **one** of her decks.
+
+        Notes:
+            One deck, not all of them. She has a deck and a masthead and both are
+            weather decks, so listening to every room counts a single announcement
+            twice - which is how a perfectly good say-it-once fix looked broken for
+            three rounds of debugging.
+
+        """
+        hull = self.a_passage()
+        heard = []
+        hull.ship_rooms[0].msg_contents = lambda text, **kwargs: heard.append(text)
+        return hull, heard
+
+    def sail_past(self, hull, ticks=240):
+        """
+        Args:
+            hull (Vessel): The ship.
+            ticks (int, optional): How many ticks to allow.
+
+        """
+        for _ in range(ticks):
+            hull.at_maritime_tick(20.0)
+            if hull.maritime_position.x > 2600.0:
+                return
+
+    def test_she_does_not_sail_over_the_marked_rock(self):
+        """
+        A mate who took a plotted course straight over a cardinal would not be a
+        mate. The straight line from start to the offing passes directly over it.
+
+        """
+        hull = self.a_passage()
+        closest = 1e9
+        for _ in range(240):
+            hull.at_maritime_tick(20.0)
+            closest = min(
+                closest, hull.maritime_position.horizontal_distance_to(self.danger.position)
+            )
+            if hull.maritime_position.x > 2600.0:
+                break
+        self.assertGreater(closest, 50.0)
+
+    def test_she_says_so(self):
+        """
+        A helmsman who quietly steered somewhere other than where he was told would
+        be a bug wearing a feature's coat. The player has to know the course was
+        changed, by what, and by how much - or the next time they look at the
+        compass they will not trust it.
+
+        Found by mutation: deleting the announcement killed no test at all, which
+        made a documented promise into an unchecked one.
+
+        """
+        hull, heard = self.a_listening_passage()
+        self.sail_past(hull)
+
+        berths = [line for line in heard if "berth" in line]
+        self.assertTrue(berths, f"nothing said about giving a berth: {heard[:5]}")
+        self.assertIn("north cardinal", berths[0])
+
+    def test_and_says_it_once(self):
+        """
+        Clearing a mark takes many ticks. Announcing every one of them is exactly
+        the wallpaper `messaging` exists to prevent - a ship reports that she is
+        coming round, not that she is still turning, every two seconds.
+
+        Found by sailing her. The unit tests were perfectly happy.
+
+        """
+        hull, heard = self.a_listening_passage()
+        self.sail_past(hull)
+
+        berths = [line for line in heard if "berth" in line]
+        self.assertEqual(len(berths), 1, f"said it {len(berths)} times")
+
+    def test_she_passes_on_the_side_the_mark_names(self):
+        """
+        A north cardinal means the safe water is north of it. Passing south would
+        clear the buoy and strike the rock, which is the whole reason the kind
+        carries a meaning.
+
+        """
+        hull = self.a_passage()
+        abeam = None
+        for _ in range(240):
+            hull.at_maritime_tick(20.0)
+            if hull.maritime_position.x >= 2000.0:
+                abeam = hull.maritime_position
+                break
+        self.assertIsNotNone(abeam)
+        self.assertGreater(abeam.y, 50.0)

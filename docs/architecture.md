@@ -696,6 +696,35 @@ at every range; saying it would make closing to identify pointless.
 Contacts progress `UNKNOWN -> CONTACT -> VESSEL -> CLASSIFIED -> IDENTIFIED`, carrying
 bearing, estimated range and confidence rather than truth.
 
+**A mark carries a meaning, not just a position.** A buoy with a name and a coordinate tells
+a navigator nothing. Real buoyage works because every mark says where the safe water is
+*relative to itself*, and that is what lets a helmsman know which side to leave it on:
+safe-water marks are passed either side, laterals mark the edges of a channel, cardinals say
+"the safe water is on this side of me", and an isolated danger mark sits on the thing itself
+with navigable water all round.
+
+**Direction of buoyage is authored, not derived.** Lateral marks are meaningless until
+somebody says which way is "in", and no algorithm can work that out about a harbour. A mark
+read outbound reverses — it marks the same edge of the same channel either way, and it is the
+vessel that turned round.
+
+**Marks are sighted like anything else.** They go through the same horizon arithmetic as
+hulls, so a low can drops out of sight long before a beacon does — which is exactly why
+landfall was made on lights and steeples rather than on buoys. They are reported *apart from*
+shipping, because a sail on the horizon is a question and a buoy on the horizon is an answer.
+
+**The helmsman gives marked dangers a berth by default.** "Berth" here is the sea-room sense,
+the one in *give it a wide berth* — the clearance already had a name. The mark decides which
+way round, which is the whole reason kinds carry meaning: a cardinal sends her the way it
+names even when the cheaper-looking way round is the one with the rock in it. The alteration
+shrinks with range, so an early one is small.
+
+**The player is never overruled, only defaulted.** `keep_clear` recommends; it does not seize
+the helm. The sailing master acts on it because the con was handed to him, and `belay` takes
+it back. Standing into danger has to remain possible — a blockade runner cutting inside a reef
+at night is a decision, and a simulation that forbids it is worse than one that lets her
+strike.
+
 ---
 
 ## 10. Crew and authority
@@ -1142,6 +1171,8 @@ depth derives from surface minus terrain, never from a stored depth field
 a sunken vessel cannot sail
 a docked vessel cannot translate freely
 a destroyed component cannot operate normally
+every berth is reachable from open water by way of marks
+every charted danger carries a mark that warns of it
 flooding is never negative
 a boarding link requires two valid vessels
 a gangway requires a valid docking relationship

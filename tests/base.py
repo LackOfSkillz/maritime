@@ -35,6 +35,11 @@ EMPTY_SEA = {
     "MARITIME_CURRENT_DRIFT": 0.0,
     "MARITIME_WIND_BEARING": 0.0,
     "MARITIME_WIND_SPEED": 0.0,
+    # An empty sea has nothing in it, and that includes buoys. Without this the
+    # host game's own marks come through the settings and appear on the horizon of
+    # every test that thought it was sailing on blank water - which is how a test
+    # named "an empty sea reports the horizon" ended up looking at a fairway buoy.
+    "MARITIME_NAVIGATION_NETWORK": "",
 }
 
 

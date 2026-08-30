@@ -317,3 +317,65 @@ class TestBuildingIt(EmptySeaMixin, BaseEvenniaTest):
             for room in vessel.ship_rooms:
                 self.assertIsInstance(room, ShipRoom)
                 self.assertEqual(room.vessel, vessel)
+
+
+class TestTheApproachesAreMarked(BaseEvenniaTest):
+    """
+    The buoyage invariants, asserted against the world that ships with the contrib.
+
+    Until these existed the example had six island harbours and not one buoyed
+    approach - built, tested, sailed and demonstrated, with every landfall a guess,
+    because nothing was checking. That is the whole argument for a rule being a test
+    rather than a paragraph: this one was already being broken by its own author.
+
+    """
+
+    def test_every_berth_has_a_marked_approach(self):
+        """
+        Gary's rule: every dock and every landfall has at least one safe approach
+        marked by buoys. A builder who adds an island and forgets the buoy should
+        get a red test rather than a drowned player, and this is the red test.
+
+        """
+        from ..buoyage import unreachable_berths
+        from ..example.marks import Approaches, berths, seaward
+
+        stranded = unreachable_berths(Approaches(), berths(), seaward())
+        self.assertEqual(stranded, (), f"unmarked approaches: {stranded}")
+
+    def test_every_island_is_named_in_the_marks(self):
+        """
+        The invariant only bites if the list of berths is honest. A berth left off
+        that list is a harbour nobody checked, so the two have to be kept in step.
+
+        """
+        from ..example.geography import ISLANDS
+        from ..example.marks import berths, harbour_key
+
+        for island in ISLANDS:
+            self.assertIn(harbour_key(island[0]), berths())
+
+    def test_a_berth_nobody_marked_is_caught(self):
+        """
+        Proof the test can fail. An invariant that cannot go red is decoration, and
+        this suite has already shipped one test that passed for the wrong reason.
+
+        """
+        from ..buoyage import unreachable_berths
+        from ..example.marks import Approaches, seaward
+
+        stranded = unreachable_berths(Approaches(), ["smugglers cove"], seaward())
+        self.assertEqual(stranded, ("smugglers cove",))
+
+    def test_no_charted_danger_is_left_unmarked(self):
+        """
+        The other half. The example authors no discrete hazards yet, so this passes
+        by having nothing to find - but it is wired, so the day somebody drops a reef
+        into the chain it starts doing its job without anybody remembering to ask.
+
+        """
+        from ..buoyage import unmarked_dangers
+        from ..example.marks import Approaches
+
+        marks = Approaches().marks()
+        self.assertEqual(unmarked_dangers([], marks, []), ())

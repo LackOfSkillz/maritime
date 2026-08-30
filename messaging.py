@@ -51,6 +51,7 @@ from .sailing import beaufort_force
 from .weather import CALM, RIPPLED, SMOOTH
 from .position import COMPASS_POINTS, METRES_PER_FATHOM, bearing_difference
 from .vessel import WEATHER_DECKS
+from .buoyage import ISOLATED_DANGER as ISOLATED_DANGER_KIND
 
 # Things that happen to a vessel that the people aboard would notice. These name
 # the *event*, not the sentence - which is the point, since the sentence is what a
@@ -930,6 +931,49 @@ class VesselNarrator:
             f"{self.describe_contact(sighting)}"
         )
 
+    def mark_line(self, sighting):
+        """
+        One navigational mark, as a line of a report.
+
+        Args:
+            sighting (Sighting): The mark that was seen.
+
+        Returns:
+            line (str): Where to look, its bearing, its range, and what it means.
+
+        Notes:
+            The meaning is the part worth printing. "A buoy, two miles" tells a
+            navigator nothing he could act on; "south cardinal - safe water to the
+            south" tells him which way to go round, which is the only reason the
+            thing was moored there.
+
+        """
+        mark = sighting.target
+        return (
+            f"  {bearing_in_points(sighting.relative).capitalize():<32}"
+            f"{spell_bearing(sighting.bearing):>7}"
+            f"{format_range(sighting.distance):>14}   "
+            f"{self.describe_mark(mark)}"
+        )
+
+    def describe_mark(self, mark):
+        """
+        Args:
+            mark (Waypoint): The mark.
+
+        Returns:
+            text (str): Its name and what it is telling you.
+
+        """
+        from .buoyage import safe_water_from
+
+        towards = safe_water_from(mark.kind)
+        if towards is not None:
+            return f"the {mark.key} - safe water to the {compass_point(towards)}"
+        if mark.kind == ISOLATED_DANGER_KIND:
+            return f"the {mark.key} - foul ground, deep water all round it"
+        return f"the {mark.key}"
+
     def sector_report(self, where, sightings, horizon=None):
         """
         What is in sight in one direction.
@@ -1196,6 +1240,46 @@ class VesselNarrator:
         "butchered": "they are being spent, and the colours are still flying",
         "leaderless": "there is nobody aft giving orders",
     }
+
+    def giving_a_berth(self, mark, altered=0.0):
+        """
+        The mate alters course to clear a marked danger.
+
+        Args:
+            mark (Waypoint or None): What he is keeping clear of, or None if the
+                water ahead is clear.
+            altered (float, optional): How far off the ordered course he came.
+
+        Notes:
+            Said out loud, and it has to be. A helmsman who quietly steered somewhere
+            other than where he was told would be a bug wearing a feature's coat -
+            the player has to know the course was changed, what changed it, and by
+            how much, or the next time they look at the compass they will not trust
+            it.
+
+            Said *once*, which took a live sail to notice. Clearing a mark takes
+            many ticks and the first version announced every one of them, which is
+            precisely the wallpaper this module exists to prevent: a ship reports
+            that she is coming round, not that she is still turning. The state rides
+            on `.ndb` beside the shoaling warning, and resets when the water ahead is
+            clear so the next mark is announced properly.
+
+        """
+        vessel = self.vessel
+        if mark is None:
+            # Nothing to say - and crucially, nothing to forget. Clearing a mark
+            # settles at exactly the berth, so she stops turning, swings back
+            # towards her course, and raises the same danger again a moment later.
+            # Resetting here made her announce the same buoy twice on one passage.
+            return
+        if vessel.ndb.berth_given == mark.key:
+            return
+        vessel.ndb.berth_given = mark.key
+        self.deliver(
+            f'The mate says, "Giving the {mark.key} a berth, sir." '
+            f"She comes round {altered:.0f} degrees.",
+            f"She comes round. Word is they are keeping clear of the {mark.key}.",
+        )
 
     def crew_report(self, vessel):
         """

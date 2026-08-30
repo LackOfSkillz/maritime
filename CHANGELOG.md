@@ -13,6 +13,35 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add buoyage. A mark now carries a *meaning* rather than only a name and a
+  position - safe water, lateral port and starboard hand, the four cardinals, an
+  isolated danger mark - because the meaning is the entire reason a helmsman knows
+  which side to leave one on. Lateral marks reverse when outbound, which is the part
+  everybody gets wrong: it marks the same edge of the same channel either way and it
+  is the vessel that turned round.
+- Make the two buoyage rules *checkable*, which is the point of them.
+  `unreachable_berths` answers "which docks have no marked approach" and
+  `unmarked_dangers` answers "which charted rocks has nobody warned of", and the
+  example world asserts both in its own tests. A rule like "every approach is
+  buoyed" holds on the day it is written and quietly stops holding the first time
+  somebody adds an island; a paragraph in the docs will not catch that and a red
+  test will. It caught its own author immediately - the example world had six island
+  harbours and not one buoyed approach.
+- Keep "in charted waters" load-bearing. An unmarked rock in surveyed water is
+  somebody's negligence; an unmarked rock in unsurveyed water is just the sea, and
+  keeping that distinction is what makes a chart worth having and standing into
+  unknown water worth fearing. `Chart.covers` already knew which was which.
+- Sight marks like anything else. They run through the same horizon arithmetic as
+  hulls, so a low can drops below the horizon long before a beacon does, and the
+  lookout reports them apart from the shipping - a sail on the horizon is a
+  question, a buoy on the horizon is an answer.
+- Give the sailing master a berth to keep. He steers round what the marks warn of,
+  says so out loud, and lets the mark decide which way round - a cardinal sends her
+  the way it names even when the cheaper-looking way round is the one with the rock
+  in it. The alteration shrinks with range, so an early one is small.
+- Lay marks in the example world: an offing every approach runs from, and a fairway
+  buoy off each of the six island harbours.
+
 - Add the ship's company, crew quality, morale and mutiny. A company is a number
   on the hull rather than a crowd of objects, because a galley's two hundred
   oarsmen as two hundred Evennia objects counted every tick would be absurd.
@@ -93,6 +122,24 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- The mate announced the same alteration every tick. Clearing a mark takes many of
+  them, and he said "Giving the south cardinal a berth, sir" on each one - which is
+  exactly the wallpaper `messaging` exists to prevent, by its own docstring: a ship
+  reports that she is coming round, not that she is still turning, every two
+  seconds. Found by sailing her; every unit test was happy.
+  Fixing it turned up something structural. Steering to clear a danger settles at
+  *exactly* the berth, so the alteration switches off, she swings back towards her
+  course and raises the same mark again - which makes "am I turning?" a flickering
+  thing to narrate from. `Clearance` now answers two questions: `mark` is what
+  forced this turn, `watching` is the danger she is keeping clear of from raising it
+  to passing it. The narration keys off the steady one.
+
+- An empty sea was not empty. `EmptySeaMixin` blanked the weather, the current and
+  the seabed and left the host game's navigation marks in place, so tests that
+  believed they were sailing on blank water had the testbed's buoys on the horizon -
+  which is how a test named "an empty sea reports the horizon" ended up looking at a
+  fairway buoy.
+
 - `@ship list` was unbounded. Sixty-two unit tests passed over it because each built
   two ships; a testbed with a hundred and sixty-eight in it scrolled a builder's screen
   off the top. It now takes an optional name to narrow by, shows a screenful, and says
@@ -104,6 +151,17 @@ weather, crew, combat and damage are not.
 
 ### Chore
 
+- Split `tests/test_scenarios.py` along a real seam when it passed the thousand-line
+  ceiling. `scenario_base` is *how to sail a scenario* - a sloop, a stretch of time
+  and three authored seabeds - and `test_scenarios` is *the voyages*. They change for
+  different reasons, which is the test of whether a seam is real rather than a
+  convenient place to cut.
+  Worth recording what the split broke: the seabeds are named in settings as dotted
+  paths built from `__name__`, so moving the classes left five grounding scenarios
+  pointing at a module that no longer had them - and flake8 had called those imports
+  unused, because they were used by *string* rather than by name. The paths are now
+  derived from the module that actually holds them.
+
 - Drop the `.pk` half of every deleted-object guard in `ownership.py`. A mutant
   survived - replacing the owner property's guard with a bare read changed nothing -
   and the reason turned out to be worth knowing: Evennia unpacks a reference to a
@@ -112,6 +170,14 @@ weather, crew, combat and damage are not.
   no mutation can kill is not insurance, it is a claim nobody is checking.
 
 ### Docs
+
+- Add `docs/combat-roadmap.md` and `docs/career-roadmap.md`: what ship combat needs
+  next and why, and what a sea career would need, each item saying what it is
+  informed by and what we do differently. Written down rather than carried in
+  somebody's head, because the ordering constraints between them are the whole
+  design - damage tracks have to exist before anything that writes into them.
+- Set down buoyage and safe-water steering in architecture section 9, and add both
+  buoyage invariants to section 21.
 
 - Answer "what pulling an oar costs" in `DECISIONS.md`, with a fourth option none
   of the three listed there: exhaustion at *ship* scale. That dissolves the

@@ -24,6 +24,7 @@ so rather than cheating.
 """
 
 from .currents import course_to_steer
+from .buoyage import Clearance, keep_clear
 from .motion import HelmOrders
 from .sailing import FURLED, SAIL_PLANS
 
@@ -206,5 +207,42 @@ class Conned:
             self.working_limits.max_speed,
             final=bool(final),
         )
+        # Give marked dangers their berth. He is steering anyway, so the alteration
+        # costs the player nothing they did not already delegate - and a mate who
+        # sailed a plotted course straight over a cardinal would not be a mate.
+        clearance = self.clear_of_marks(heading)
+        if clearance.mark is not None:
+            heading = clearance.heading
+        # Told every tick, including the ticks with nothing to report, so the
+        # narrator can tell "still clearing the same mark" from "a new one" and say
+        # it once rather than every two seconds.
+        self.narrator.giving_a_berth(clearance.watching, clearance.altered)
+
         self.orders = HelmOrders(heading=heading, speed=wanted)
         return True
+
+    def clear_of_marks(self, heading, berth=None):
+        """
+        What this course looks like against the marks she can see.
+
+        Args:
+            heading (float): The course in question, in degrees.
+            berth (float, optional): Sea-room to keep, in metres.
+
+        Returns:
+            clearance (Clearance): The course that clears, and what forced it.
+
+        Notes:
+            Answers the question for anybody who asks - the sailing master, who acts
+            on it, and a warning to a player, who is told and then does as they
+            please. That difference is the whole of the policy: the helmsman does the
+            sensible thing unasked, and the ordered thing when asked.
+
+        """
+        position = self.maritime_position
+        if position is None:
+            return Clearance(heading=heading)
+        marks = [sighting.target for sighting in self.marks_in_sight()]
+        if berth is None:
+            return keep_clear(position, heading, marks)
+        return keep_clear(position, heading, marks, berth=berth)

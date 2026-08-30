@@ -90,14 +90,26 @@ class CmdLookout(MaritimeCommand):
 
         height = getattr(room, "height_of_eye", DEFAULT_HEIGHT_OF_EYE)
         seen = vessel.contacts(height)
-        if not seen:
+        marks = vessel.marks_in_sight(height)
+
+        if not seen and not marks:
             self.caller.msg(
                 f"Nothing in sight. The horizon is {format_range(horizon_distance(height))} off."
             )
             return
 
-        lines = ["The lookout reports:"]
-        lines.extend(vessel.narrator.contact_line(sighting) for sighting in seen)
+        lines = []
+        if seen:
+            lines.append("The lookout reports:")
+            lines.extend(vessel.narrator.contact_line(sighting) for sighting in seen)
+        if marks:
+            # Reported apart from the shipping, because they are a different kind of
+            # news. A sail on the horizon is a question; a buoy on the horizon is an
+            # answer, and burying one in a list of the other helps nobody.
+            if lines:
+                lines.append("")
+            lines.append("Marks in sight:")
+            lines.extend(vessel.narrator.mark_line(sighting) for sighting in marks)
         self.caller.msg("\n".join(lines))
 
 

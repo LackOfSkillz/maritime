@@ -16,8 +16,9 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
 tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
-boarding, who owns and commands a ship, and her company - quality, morale, exhaustion
-and mutiny. Not built: damage, the strategic layer, and the service economy.
+boarding, who owns and commands a ship, her company - quality, morale, exhaustion and
+mutiny - and buoyage with safe-water steering. Not built: damage, the strategic layer,
+and the service economy.
 Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
@@ -189,7 +190,7 @@ across her beam, and from the west she makes 1.5 and the chain becomes a slog.
 
 ## Design
 
-Eighteen ideas do most of the work. `docs/architecture.md` has the rest.
+Nineteen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -291,6 +292,14 @@ on every call from how many decks answer to you rather than stored, so it arrive
 second ship and leaves with the loss of one. Whether a given person may give a given hull an
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
+
+**A mark carries a meaning, and the meaning decides which way round.** A buoy with a name
+and a position tells a navigator nothing. Cardinals say which side the safe water is on,
+laterals mark the edges of a channel and reverse when you are outbound, an isolated danger
+mark sits on the thing itself. The helmsman gives what they warn of a berth — sea-room, in
+the sense the phrase *give it a wide berth* already meant — and goes the way the mark names
+even when the cheaper-looking way round is the one with the rock in it. He recommends; he
+never seizes the helm, because standing into danger has to stay a decision a player can make.
 
 **Morale is a standing condition, and it falls faster than it rises.** A crew is not
 asked "do you break?" at moments of crisis and found steady or wanting - they hold a state
@@ -448,6 +457,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
 | `crew` | Her company, how they are bearing it, and what they hold against you |
+| `lookout` | What is in sight — shipping, and the marks, reported apart |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
 | `@ship` | Build ships, and set owner and captain (Builder+) |
 
