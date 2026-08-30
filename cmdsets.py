@@ -23,9 +23,12 @@ from .commands import (
     CmdAnchor,
     CmdCastOff,
     CmdDock,
+    CmdLookAround,
     CmdFix,
+    CmdWatch,
     CmdCurrent,
     CmdSail,
+    CmdScan,
     CmdSound,
     CmdSpeed,
     CmdWind,
@@ -53,9 +56,12 @@ class HelmCmdSet(CmdSet):
         self.add(CmdAllStop())
         self.add(CmdPosition())
         self.add(CmdSail())
+        self.add(CmdScan())
         self.add(CmdAnchor())
         self.add(CmdDock())
         self.add(CmdFix())
+        self.add(CmdLookAround())
+        self.add(CmdWatch())
         self.add(CmdCastOff())
         self.add(CmdWeighAnchor())
         self.add(CmdWind())

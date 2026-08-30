@@ -8,7 +8,8 @@ from django.test import override_settings
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 
-from ..commands import CmdLookout, describe_contact
+from ..commands import CmdLookout
+from ..messaging import VesselNarrator
 from ..formatting import RAW, format_range
 from ..motion import HelmOrders, MotionLimits
 from ..observation import CLASSIFIED, CONTACT, IDENTIFIED, VESSEL, Sighting
@@ -258,6 +259,17 @@ class TestDescribeContact(BaseEvenniaTest):
         super().setUp()
         self.other = create.create_object(Vessel, key="Marigold")
 
+    def describe(self, sighting):
+        """
+        Args:
+            sighting (Sighting): What was seen.
+
+        Returns:
+            text (str): What an observer can say it is.
+
+        """
+        return VesselNarrator(self.other).describe_contact(sighting)
+
     def sighting(self, level):
         """
         Args:
@@ -275,21 +287,21 @@ class TestDescribeContact(BaseEvenniaTest):
         closing to identify pointless.
 
         """
-        self.assertNotIn("Marigold", describe_contact(self.sighting(CONTACT)))
+        self.assertNotIn("Marigold", self.describe(self.sighting(CONTACT)))
 
     def test_a_vessel_is_a_sail(self):
-        self.assertEqual(describe_contact(self.sighting(VESSEL)), "a sail")
+        self.assertEqual(self.describe(self.sighting(VESSEL)), "a sail")
 
     def test_a_classified_contact_shows_her_canvas(self):
         self.other.sail_plan = WORKING
-        self.assertIn("under sail", describe_contact(self.sighting(CLASSIFIED)))
+        self.assertIn("under sail", self.describe(self.sighting(CLASSIFIED)))
 
     def test_a_classified_contact_with_nothing_set_is_bare(self):
         self.other.sail_plan = FURLED
-        self.assertIn("furled", describe_contact(self.sighting(CLASSIFIED)))
+        self.assertIn("furled", self.describe(self.sighting(CLASSIFIED)))
 
     def test_an_identified_contact_is_named(self):
-        self.assertIn("Marigold", describe_contact(self.sighting(IDENTIFIED)))
+        self.assertIn("Marigold", self.describe(self.sighting(IDENTIFIED)))
 
 
 class TestFormatRange(BaseEvenniaTest):

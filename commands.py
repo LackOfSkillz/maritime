@@ -18,6 +18,7 @@ nothing else.
 """
 
 from evennia.commands.command import Command
+from evennia.commands.default.general import CmdLook
 
 from .formatting import RAW, format_depth, format_position, format_range
 from .grounding import SHOAL_WARNING_CLEARANCE
@@ -52,11 +53,11 @@ from .ports import (
 from .rooms import berths_near, rig_gangway
 from .navigation import FIX_UNCERTAINTY
 from .observation import (
-    CLASSIFIED,
+    QUARTER_ARC,
+    RELATIVE_ARCS,
+    direction_named,
+    in_arc,
     DEFAULT_HEIGHT_OF_EYE,
-    IDENTIFIED,
-    VESSEL,
-    bearing_in_points,
     horizon_distance,
 )
 from .motion import HelmOrders
@@ -376,40 +377,8 @@ class CmdLookout(MaritimeCommand):
             return
 
         lines = ["The lookout reports:"]
-        for sighting in seen:
-            where = bearing_in_points(sighting.relative).capitalize()
-            lines.append(
-                f"  {where:<34}{format_range(sighting.distance):>12}   "
-                f"{describe_contact(sighting)}"
-            )
+        lines.extend(vessel.narrator.contact_line(sighting) for sighting in seen)
         self.caller.msg("\n".join(lines))
-
-
-def describe_contact(sighting):
-    """
-    Say as much about a contact as the range allows.
-
-    Args:
-        sighting (Sighting): What was seen.
-
-    Returns:
-        text (str): What the observer can honestly say it is.
-
-    Notes:
-        Bounded by the detection level rather than by what the target actually
-        is. A hull at the edge of vision is a shape on the water even if the
-        engine knows her name, and reporting the name anyway would make closing
-        to identify pointless.
-
-    """
-    if sighting.level == IDENTIFIED:
-        return f"the {sighting.target.key}"
-    if sighting.level == CLASSIFIED:
-        plan = sighting.target.sail_plan
-        return "a vessel under sail" if plan.area > 0.0 else "a vessel, sails furled"
-    if sighting.level == VESSEL:
-        return "a sail"
-    return "something on the water"
 
 
 class CmdMaritimeStatus(MaritimeCommand):
@@ -787,6 +756,153 @@ class CmdFix(MaritimeCommand):
                 f"That is a set of {spell_bearing(experienced.set)}, drift "
                 f"{ms_to_knots(experienced.drift):.1f} knots you have been carrying."
             )
+
+
+def sightings_toward(vessel, direction, height_of_eye=None):
+    """
+    What is in sight in one direction from a vessel.
+
+    Args:
+        vessel (Vessel): The hull.
+        direction (tuple): From `direction_named`.
+        height_of_eye (float, optional): How high the observer is standing.
+
+    Returns:
+        sightings (tuple): Contacts in that arc, nearest first.
+
+    """
+    _name, centre, width, relative = direction
+    seen = vessel.contacts(height_of_eye) if height_of_eye else vessel.contacts()
+    return in_arc(seen, centre, width, relative=relative)
+
+
+class CmdLookAround(CmdLook):
+    """
+    Look about you, or in one direction.
+
+    Usage:
+      look
+      look <direction>
+      look <object>
+
+    With a direction - fore, aft, port, starboard, or any compass point - reports
+    what is in sight that way and nothing else. Ship-relative directions turn
+    with her; compass directions do not, so a contact fine on the starboard bow
+    stays there as she comes round while its true bearing changes.
+
+    Anything that is not a direction is looked at in the ordinary way.
+
+    """
+
+    def func(self):
+        """Look in a direction if one was named, and otherwise as usual."""
+        direction = direction_named(self.args)
+        vessel = vessel_of(self.caller)
+        if direction is None or vessel is None:
+            return super().func()
+
+        room = getattr(self.caller, "location", None)
+        if getattr(room, "exposure", None) not in WEATHER_DECKS:
+            self.caller.msg("You cannot see the sea from in here.")
+            return
+
+        height = getattr(room, "height_of_eye", DEFAULT_HEIGHT_OF_EYE)
+        seen = sightings_toward(vessel, direction, height)
+        self.caller.msg(
+            "\n".join(vessel.narrator.sector_report(direction[0], seen, horizon_distance(height)))
+        )
+
+
+class CmdWatch(MaritimeCommand):
+    """
+    Keep a standing watch in one direction.
+
+    Usage:
+      watch <direction>
+      watch off
+
+    Sets you watching fore, aft, port, starboard or a compass point. You are told
+    when something lifts over the horizon that way and when it sinks again,
+    rather than having to look every few minutes.
+
+    A watch is kept from where you are standing, so one set at the masthead sees
+    further than one set on deck.
+
+    """
+
+    key = "watch"
+    aliases = ("keep watch",)
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        word = self.args.strip().lower()
+        if word in ("off", "stop", "down", ""):
+            if not self.caller.db.maritime_watch:
+                self.caller.msg("You are not keeping a watch.")
+                return
+            self.caller.db.maritime_watch = None
+            self.caller.ndb.maritime_watched = None
+            self.caller.msg(vessel.narrator.watch_ended())
+            return
+
+        direction = direction_named(word)
+        if direction is None:
+            self.caller.msg("Watch which way? Fore, aft, port, starboard, or a compass point.")
+            return
+
+        room = getattr(self.caller, "location", None)
+        if getattr(room, "exposure", None) not in WEATHER_DECKS:
+            self.caller.msg("You cannot keep a watch from in here.")
+            return
+
+        self.caller.db.maritime_watch = direction[0]
+        self.caller.ndb.maritime_watched = None
+        self.caller.msg(vessel.narrator.watch_set(direction[0]))
+
+
+class CmdScan(MaritimeCommand):
+    """
+    Sweep the whole horizon, quarter by quarter.
+
+    Usage:
+      scan
+
+    Everything around her at once - ahead, to starboard, astern and to port -
+    with empty quarters named as well as full ones. Knowing there is nothing off
+    the port bow is worth as much as knowing there is something, and a report
+    that only listed contacts would leave you unable to tell "nothing there" from
+    "nobody looked".
+
+    Swept from where you are standing, so a scan from the masthead reaches
+    further than one from the deck.
+
+    """
+
+    key = "scan"
+    aliases = ("sweep", "all round")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        room = getattr(self.caller, "location", None)
+        if getattr(room, "exposure", None) not in WEATHER_DECKS:
+            self.caller.msg("You cannot see the sea from in here.")
+            return
+
+        height = getattr(room, "height_of_eye", DEFAULT_HEIGHT_OF_EYE)
+        seen = vessel.contacts(height)
+        sweep = [
+            (name, in_arc(seen, centre, QUARTER_ARC, relative=True))
+            for name, centre in RELATIVE_ARCS.items()
+        ]
+        self.caller.msg("\n".join(vessel.narrator.all_round(sweep, horizon_distance(height))))
 
 
 class CmdAnchor(MaritimeCommand):

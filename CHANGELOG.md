@@ -13,6 +13,25 @@ combat and damage are not.
 
 ### Feat
 
+- Add `scan`, which sweeps the whole horizon quarter by quarter and names the
+  empty quarters as well as the full ones. A lookout who only mentions what he
+  can see leaves you unable to tell "nothing there" from "nobody looked".
+- `look <direction>` reports one quarter or compass point - `look fore`, `look
+  port`, `look se`. Ship-relative directions turn with her and compass
+  directions do not, which is the difference between watching the port bow and
+  watching the headland.
+- Add `watch <direction>`, a standing watch that tells you when something lifts
+  over the horizon that way and when it sinks again, instead of looking every few
+  minutes. Kept from where you are standing, so one set at the masthead sees
+  further than one set on deck.
+- Directions can be typed the way people type them: `se`, `south east`,
+  `south-east` and `southeast` are one direction, and `stbd`, `astern` and
+  `larboard` all resolve.
+- Contact reports now carry both bearings, the range and what she is - bounded by
+  what the range allows, so a hull at the edge of vision stays "a sail" even
+  though the engine knows her name. An empty sector says how far it can see,
+  because "nothing in sight" is unbounded otherwise.
+
 - A weather deck now describes the sea outside it. The room's own description
   says what is nailed down; appended to it is what is happening - how she is
   moving, the wind by its Beaufort force, whether the water is setting, and what

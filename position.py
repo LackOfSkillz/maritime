@@ -36,6 +36,29 @@ DEFAULT_REGION = "default"
 
 FULL_CIRCLE = 360.0
 
+# The sixteen points of the compass, in order from north. Naming a bearing is a
+# fact about compasses rather than a house style, which is why these live with
+# bearings - `messaging.compass_point` renders one, and the command layer parses
+# one, and neither should have to reach through the other to do it.
+COMPASS_POINTS = (
+    "north",
+    "north-northeast",
+    "northeast",
+    "east-northeast",
+    "east",
+    "east-southeast",
+    "southeast",
+    "south-southeast",
+    "south",
+    "south-southwest",
+    "southwest",
+    "west-southwest",
+    "west",
+    "west-northwest",
+    "northwest",
+    "north-northwest",
+)
+
 # One nautical mile, which is one minute of latitude - the same quantity, and the
 # reason a distance and a position can be read off the same scale. Exact by
 # definition since 1929, not a rounding. Before that it was not quite settled: the

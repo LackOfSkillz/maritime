@@ -34,9 +34,10 @@ a decision worth making.
 """
 
 import math
+import re
 from dataclasses import dataclass
 
-from .position import METRES_PER_NAUTICAL_MILE, bearing_difference
+from .position import COMPASS_POINTS, METRES_PER_NAUTICAL_MILE, bearing_difference
 from .vessel import WEATHER_DECKS
 
 # Nautical miles of horizon per square root of a metre of height. Bowditch's
@@ -423,3 +424,173 @@ class Lookout:
             height_of_eye = self.height_of_eye
         candidates = environment.vessels_within_sight(position, height_of_eye, exclude=self)
         return environment.contacts_from(position, self.heading, height_of_eye, candidates)
+
+
+# The four quarters of the horizon, as seen from a ship, by the relative bearing
+# each is centred on. A quarter is ninety degrees because that is what the words
+# mean: everything forward of the beam is "fore".
+QUARTER_ARC = 90.0
+RELATIVE_ARCS = {
+    "fore": 0.0,
+    "starboard": 90.0,
+    "aft": 180.0,
+    "port": -90.0,
+}
+
+# Compass directions are narrower, because there are more of them. An eighth of
+# the horizon each, so "north" does not swallow north-east.
+POINT_ARC = 45.0
+
+
+def within_arc(bearing, centre, width=QUARTER_ARC):
+    """
+    Whether a bearing falls inside an arc.
+
+    Args:
+        bearing (float): The bearing in question, in degrees.
+        centre (float): The middle of the arc, in degrees.
+        width (float, optional): How wide the arc is, in degrees.
+
+    Returns:
+        inside (bool): True if it falls within.
+
+    Notes:
+        Works on true and relative bearings alike, because both are just angles -
+        the caller decides which it is passing by which one it takes from a
+        sighting. That is the whole reason `Sighting` carries both.
+
+    """
+    return abs(bearing_difference(centre, bearing)) <= width / 2.0
+
+
+def in_arc(sightings, centre, width=QUARTER_ARC, relative=True):
+    """
+    The sightings that lie in one direction.
+
+    Args:
+        sightings (iterable): `Sighting` objects.
+        centre (float): The middle of the arc, in degrees.
+        width (float, optional): How wide the arc is, in degrees.
+        relative (bool, optional): True to measure from the ship's head, False to
+            measure from north.
+
+    Returns:
+        found (tuple): Those within the arc, in the order given.
+
+    Notes:
+        Looking to starboard and looking east are the same question asked from
+        two different reference frames, and a ship that comes round changes the
+        answer to one of them and not the other. Keeping both is why a lookout
+        can be told to watch the port bow and a navigator to watch the headland.
+
+    """
+    return tuple(
+        sighting
+        for sighting in sightings
+        if within_arc(sighting.relative if relative else sighting.bearing, centre, width)
+    )
+
+
+#: The four cardinal points, which abbreviate to a single letter each. The rest
+#: are built from them: "east-northeast" is e + ne.
+_CARDINALS = ("north", "east", "south", "west")
+
+#: Every word that names a direction, mapped to `(name, centre, width, relative)`.
+#: Ship-relative directions turn with her and compass directions do not, which is
+#: the difference between telling a lookout to watch the port bow and telling him
+#: to watch the headland.
+#:
+#: Keys are normalised - no spaces, hyphens or case - so "south east",
+#: "south-east" and "southeast" all arrive as one word, and the abbreviations are
+#: here because "se" is what people type.
+LOOKOUT_DIRECTIONS = {}
+
+
+def normalise_direction(text):
+    """
+    Reduce a typed direction to one comparable form.
+
+    Args:
+        text (str): What was typed.
+
+    Returns:
+        word (str): Lowercased, with spaces, hyphens and underscores removed.
+
+    Notes:
+        A player who has to work out whether this system wants "south east",
+        "south-east" or "southeast" has been handed a puzzle instead of a
+        compass.
+
+    """
+    return re.sub(r"[\s_-]+", "", (text or "").strip().lower())
+
+
+def _abbreviate(name):
+    """
+    Args:
+        name (str): A compass point, e.g. `"east-northeast"`.
+
+    Returns:
+        short (str): Its abbreviation, e.g. `"ene"`.
+
+    """
+    return "".join(part[0] if part in _CARDINALS else part[0] + part[5] for part in name.split("-"))
+
+
+def _register(word, name, centre, width, relative):
+    """
+    Args:
+        word (str): What a player might type.
+        name (str): The canonical name reported back.
+        centre (float): Middle of the arc, in degrees.
+        width (float): How wide the arc is.
+        relative (bool): Whether it turns with the ship.
+
+    """
+    LOOKOUT_DIRECTIONS[normalise_direction(word)] = (name, centre, width, relative)
+
+
+for _name, _centre in RELATIVE_ARCS.items():
+    _register(_name, _name, _centre, QUARTER_ARC, True)
+
+for _alias, _of in (
+    ("ahead", "fore"),
+    ("forward", "fore"),
+    ("bow", "fore"),
+    ("bows", "fore"),
+    ("astern", "aft"),
+    ("stern", "aft"),
+    ("abaft", "aft"),
+    ("behind", "aft"),
+    ("larboard", "port"),
+    ("stbd", "starboard"),
+    ("stb", "starboard"),
+):
+    _register(_alias, *LOOKOUT_DIRECTIONS[normalise_direction(_of)])
+
+for _index, _point in enumerate(COMPASS_POINTS):
+    _bearing = _index * 22.5
+    _register(_point, _point, _bearing, POINT_ARC, False)
+    _register(_abbreviate(_point), _point, _bearing, POINT_ARC, False)
+    _register(_point.replace("-", " "), _point, _bearing, POINT_ARC, False)
+
+
+def direction_named(text):
+    """
+    Resolve a word into an arc to look along.
+
+    Args:
+        text (str): What was typed - a quarter, a compass point, an
+            abbreviation, or any spacing of one.
+
+    Returns:
+        found (tuple or None): `(name, centre, width, relative)`, or None if the
+            word names no direction.
+
+    Notes:
+        Returns the canonical name, so "astern", "stern" and "abaft" all report
+        as "aft" and a watch set with one word is not a different watch from the
+        same one set with another.
+
+    """
+    return LOOKOUT_DIRECTIONS.get(normalise_direction(text))

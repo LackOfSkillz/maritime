@@ -28,31 +28,18 @@ hand differently, without reimplementing when to speak.
 from dataclasses import dataclass
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
-from .observation import CLASSIFIED, IDENTIFIED, bearing_in_points
-from .sailing import beaufort_force
-from .position import METRES_PER_FATHOM, bearing_difference
-from .vessel import WEATHER_DECKS
-
-# Compass points, for describing a heading to someone who is not reading an
-# instrument. Sixteen points is what a helmsman would actually call.
-_COMPASS_POINTS = (
-    "north",
-    "north-northeast",
-    "northeast",
-    "east-northeast",
-    "east",
-    "east-southeast",
-    "southeast",
-    "south-southeast",
-    "south",
-    "south-southwest",
-    "southwest",
-    "west-southwest",
-    "west",
-    "west-northwest",
-    "northwest",
-    "north-northwest",
+from .formatting import format_range
+from .observation import (
+    CLASSIFIED,
+    IDENTIFIED,
+    VESSEL,
+    bearing_in_points,
+    direction_named,
+    in_arc,
 )
+from .sailing import beaufort_force
+from .position import COMPASS_POINTS, METRES_PER_FATHOM, bearing_difference
+from .vessel import WEATHER_DECKS
 
 # Things that happen to a vessel that the people aboard would notice. These name
 # the *event*, not the sentence - which is the point, since the sentence is what a
@@ -146,6 +133,17 @@ BEAUFORT_NAMES = (
 )
 
 
+#: How a sailor says each direction. Ship-relative words have their own
+#: prepositions - you look *ahead* and *astern*, but *to* starboard - and a
+#: compass direction is simply named.
+DIRECTION_PHRASES = {
+    "fore": "ahead",
+    "aft": "astern",
+    "port": "to port",
+    "starboard": "to starboard",
+}
+
+
 def compass_point(bearing):
     """
     Describe a bearing the way a person would say it.
@@ -158,7 +156,7 @@ def compass_point(bearing):
 
     """
     index = int((bearing % 360.0) / 22.5 + 0.5) % 16
-    return _COMPASS_POINTS[index]
+    return COMPASS_POINTS[index]
 
 
 def spell_bearing(bearing):
@@ -410,6 +408,7 @@ class VesselNarrator:
                 self.deliver(*self.phrase_for(CONTACT_LOST))
 
         vessel.ndb.contacts = now
+        self.stand_watches(seen)
 
     def order_for(self, event, **detail):
         """
@@ -650,6 +649,231 @@ class VesselNarrator:
             others = len(seen) - 1
             rest = f", and {others} more sail{'s' if others != 1 else ''} besides"
         return f"A sail stands {where}{rest}."
+
+    def stand_watches(self, seen):
+        """
+        Tell anyone keeping a watch what has come and gone in their arc.
+
+        Args:
+            seen (tuple): Everything the ship can see, nearest first.
+
+        Notes:
+            A watch is kept from where the watcher is standing, so one set at the
+            masthead genuinely sees further than one set on deck - the same
+            contact can be news to one and invisible to the other.
+
+            What each watcher has already been shown is kept on their `.ndb`, so
+            it empties on a reload exactly as the ship's own memory of her
+            contacts does. Both refill together and nobody is told the sea is
+            newly full of ships.
+
+        """
+        vessel = self.vessel
+        for room in vessel.ship_rooms:
+            if room.exposure not in WEATHER_DECKS:
+                continue
+            for watcher in room.contents:
+                where = watcher.attributes.get("maritime_watch", None) if watcher.pk else None
+                if not where:
+                    continue
+                direction = direction_named(where)
+                if direction is None:
+                    continue
+                self.report_watch(watcher, room, direction, seen)
+
+    def report_watch(self, watcher, room, direction, seen):
+        """
+        Tell one watcher what has changed in their arc.
+
+        Args:
+            watcher (Object): Whoever is keeping the watch.
+            room (ShipRoom): Where they are standing.
+            direction (tuple): From `direction_named`.
+            seen (tuple): Everything the ship can see.
+
+        """
+        name, centre, width, relative = direction
+        height = getattr(room, "height_of_eye", None)
+        if height is not None and height != self.vessel.height_of_eye:
+            seen = self.vessel.contacts(height)
+        found = in_arc(seen, centre, width, relative=relative)
+
+        was = dict(watcher.ndb.maritime_watched or {})
+        now = {}
+        for sighting in found:
+            now[sighting.target.id] = sighting.level
+            if sighting.target.id not in was:
+                watcher.msg(self.came_into_view(name, sighting))
+        for gone in was:
+            if gone not in now:
+                watcher.msg(self.went_out_of_view(name))
+        watcher.ndb.maritime_watched = now
+
+    def describe_contact(self, sighting):
+        """
+        Say as much about a contact as the range allows.
+
+        Args:
+            sighting (Sighting): What was seen.
+
+        Returns:
+            text (str): What an observer can honestly say it is.
+
+        Notes:
+            Bounded by the detection level rather than by what the target
+            actually is. A hull at the edge of vision is a shape on the water
+            even though the engine knows her name, and saying the name anyway
+            would make closing to identify pointless.
+
+        """
+        if sighting.level == IDENTIFIED:
+            return f"the {sighting.target.key}"
+        if sighting.level == CLASSIFIED:
+            plan = sighting.target.sail_plan
+            return "a vessel under sail" if plan.area > 0.0 else "a vessel, sails furled"
+        if sighting.level == VESSEL:
+            return "a sail"
+        return "something on the water"
+
+    def contact_line(self, sighting):
+        """
+        One contact, as a line of a report.
+
+        Args:
+            sighting (Sighting): What was seen.
+
+        Returns:
+            line (str): Where to look, her true bearing, her range and what she
+                is.
+
+        Notes:
+            Both bearings, because they answer different questions. The relative
+            one turns a head in the right direction; the true one goes on the
+            chart, and stays put when the ship comes round.
+
+        """
+        return (
+            f"  {bearing_in_points(sighting.relative).capitalize():<32}"
+            f"{spell_bearing(sighting.bearing):>7}"
+            f"{format_range(sighting.distance):>14}   "
+            f"{self.describe_contact(sighting)}"
+        )
+
+    def sector_report(self, where, sightings, horizon=None):
+        """
+        What is in sight in one direction.
+
+        Args:
+            where (str): What the direction is called - "fore", "north".
+            sightings (tuple): `Sighting` objects in that arc, nearest first.
+            horizon (float, optional): How far the observer can see, in metres.
+
+        Returns:
+            lines (tuple): What the watch reports.
+
+        """
+        phrase = self.direction_phrase(where)
+        if not sightings:
+            empty = f"Nothing in sight {phrase}."
+            if horizon:
+                empty += f" The horizon is {format_range(horizon)} off."
+            return (empty,)
+
+        lines = [f"Looking {phrase}:"]
+        lines.extend(self.contact_line(sighting) for sighting in sightings)
+        return tuple(lines)
+
+    def all_round(self, sweep, horizon=None):
+        """
+        Everything around the ship, quarter by quarter.
+
+        Args:
+            sweep (tuple): `(name, sightings)` pairs, in the order to report.
+            horizon (float, optional): How far the observer can see, in metres.
+
+        Returns:
+            lines (tuple): The whole sweep.
+
+        Notes:
+            Reports empty quarters as well as full ones, and deliberately. A
+            lookout who only mentions what he can see leaves you unable to tell
+            "nothing there" from "nobody looked", and those are very different
+            things to know before altering course.
+
+        """
+        lines = ["The horizon, all round:"]
+        if horizon:
+            lines[0] = f"The horizon, all round - {format_range(horizon)} off:"
+        for name, sightings in sweep:
+            heading = self.direction_phrase(name).capitalize()
+            if not sightings:
+                lines.append(f"  {heading:<16}nothing")
+                continue
+            lines.append(f"  {heading:<16}{self.describe_contact(sightings[0])}, ")
+            lines[-1] += (
+                f"{bearing_in_points(sightings[0].relative)}, "
+                f"{format_range(sightings[0].distance)}"
+            )
+            for extra in sightings[1:]:
+                lines.append(f"  {'':<16}{self.describe_contact(extra)}, ")
+                lines[-1] += f"{bearing_in_points(extra.relative)}, {format_range(extra.distance)}"
+        return tuple(lines)
+
+    def direction_phrase(self, where):
+        """
+        Args:
+            where (str): A direction name.
+
+        Returns:
+            phrase (str): How a sailor would say it - "to starboard", "astern".
+
+        """
+        return DIRECTION_PHRASES.get(where, f"to the {where}")
+
+    def watch_set(self, where):
+        """
+        Args:
+            where (str): The direction now being watched.
+
+        Returns:
+            line (str): Confirmation.
+
+        """
+        return f"You settle down to watch {self.direction_phrase(where)}."
+
+    def watch_ended(self):
+        """
+        Returns:
+            line (str): Confirmation that the watch is over.
+
+        """
+        return "You stand down from your watch."
+
+    def came_into_view(self, where, sighting):
+        """
+        Args:
+            where (str): The direction being watched.
+            sighting (Sighting): What has appeared.
+
+        Returns:
+            line (str): What the watcher notices.
+
+        """
+        return (
+            f"Something lifts over the horizon {self.direction_phrase(where)}: "
+            f"a sail, {bearing_in_points(sighting.relative)}."
+        )
+
+    def went_out_of_view(self, where):
+        """
+        Args:
+            where (str): The direction being watched.
+
+        Returns:
+            line (str): What the watcher notices.
+
+        """
+        return f"The sail you were watching {self.direction_phrase(where)} sinks from sight."
 
     # --- transitions --------------------------------------------------------
 
