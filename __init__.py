@@ -146,6 +146,26 @@ from .weapons import (
     serve,
     time_of_flight,
 )
+from .floating import (
+    Buoyancy,
+    Floating,
+    BARREL_WINDAGE,
+    DEBRIS_WINDAGE,
+    RAFT_WINDAGE,
+    SWIMMER_WINDAGE,
+    UPTURNED_HULL_WINDAGE,
+    cell_of,
+    drift,
+    separation,
+    sinking_depth,
+    wind_drift,
+)
+from .projection import (
+    CELL_SIZE,
+    OceanProjection,
+    OceanRoom,
+    cell_centre,
+)
 from .weather import (
     SEA_STATES,
     FlatWeatherProvider,
@@ -194,7 +214,7 @@ from .sailing import (
     sail_plan,
 )
 from .scripts import MaritimeDriver
-from .typeclasses import Vessel
+from .typeclasses import Flotsam, Vessel
 from .simulation import (
     ACTIVE,
     DORMANT,
@@ -245,6 +265,7 @@ __all__ = (
     # simulation
     "MaritimeDriver",
     "Vessel",
+    "Flotsam",
     "ShipRoom",
     "PortRoom",
     # navigation
@@ -353,6 +374,23 @@ __all__ = (
     "fire",
     "serve",
     "discharge",
+    # floating and the projected ocean
+    "Floating",
+    "Buoyancy",
+    "drift",
+    "wind_drift",
+    "separation",
+    "sinking_depth",
+    "cell_of",
+    "cell_centre",
+    "SWIMMER_WINDAGE",
+    "DEBRIS_WINDAGE",
+    "BARREL_WINDAGE",
+    "RAFT_WINDAGE",
+    "UPTURNED_HULL_WINDAGE",
+    "OceanRoom",
+    "OceanProjection",
+    "CELL_SIZE",
     # weather
     "Weather",
     "MaritimeWeatherProvider",

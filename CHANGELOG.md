@@ -13,6 +13,63 @@ combat and damage are not.
 
 ### Feat
 
+- Add the projected ocean. Open water is somewhere a player can be, without
+  building rooms for a sea nobody is in: a small pool of rooms, each lent to
+  whichever square of water currently has somebody in it and taken back when they
+  leave. The pool is bounded by the number of *occupied* cells, so one drifter
+  crossing twenty cells still needs exactly one room.
+- The room is a view, not a location, and that inversion is the whole design.
+  Evennia's `wilderness` was read closely first; there the room *is* where you
+  are, so recycling has to preserve its contents, and its own docstring warns
+  that objects left behind end up with `location = None`. Here the truth is the
+  swimmer's position, held on the swimmer, so releasing a room loses nothing -
+  place them again and the same water comes back.
+- A lone drifter never changes room at all: the room pans to the new cell
+  instead. No move, no departure, no arrival, no write to a location. Skipped the
+  moment somebody else is in the room, or another room already shows the
+  destination, because two rooms showing one cell would put two swimmers in the
+  same water unable to see each other.
+- The pool is found by tag rather than by typeclass. A typeclass query filters on
+  the dotted path stored on the row, so moving or renaming the class would
+  silently empty the pool - which is a bug this contrib has had once already, in
+  another module.
+- Add floating things: swimmers, rafts, casks, wreckage. The current carries
+  everything in it equally because it is the water; the wind moves what stands
+  out of that water, in proportion to how much does. Windage is the only
+  difference between a raft and a man, and it is why a search for someone who
+  went over with a lifebuoy widens in a predictable direction.
+- Drift reads the same current and the same wind a vessel in that water reads, so
+  a barrel dropped over the side stays with the ship that dropped it until the
+  wind separates them.
+- Add `Flotsam`, which is `Floating` and `Situated` and nothing else. A game
+  wanting floating *characters* mixes `Floating` into its own character class
+  instead.
+- Add `WaterNarrator`, replaceable through `MARITIME_WATER_NARRATOR`. Being in
+  the sea has a different voice from being on a ship, so it is a second narrator
+  rather than a method on the first. Bearings are compass points, not relative
+  ones: a body in the water has no head for a bearing to be relative to.
+- The depth is reported only when the bottom is close enough to stand on. A
+  swimmer in deep water has taken no sounding, and telling them how deep it is
+  would hand out a number nobody has.
+- The horizon from the water is not symmetrical, and the code was right where the
+  first draft of the tests was wrong. Height beats the curve, so a ship's masts
+  are in sight four miles off; what is lost from down there is everything low - a
+  boat, a raft, another swimmer. The cruelty is the other direction: she carries
+  no height to be seen by, and from that deck there is nothing on the water at
+  all.
+- Buoyancy carries a sink rate as well as a flag, because something that has
+  stopped floating is still somewhere, going down through a water column that is
+  a real place. Collapsing that to a boolean would delete every wreck before
+  anybody could dive on it.
+
+### Fix
+
+- A ship seen from the water was announced as "The kittiwake". `str.capitalize`
+  lowercases everything after the first character, which is harmless on a
+  generated phrase and wrong the moment the phrase contains a name. Replaced with
+  `open_sentence`, which raises the first letter and leaves the rest alone. No
+  test caught it and one look at the water did, which is the argument for looking.
+
 - Add weapons. A mount is a range, a reload, a projectile speed, an arc and an
   accuracy - nothing here is a cannon, and a game fills those in for guns,
   ballistae, harpoons or something that spits lightning. The rules are the same

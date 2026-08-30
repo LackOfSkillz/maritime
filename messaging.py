@@ -196,6 +196,58 @@ def spell_bearing(bearing):
     return "-".join(f"{int(round(bearing)) % 360:03d}")
 
 
+def open_sentence(text):
+    """
+    Raise the first letter of a phrase and leave the rest of it alone.
+
+    Args:
+        text (str): The phrase.
+
+    Returns:
+        text (str): The same phrase, fit to start a sentence.
+
+    Notes:
+        Not `str.capitalize`, which lowercases everything after the first
+        character. That is harmless on a generated phrase and wrong the moment
+        the phrase contains a name - it turned the Kittiwake into the kittiwake,
+        which no test caught and one look at the water did.
+
+    """
+    return text[:1].upper() + text[1:]
+
+
+def describe_contact(sighting):
+    """
+    Say as much about a contact as the range allows.
+
+    Args:
+        sighting (Sighting): What was seen.
+
+    Returns:
+        text (str): What an observer can honestly say it is.
+
+    Notes:
+        Bounded by the detection level rather than by what the target actually
+        is. A hull at the edge of vision is a shape on the water even though the
+        engine knows her name, and saying the name anyway would make closing to
+        identify pointless.
+
+        A function rather than a method because both narrators need exactly this
+        answer and neither needs anything of the other. A ship seen from a deck
+        and the same ship seen from the water at the same range are the same
+        ship, described the same way.
+
+    """
+    if sighting.level == IDENTIFIED:
+        return f"the {sighting.target.key}"
+    if sighting.level == CLASSIFIED:
+        plan = sighting.target.sail_plan
+        return "a vessel under sail" if plan.area > 0.0 else "a vessel, sails furled"
+    if sighting.level == VESSEL:
+        return "a sail"
+    return "something on the water"
+
+
 class VesselNarrator:
     """
     Turns what happened to a vessel into what the people aboard hear.
@@ -766,14 +818,7 @@ class VesselNarrator:
             would make closing to identify pointless.
 
         """
-        if sighting.level == IDENTIFIED:
-            return f"the {sighting.target.key}"
-        if sighting.level == CLASSIFIED:
-            plan = sighting.target.sail_plan
-            return "a vessel under sail" if plan.area > 0.0 else "a vessel, sails furled"
-        if sighting.level == VESSEL:
-            return "a sail"
-        return "something on the water"
+        return describe_contact(sighting)
 
     def contact_line(self, sighting):
         """
@@ -1078,3 +1123,164 @@ def leadsman_call(metres):
     if remainder == 2:
         return f"And a half {word}!"
     return f"By the {'mark' if whole in LEAD_MARKS else 'deep'} {word}!"
+
+
+class WaterNarrator:
+    """
+    Turns being in the sea into what the person in it perceives.
+
+    Attributes:
+        position (WorldPosition): Where they are.
+        swimmer (Object or None): Whoever is in the water.
+
+    Notes:
+        A separate voice from `VesselNarrator`, and not a subclass of it, because
+        almost nothing carries across. A ship narrates her own behaviour to
+        people standing on her; the sea narrates nothing and does not know anyone
+        is there. Everything below is what a person in the water could work out
+        for themselves, which is very little, and that scarcity is the point.
+
+        Bearings are given as compass points rather than relative ones. A lookout
+        says "broad on the port bow" because the ship has a head to be relative
+        to; a swimmer turning in the water does not, and reporting a relative
+        bearing from a body with no heading would be inventing a fact.
+
+    """
+
+    def __init__(self, position, swimmer=None):
+        """
+        Args:
+            position (WorldPosition): Where the water is.
+            swimmer (Object, optional): Who is in it.
+
+        """
+        self.position = position
+        self.swimmer = swimmer
+
+    def surface(self):
+        """
+        What can be perceived from the surface of the sea.
+
+        Returns:
+            lines (tuple): Sentences, in the order they are worth hearing.
+
+        """
+        lines = [self.water_line()]
+        ground = self.ground_line()
+        if ground:
+            lines.append(ground)
+        lines.append(self.wind_line())
+        lines.extend(self.sighted_lines())
+        return tuple(line for line in lines if line)
+
+    def water_line(self):
+        """
+        Returns:
+            line (str): The sea itself, from surface level.
+
+        Notes:
+            The same sea state a deck would report reads very differently from
+            in it. A moderate sea is a pleasant sail and a serious problem for a
+            swimmer, so this is written from the water rather than reusing
+            `SEA_DESCRIPTIONS`, which is written from a rail.
+
+        """
+        from . import environment
+
+        sea = environment.sea_state_at(self.position)
+        if sea in (CALM, RIPPLED):
+            return "You are in the open sea, and it lies almost flat around you."
+        if sea == SMOOTH:
+            return "You are in the open sea, lifting and falling on a low swell."
+        return (
+            "You are in the open sea. It heaves around you, and the horizon "
+            "disappears each time you go down into a trough."
+        )
+
+    def ground_line(self):
+        """
+        Returns:
+            line (str): Whether there is ground within reach, or empty when there
+                is not.
+
+        Notes:
+            Only spoken when the bottom is close enough to stand on. A swimmer in
+            deep water has no way to know what is under them, and telling them
+            would hand out a sounding nobody took.
+
+        """
+        from . import config, environment
+        from .floating import STANDING_DEPTH
+
+        depth = environment.clearance_at(self.position, 0.0, config.time_provider().now())
+        if depth > STANDING_DEPTH:
+            return ""
+        if depth <= 0.0:
+            return "Your feet are on dry ground. You are not swimming at all."
+        return "Your feet find the bottom. You can stand here."
+
+    def wind_line(self):
+        """
+        Returns:
+            line (str): The wind, felt rather than measured.
+
+        """
+        from . import environment
+
+        wind = environment.wind_at(self.position)
+        force = beaufort_force(wind.speed)
+        if force == 0:
+            return "There is no wind at all, and no sound but your own breathing."
+        if force <= 3:
+            return f"A light air comes out of the {compass_point(wind.bearing)}."
+        return (
+            f"{BEAUFORT_NAMES[force].capitalize()} comes out of the "
+            f"{compass_point(wind.bearing)}, and takes the tops off the water."
+        )
+
+    def sighted_lines(self):
+        """
+        Returns:
+            lines (tuple): What can be seen from surface level, nearest first.
+
+        Notes:
+            A swimmer sees further than the horizon suggests, because height
+            beats the curve and a ship carries hers in her masts. What is lost
+            from down here is everything low: a boat, a raft, another swimmer.
+            The asymmetry runs the cruel way round - you watch her stand on for
+            an hour, and from her deck there is nothing to see.
+
+        """
+        from . import environment
+        from .floating import SWIMMER_HEIGHT_OF_EYE
+
+        seen = environment.contacts_from(
+            self.position,
+            0.0,
+            SWIMMER_HEIGHT_OF_EYE,
+            environment.vessels_within_sight(self.position, SWIMMER_HEIGHT_OF_EYE),
+        )
+        if not seen:
+            return ("Nothing at all breaks the horizon.",)
+        return tuple(
+            f"{open_sentence(self.describe_contact(sighting))} lies to the "
+            f"{compass_point(sighting.bearing)}, {format_range(sighting.distance)} off."
+            for sighting in seen
+        )
+
+    def describe_contact(self, sighting):
+        """
+        Args:
+            sighting (Sighting): What was seen.
+
+        Returns:
+            phrase (str): What it can be called at this range.
+
+        Notes:
+            Deliberately the same wording `VesselNarrator` uses, from the same
+            function rather than a second copy of it. Two descriptions of one
+            ship that drifted apart would let a player tell where the observer
+            was standing from the prose, which is a tell rather than a feature.
+
+        """
+        return describe_contact(sighting)

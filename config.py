@@ -31,7 +31,8 @@ from evennia.utils.utils import class_from_module
 
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
 from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
-from .messaging import VesselNarrator
+from .messaging import VesselNarrator, WaterNarrator
+from .projection import CELL_SIZE, OceanProjection
 from .routes import NavigationNetwork
 from .sailing import WindVector
 from .weather import FlatWeatherProvider, MaritimeWeatherProvider
@@ -48,6 +49,8 @@ DEFAULT_TIME_PROVIDER = f"{__package__}.clock.GameTimeProvider"
 DEFAULT_MAP_PROVIDER = f"{__package__}.bathymetry.FlatSeaMapProvider"
 DEFAULT_NARRATOR = f"{__package__}.messaging.VesselNarrator"
 DEFAULT_CURRENT_PROVIDER = f"{__package__}.currents.FlatCurrentProvider"
+DEFAULT_WATER_NARRATOR = f"{__package__}.messaging.WaterNarrator"
+DEFAULT_OCEAN_ROOM = f"{__package__}.projection.OceanRoom"
 
 
 def get_setting(name, default=None):
@@ -285,4 +288,46 @@ def weather_provider():
         ),
         visibility=float(get_setting("VISIBILITY", DEFAULT_VISIBILITY)),
         sea_state=get_setting("SEA_STATE") or None,
+    )
+
+
+def water_narrator_class():
+    """
+    The class that speaks for open water.
+
+    Returns:
+        cls (type): A `WaterNarrator` subclass, uninstantiated.
+
+    Raises:
+        TypeError: If the configured class is not a water narrator.
+
+    Notes:
+        A second narrator setting rather than a method on the first, because
+        being in the sea has a different voice from being on a ship and a game
+        may well want to change one without the other. Returned uninstantiated
+        for the same reason `narrator_class` is: a narrator is bound to the
+        place it is describing.
+
+    """
+    return load_class(get_setting("WATER_NARRATOR", DEFAULT_WATER_NARRATOR), expected=WaterNarrator)
+
+
+def projection():
+    """
+    Build the ocean projection.
+
+    Returns:
+        projection (OceanProjection): The pool that lends rooms to occupied
+            water.
+
+    Notes:
+        A new instance per call, and safely so - the projection keeps no state of
+        its own, since everything it needs is on the rooms. That is what lets any
+        part of the system build one when it needs one without arranging to share
+        a single instance, or having to wonder whether the one it holds is stale.
+
+    """
+    return OceanProjection(
+        cell_size=float(get_setting("CELL_SIZE", CELL_SIZE)),
+        room_typeclass=get_setting("OCEAN_ROOM_TYPECLASS", DEFAULT_OCEAN_ROOM),
     )

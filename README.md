@@ -12,9 +12,12 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 
 ## Status
 
-**Early development.** The foundations, spatial model, vessels, simulation, sailing,
-currents, grounding, observation, ports and dead reckoning are working and tested; charts,
-weather, crew, combat and damage are not built yet. Nothing here is API-stable.
+**Early development.** Working and tested: the foundations and spatial model, vessels and
+their interiors, the simulation service, sailing, currents, grounding, observation, ports,
+dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
+tactical geometry, weapons, and the projected ocean for anyone in the water. Not built:
+crew and authority, damage, boarding, the strategic layer, cargo and the service economy.
+Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
 sail continuous water, sound your way through a channel past a rock ledge, come alongside
@@ -91,9 +94,22 @@ Elias orders a cast of the lead.
 The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
 ```
 
+Go over the side and the sea is a place too, without a single ocean room having been built
+for it in advance — one is lent to your square of water, and taken back when you leave:
+
+```text
+> look
+You are in the open sea, lifting and falling on a low swell.
+A strong breeze comes out of the north-west, and takes the tops off the water.
+A vessel under sail lies to the east, 1.3 leagues off.
+```
+
+She can be seen because her masts stand above the curve. From her deck, looking back,
+there is nothing on the water at all.
+
 ## Design
 
-Ten ideas do most of the work. `docs/architecture.md` has the rest.
+Eleven ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -151,6 +167,12 @@ water, so how far you can see depends on how high your eye is — and how far yo
 looking back. Height of eye comes from the compartment you are standing in, so a masthead
 is worth building rather than worth mentioning.
 
+**Where a room is needed at all, it is a view rather than a place.** Open water gets no
+rooms of its own; a small pool is lent out, one to each square of sea that currently has
+somebody in it. Because a swimmer's truth is their position and the room only shows the
+cell it falls in, releasing one loses nothing — and a lone drifter never changes room at
+all, since the room can simply pan to the new water instead.
+
 **One scheduler, bounded and fair.** Not a ticker per vessel: Evennia's `TickerHandler`
 keys subscriptions on callback and interval but not arguments, so a fleet subscribing one
 method silently overwrites itself and most ships stop moving. A single service processes
@@ -198,6 +220,9 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_SEA_STATE` | follows the wind | Override the sea the wind would raise |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
+| `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |
+| `MARITIME_CELL_SIZE` | `100.0` | How wide a projected square of open water is, in metres |
+| `MARITIME_OCEAN_ROOM_TYPECLASS` | `OceanRoom` | Dotted path to the class pool rooms are built from |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
 | `MARITIME_DISTANCE_UNITS` | `leagues` | `leagues`, `nautical`, `metric` or `raw` |
 | `MARITIME_DEPTH_UNITS` | `fathoms` | `fathoms`, `metres` or `raw` |
@@ -366,13 +391,22 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1220 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1300 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
 - No crew, cargo or damage yet. Guns fire and hit; what a hit *does* to a hull is the
   damage phase, and `ShotResult` is deliberately something nothing consumes.
+- Nothing yet puts a player in the water. The projection can hold them, drift them and
+  describe the sea to them, but going over the side is something damage and boarding do,
+  and neither is built.
+- Being in the water costs nothing. There is no exhaustion, no cold and no drowning,
+  because those are statements about how harsh a game is and would collide with the
+  health and stamina the host game already has. Recorded in `DECISIONS.md`.
+- The water column is not built. `Buoyancy` carries a sink rate so that a wreck has
+  somewhere to go, but nothing yet decides when something stops floating, and nothing
+  can be dived on.
 - A port is a quay with berths. Anchorages, pilots, tugs, cargo handling and repair
   facilities are all later phases.
 - The default weather is one wind, one visibility and one sea everywhere. A game supplies

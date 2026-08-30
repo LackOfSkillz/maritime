@@ -6,6 +6,9 @@ Two objects, and the relationship between them is the whole point:
     Vessel     the thing that is somewhere. Holds the position.
     ShipRoom   a compartment. Holds no position, and points at its vessel.
 
+A third, `Flotsam`, is what is left when neither applies - anything on the water that
+nobody is steering.
+
 A ship's cabin is not inside the hull by Evennia's containment - rooms have no location
 at all - so a cabin names its vessel as its position source, and everyone standing in it
 resolves through to wherever the hull has sailed. Nobody aboard stores a coordinate, so
@@ -33,6 +36,7 @@ from .observation import Lookout
 from .sailing import Rigged, steerage_floor, leeway_angle
 from .position import WorldPosition, normalize_bearing
 from .environment import Situated
+from .floating import Floating
 from .ports import Berthing
 from .traffic import traffic
 from .voyage import Conned
@@ -550,3 +554,21 @@ class Vessel(
 
     def __repr__(self):
         return f"<Vessel {self.key} at {self.maritime_position}>"
+
+
+class Flotsam(Floating, Situated, DefaultObject):
+    """
+    Anything on the water that nobody is steering.
+
+    Notes:
+        A cask, a spar, a hatch cover, a body. The whole of it is the two mixins:
+        `Floating` gives it a position the sea moves, `Situated` lets it read the
+        water it is in. There is no behaviour of its own to add, which is the
+        test that the mixins were drawn in the right places.
+
+        Provided so a game does not have to declare a class to drop a barrel over
+        the side. A game that wants floating *characters* mixes `Floating` into
+        its own character class instead - inheriting from this one would make
+        every swimmer an object rather than a person.
+
+    """

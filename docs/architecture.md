@@ -265,6 +265,45 @@ supplies, which is correct and does not change when tiles land behind it.
 
 ---
 
+### 4.7 Open water is projected, not built
+
+A ship needs no rooms for the sea because she *is* a place: her compartments are ordinary
+rooms that never move, and the hull carries them. Anyone not aboard one — a swimmer, a
+diver surfacing, someone on a raft — has no such room, and building rooms for an ocean
+nobody is in would be building a world to hold its empty parts.
+
+So the surface is projected. A small pool of rooms is lent out, one to each square of water
+that currently has somebody in it, and taken back when they leave. The pool is bounded by
+the number of *simultaneously occupied* cells, not by the size of the sea.
+
+**The room is a view, not a location, and everything follows from that.** Evennia's
+`wilderness` contrib solves the same problem the other way round: there the room *is* where
+you are, so recycling one has to preserve whatever was inside it, and its own docstring
+warns that objects left behind end up with `location = None`. Here a swimmer's truth is
+their `maritime_position`, held on the swimmer; the room only shows the cell that position
+falls in. Releasing a room therefore loses nothing.
+
+That inversion pays three times:
+
+- **Drift is not movement.** A floating thing changes position every tick and changes room
+  only on the few ticks it crosses a boundary.
+- **A lone drifter never changes room at all.** The room pans to the new cell instead — no
+  move, no departure, no arrival. Skipped the moment somebody else is in the room, or
+  another room already shows the destination, since two rooms showing one cell would put
+  two swimmers in the same water unable to see each other.
+- **What you can see is not local.** Contacts are computed from the position, so the answer
+  does not depend on which room happens to be lending it.
+
+**The pool is found by tag, not by typeclass.** A typeclass query filters on the dotted path
+stored on the row, so moving or renaming the class would silently empty the pool.
+
+> **Invariant:** at most one pool room shows any one cell.
+
+> **Invariant:** a room is released only when nothing but exits remains in it — and even a
+> forced release would destroy nothing, because position lives on the swimmer.
+
+---
+
 ## 5. Grounding
 
 Grounding is not a special case. It is terrain intersecting the vessel envelope.
@@ -738,7 +777,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 10 | Minimal crew automation | done | The sailing master steers for the next mark allowing for the set, carries what the wind permits, and takes the way off her at the end |
 | 11 | Strategic representation | — | Strategic records, analytical travel, materialisation, benchmarks at 100/500/1000 |
 | 12 | Weather and sea state | done | One provider supplies wind, visibility and sea state together; the sea follows the wind by default and slows her |
-| 13 | Sparse ocean projection | — | Swimmers and floating entities, studied from Wilderness and written maritime-native |
+| 13 | Sparse ocean projection | done | A pooled room per occupied cell, rooms as views rather than locations, a lone drifter panning its own room, drift by current and windage, and a second narrator for the water |
 | 14 | Crew and authority | — | Roles, staffing, skill hooks, command succession |
 | 15 | Tactical geometry | partial | Range, bearing, aspect, closure, arcs and `target` are built. The pacing decision is recorded in `DECISIONS.md` and is Gary's |
 | 16 | Weapons | done | Generic mounts, reload clocks, time of flight, aiming off, and a hit chance built from range, sea and aspect. Damage is phase 17 and is not touched |
