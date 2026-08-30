@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
 from .formatting import format_range
+from .cargo import VOLUME, WEIGHT, stowed_volume
 from .observation import (
     CLASSIFIED,
     IDENTIFIED,
@@ -81,6 +82,8 @@ GANGWAY_DOWN = "gangway_down"
 SINGLE_UP = "single_up"
 LET_GO = "let_go"
 WORK_THE_FIX = "work_the_fix"
+STOW_ORDER = "stow_order"
+DISCHARGE_ORDER = "discharge_order"
 
 
 @dataclass(frozen=True)
@@ -517,6 +520,24 @@ class VesselNarrator:
                 called=f'You call out, "Make her {knots:.0f} knots."',
                 overheard=f'{who} calls out, "Make her {knots:.0f} knots."',
                 answered=f'The mate answers, "Making {knots:.0f} knots now, sir."',
+            )
+
+        if event == STOW_ORDER:
+            what = detail["what"]
+            tonnes = detail["tonnes"]
+            return Order(
+                called=f'You call out, "Get {tonnes:.0f} tons of {what} aboard."',
+                overheard=f'{who} calls out, "Get {tonnes:.0f} tons of {what} aboard."',
+                answered='The mate answers, "Aye sir - rig the yard tackle."',
+            )
+
+        if event == DISCHARGE_ORDER:
+            what = detail["what"]
+            tonnes = detail["tonnes"]
+            return Order(
+                called=f'You call out, "Break out {tonnes:.0f} tons of {what}."',
+                overheard=f'{who} calls out, "Break out {tonnes:.0f} tons of {what}."',
+                answered='The mate answers, "Aye sir - hands to the hatches."',
             )
 
         if event == ALL_STOP:
@@ -959,6 +980,129 @@ class VesselNarrator:
 
         """
         return f"The sail you were watching {self.direction_phrase(where)} sinks from sight."
+
+    def stowed(self, result, commodity):
+        """
+        What went aboard, and what it did to her.
+
+        Args:
+            result (TransferResult): What crossed the rail.
+            commodity (Commodity): What was being loaded.
+
+        Returns:
+            lines (tuple): What the deck hears.
+
+        Notes:
+            Always says which capacity stopped her, because "she is full" and
+            "she is down on her marks" are different problems with different
+            answers. A ship that cubed out will take a denser cargo; one that
+            weighed out will not take anything at all.
+
+        """
+        moved = result.parcel.tonnes
+        lines = [
+            f"{moved:.0f} tons of {commodity.name} go down into the " f"{result.hold.key.lower()}."
+        ]
+        if result.refused > 0.0:
+            lines.append(self.refusal_line(result, commodity))
+        return tuple(lines)
+
+    def refusal_line(self, result, commodity):
+        """
+        Args:
+            result (TransferResult): What crossed the rail, and what did not.
+            commodity (Commodity): What was being loaded.
+
+        Returns:
+            line (str): Why the rest of it is still on the quay.
+
+        """
+        left = result.refused
+        if result.limit == WEIGHT:
+            return (
+                f"{left:.0f} tons of {commodity.name} stay on the quay - she is down "
+                f"on her marks and will not take the weight."
+            )
+        if result.limit == VOLUME:
+            return (
+                f"{left:.0f} tons of {commodity.name} stay on the quay - the holds are "
+                f"full, though she would carry the weight of something denser."
+            )
+        return f"{left:.0f} tons of {commodity.name} stay on the quay."
+
+    def discharged(self, result, commodity):
+        """
+        Args:
+            result (TransferResult): What came out.
+            commodity (Commodity): What was being discharged.
+
+        Returns:
+            lines (tuple): What the deck hears.
+
+        """
+        moved = result.parcel.tonnes
+        lines = [f"{moved:.0f} tons of {commodity.name} come up out of her and go ashore."]
+        if result.refused > 0.0:
+            lines.append(f"There is no more {commodity.name} aboard.")
+        return tuple(lines)
+
+    def manifest(self, stowage):
+        """
+        Everything aboard, and how she is sitting for it.
+
+        Args:
+            stowage (Stowage): One reading of how she is loaded.
+
+        Returns:
+            lines (tuple): The manifest, then her condition.
+
+        Notes:
+            The condition is the part worth reading. A list of cargo is a list;
+            what a master needs to know before he sails is how deep she is, how
+            much freeboard is left and whether the weight is too high in her.
+
+            Each line shows the hold that parcel actually occupies rather than
+            the volume of the goods themselves, so the column adds up to the
+            total. Showing the raw figure and a total that included broken
+            stowage made the manifest look like it could not add.
+
+        """
+        vessel = self.vessel
+        lines = [f"|w{vessel.key}|n - manifest"]
+        if not stowage.parcels:
+            lines.append("  She is in ballast. There is nothing in her holds.")
+        else:
+            broken = vessel.broken_stowage
+            for parcel in stowage.parcels:
+                lines.append(
+                    f"  {parcel.commodity.name:<20}{parcel.tonnes:>8.1f} tons"
+                    f"{stowed_volume([parcel], broken):>10.1f} m3"
+                )
+            lines.append(f"  {'':<20}{stowage.tonnes:>8.1f} tons{stowage.volume:>10.1f} m3 stowed")
+
+        lines.append("")
+        lines.append(f"  Draught    {stowage.draft:.2f} m   freeboard {stowage.freeboard:.2f} m")
+        lines.append(f"  Capacity   {self.capacity_line(stowage)}")
+        if stowage.overloaded:
+            lines.append("  |rShe is loaded past her marks. She is not fit to go to sea.|n")
+        if stowage.tender:
+            lines.append("  |yThe weight is too high in her. She will be tender in a seaway.|n")
+        return tuple(lines)
+
+    def capacity_line(self, stowage):
+        """
+        Args:
+            stowage (Stowage): One reading of how she is loaded.
+
+        Returns:
+            line (str): Which capacity has run out, in words a mate would use.
+
+        """
+        if stowage.limit == WEIGHT:
+            return "she has weighed out - no more weight will go in her"
+        if stowage.limit == VOLUME:
+            return "she has cubed out - the holds are full"
+        return "she will take more of either weight or measurement"
 
     def passage_made(self):
         """

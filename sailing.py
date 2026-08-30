@@ -412,7 +412,7 @@ class Rigged:
             self.wind_here(),
             self.sail_plan,
             self.polar_curve,
-            self.motion_limits,
+            self.working_limits,
         )
 
 

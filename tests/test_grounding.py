@@ -215,7 +215,7 @@ class TestVesselGrounding(EmptySeaMixin, BaseEvenniaTest):
         self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=2.0, turn_rate=8.0)
         self.hull.heading = EAST
         self.hull.orders = HelmOrders(heading=EAST, speed=8.0)
-        self.hull.draft = 2.0
+        self.hull.light_draft = 2.0
 
     def test_deep_water_leaves_her_sailing(self):
         with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0):
@@ -267,7 +267,7 @@ class TestSurfaceConstraint(EmptySeaMixin, BaseEvenniaTest):
         self.hull.motion_limits = MotionLimits(max_speed=10.0, acceleration=2.0, turn_rate=8.0)
         self.hull.heading = EAST
         self.hull.orders = HelmOrders(heading=EAST, speed=5.0)
-        self.hull.draft = 2.0
+        self.hull.light_draft = 2.0
 
     def test_a_submerged_hull_is_returned_to_the_surface(self):
         """

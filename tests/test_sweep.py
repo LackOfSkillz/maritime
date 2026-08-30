@@ -251,7 +251,7 @@ class TestVesselSweeps(EmptySeaMixin, BaseEvenniaTest):
         self.hull.heading = EAST
         self.hull.speed = 20.0
         self.hull.orders = HelmOrders(heading=EAST, speed=20.0)
-        self.hull.draft = 2.0
+        self.hull.light_draft = 2.0
         self.hull.length = 20.0
         self.hull.beam = 6.0
 

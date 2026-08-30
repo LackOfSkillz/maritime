@@ -16,19 +16,26 @@ from evennia.objects.objects import DefaultExit, DefaultRoom
 from evennia.utils import create
 
 from .observation import DEFAULT_HEIGHT_OF_EYE
+from .stowage import Stowed
 from .vessel import WEATHER_DECKS
 from .ports import APPROACH_RANGE
 from .position import WorldPosition
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
 
 
-class ShipRoom(DefaultRoom):
+class ShipRoom(Stowed, DefaultRoom):
     """
     A compartment aboard a vessel.
 
     Holds no position of its own. It names its vessel, and the world-position
     resolver walks through to whatever the hull reports - which is why a hundred
     people aboard cost nothing extra to move.
+
+    Notes:
+        `Stowed` makes any compartment a possible hold. One with no cargo capacity
+        simply is not one, which is better than a separate hold typeclass:
+        converting a cabin to cargo space in a refit is then setting a number
+        rather than rebuilding the room.
 
     """
 

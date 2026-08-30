@@ -19,6 +19,7 @@ package, which is exactly how the first attempt at this split broke.
 
 from .gunnery import CmdFire, CmdGuns, CmdLoad
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
+from .lading import CmdDischarge, CmdManifest, CmdStow
 from .lookout import (
     CmdLookAround,
     CmdLookout,
@@ -46,6 +47,9 @@ from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
 
 __all__ = (
     "MaritimeCommand",
+    "CmdStow",
+    "CmdDischarge",
+    "CmdManifest",
     "vessel_of",
     "knots_to_ms",
     "ms_to_knots",

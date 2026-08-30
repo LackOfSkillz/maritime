@@ -69,3 +69,69 @@ needs that, but nothing yet decides when floating stops.
 
 **What it needs from you:** a direction, and probably not until damage lands, since going
 into the water will mostly be something that happens to you rather than something you do.
+
+---
+
+## What a cargo is worth, and what a contract says
+
+**Raised by:** phase 22, cargo.
+**Blocks:** trade. The physical half is built - what stows how, what fits, what it does to
+her draught - and none of it knows a price.
+
+A freight rate is a statement about a whole economy: what a voyage is worth, whether it is
+worth more in a war, who is buying, what a shipper does when you arrive late, and whether
+the game has a currency at all. Every one of those already exists in whatever game installs
+this, or is deliberately absent from it, and a maritime contrib that shipped its own would
+either duplicate the game's economy or argue with it.
+
+The same goes for contracts. A cargo contract is a promise with a deadline and a penalty,
+which is the same shape as a passenger charter - and phase 21 is explicitly yours.
+
+The options, as far as I can see them:
+
+1. **The contrib never prices anything.** It moves tonnes; the game sells them. Cleanest
+   separation, and what stands today.
+2. **The contrib defines a contract shape and no values** - a commodity, a quantity, an
+   origin, a destination, a deadline - and the game decides what any of it is worth.
+3. **The contrib ships a working freight economy** with configurable rates. Convenient for
+   a game with no economy of its own, and an argument with every game that has one.
+
+**What I did:** option 1. `Commodity` carries a key, a name, a stowage factor and whether it
+is bulk, and deliberately nothing about value, legality, perishability or demand. Those are
+the four fields a ship's officer needs to load her, which is the part that is genuinely
+maritime.
+
+**What it needs from you:** a direction, and it pairs with phase 21 rather than standing
+alone - passengers and cargo are the same contract with different freight.
+
+---
+
+## What being tender should cost her
+
+**Raised by:** phase 22, cargo.
+**Blocks:** nothing built. The condition is detected and reported; what follows from it is
+open.
+
+Weight stowed high makes a ship roll slowly and far, and in a seaway not always come back.
+The system knows when she is in that state - the stability moment is computed from real deck
+levels, and the manifest says so in as many words. What it does not do is make it hurt.
+
+The trouble is that every honest answer reaches into two systems at once. A tender ship
+should carry less sail, which is `sailing`; she should be more likely to be knocked down in
+a gale, which is weather and damage together; and a knockdown is a flooding event, which is
+phase 17 and yours.
+
+The options, as far as I can see them:
+
+1. **Reported and no more.** A warning on the manifest, and a master who ignores it gets
+   away with it. What stands today.
+2. **A sail limit.** A tender ship cannot safely carry her full plan, and the mate refuses
+   to set it. Contained, and touches only `sailing`.
+3. **A risk in a seaway,** resolved against sea state - which means deciding what a
+   knockdown does, and that is damage.
+
+**What I did:** option 1, and the arithmetic is finished so that whichever way this goes it
+is already there. `stowed_moment` is signed relative to the main deck, so a stow that is too
+high is a positive number rather than a flag somebody has to set.
+
+**What it needs from you:** a direction, and probably alongside damage rather than before it.

@@ -348,7 +348,7 @@ class TestCurrentSetsHerAground(DriftingTestCase):
 
         """
         path = f"{LedgeToTheNorth.__module__}.LedgeToTheNorth"
-        self.hull.draft = 2.0
+        self.hull.light_draft = 2.0
         with override_settings(
             MARITIME_MAP_PROVIDER=path,
             MARITIME_CURRENT_SET=NORTH,

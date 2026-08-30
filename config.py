@@ -30,6 +30,7 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
+from .cargo import STANDARD_STOWAGE
 from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
 from .messaging import VesselNarrator, WaterNarrator
 from .projection import CELL_SIZE, OceanProjection
@@ -331,3 +332,39 @@ def projection():
         cell_size=float(get_setting("CELL_SIZE", CELL_SIZE)),
         room_typeclass=get_setting("OCEAN_ROOM_TYPECLASS", DEFAULT_OCEAN_ROOM),
     )
+
+
+def commodities():
+    """
+    The cargoes this game trades in.
+
+    Returns:
+        commodities (tuple): Every `Commodity` a quay might offer.
+
+    Raises:
+        TypeError: If the configured value is not a sequence of commodities.
+
+    Notes:
+        Defaults to the standard stowage table, which is reference data rather
+        than content - real figures for real cargoes, in the same spirit as the
+        Beaufort scale. A game with its own economy points `MARITIME_COMMODITIES`
+        at its own tuple, or at a dotted path to one, and none of this is loaded.
+
+    """
+    from .cargo import Commodity
+
+    configured = get_setting("COMMODITIES")
+    if configured is None:
+        return STANDARD_STOWAGE
+    if isinstance(configured, str):
+        configured = class_from_module(configured)
+    if callable(configured) and not isinstance(configured, (list, tuple)):
+        configured = configured()
+    configured = tuple(configured)
+    for commodity in configured:
+        if not isinstance(commodity, Commodity):
+            raise TypeError(
+                f"MARITIME_COMMODITIES must hold Commodity objects, "
+                f"found {type(commodity).__name__}."
+            )
+    return configured

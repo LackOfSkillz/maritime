@@ -197,6 +197,9 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "look",
                 "watch",
                 "cast off",
+                "stow",
+                "discharge",
+                "manifest",
                 "@maritime",
             },
         )

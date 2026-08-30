@@ -25,8 +25,11 @@ from .commands import (
     CmdPosition,
     CmdAnchor,
     CmdCastOff,
+    CmdDischarge,
     CmdDock,
     CmdLookAround,
+    CmdManifest,
+    CmdStow,
     CmdFix,
     CmdWatch,
     CmdBelay,
@@ -72,6 +75,9 @@ class HelmCmdSet(CmdSet):
         self.add(CmdTarget())
         self.add(CmdAnchor())
         self.add(CmdDock())
+        self.add(CmdStow())
+        self.add(CmdDischarge())
+        self.add(CmdManifest())
         self.add(CmdFix())
         self.add(CmdLookAround())
         self.add(CmdWatch())

@@ -379,6 +379,59 @@ dematerialise by leaving the simulation registry, never by deleting rooms.
 Materialisation preserves identity. A vessel never becomes a different vessel because its
 representation changed.
 
+### 6.1 Cargo, and the two capacities
+
+A hull has two capacities for cargo and they are not interchangeable:
+
+```text
+deadweight    the mass she can carry before she is too deep
+hold volume   the space that cargo occupies
+```
+
+Which one binds depends entirely on what she is carrying. **Stowage factor** — the cubic
+metres one tonne of a thing occupies — is what separates them, and the spread is enormous:
+iron stows at about 0.35 and hay at 9. A hull full of iron has most of her volume empty; the
+same hull full of hay is barely down on her marks.
+
+That is the whole trade, and it is why both are tracked and why "she is full" is never a
+complete answer. A ship that has **weighed out** will take nothing further. One that has
+**cubed out** would still carry something denser, which is a decision a shipper can act on.
+
+**Broken stowage** — the space wasted between irregular packages — is charged against
+packaged cargo and not against bulk, because bulk has no packages to leave gaps between.
+
+**Cargo is data, not objects.** Five hundred tonnes of grain is one parcel, not five hundred
+database rows. The same argument as shots being events: nothing gains anything from each
+sack having an identity. A game wanting a *particular* crate puts an ordinary object in the
+hold beside the parcels.
+
+**Hold volume is not `VesselCapacity.internal_volume`.** That is the space below deck that
+cabins, stores and holds all compete for when she is *built*, and reading it at a quay would
+let a ship load cargo into the volume her cabins are standing in. What stops a load is the
+hold she actually has.
+
+**Loading has consequences, and they are the point.** Every one lands in a system that
+existed before cargo and did not change to receive it:
+
+| effect | reached through |
+| --- | --- |
+| she grounds where a light ship swims | `draft`, now derived |
+| a berth that took her light refuses her loaded | `Berth.takes` |
+| she is slower | `working_limits` |
+| weight stowed high makes her tender | deck level, already real Z |
+
+> **Invariant:** the working draft is never stored. It is the light draft plus what the
+> manifest puts her down by, so it cannot disagree with what is in her holds.
+
+**Weight stowed low is weight doing good.** The stability moment is taken relative to the
+main deck rather than the keel, so the sign carries the meaning: ballast and heavy cargo
+stowed low come out negative. Stowing from the bottom up is then what the arithmetic
+rewards rather than a rule to be remembered — and it is why loading fills from the lowest
+hold and discharging works from the highest down.
+
+What being tender then *costs* her, and what a cargo is worth to anybody, are both the
+game's to decide. See `DECISIONS.md`.
+
 ---
 
 ## 7. Simulation and persistence
@@ -786,7 +839,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 19 | Strategic maritime world | — | Merchants, patrols, pirates, fishing, strategic encounters |
 | 20 | Standing orders | — | Conditions, priorities, conflict resolution, replanning |
 | 21 | Passenger services | — | Timetables, cycle validation, fares, contracts, manifest, purser, disembarkation |
-| 22 | Cargo economy | — | Contracts, holds, weight and volume, loading, trade |
+| 22 | Cargo economy | partial | Commodities, stowage factors, holds, both capacities, loading and discharge, and the four consequences of load. Contracts, prices and trade are the game's and are recorded in `DECISIONS.md` |
 | 23 | Service expansion | — | Pilots, tugs, provisioning, repairs, shipyards |
 | 24 | Ownership and customisation | — | Purchase, sale, upgrades, refits, interiors, cosmetics, player homes |
 | 25 | Wrecks and salvage | — | Wreck lifecycle, drift, survivors, floating cargo, tow, salvage |

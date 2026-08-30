@@ -194,7 +194,7 @@ class Conned:
         final = self.route and mark is self.route.waypoints[-1]
         wanted = approach_speed(
             position.horizontal_distance_to(mark.position),
-            self.motion_limits.max_speed,
+            self.working_limits.max_speed,
             final=bool(final),
         )
         self.orders = HelmOrders(heading=heading, speed=wanted)

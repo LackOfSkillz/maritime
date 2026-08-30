@@ -15,8 +15,8 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 **Early development.** Working and tested: the foundations and spatial model, vessels and
 their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
-tactical geometry, weapons, and the projected ocean for anyone in the water. Not built:
-crew and authority, damage, boarding, the strategic layer, cargo and the service economy.
+tactical geometry, weapons, the projected ocean for anyone in the water, and cargo. Not
+built: crew and authority, damage, boarding, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
@@ -107,9 +107,48 @@ A vessel under sail lies to the east, 1.3 leagues off.
 She can be seen because her masts stand above the curve. From her deck, looking back,
 there is nothing on the water at all.
 
+Cargo is two capacities, not one, and which of them stops you depends on what you are
+carrying. The same hull, twice:
+
+```text
+> stow 400 salt
+You call out, "Get 400 tons of salt aboard."
+The mate answers, "Aye sir - rig the yard tackle."
+260 tons of salt go down into the lower hold.
+140 tons of salt stay on the quay - the holds are full, though she would carry the
+weight of something denser.
+
+> manifest
+Kestrel - manifest
+  salt                   260.0 tons     260.0 m3
+                         260.0 tons     260.0 m3 stowed
+
+  Draught    3.89 m   freeboard 0.11 m
+  Capacity   she has cubed out - the holds are full
+  She is loaded past her marks. She is not fit to go to sea.
+```
+
+The same holds, filled with something light, are a completely different ship:
+
+```text
+> stow 400 wool
+61 tons of baled wool go down into the lower hold.
+339 tons of baled wool stay on the quay - the holds are full, though she would carry the
+weight of something denser.
+
+> manifest
+  baled wool              61.6 tons     260.0 m3
+
+  Draught    2.45 m   freeboard 1.55 m
+```
+
+And the draught is not a number on a sheet. Over a shelf with 2.4 metres of water on it,
+loaded she is 1.5 metres into the ground and light she crosses with 40 centimetres to
+spare — the same water, and the cargo is the whole difference.
+
 ## Design
 
-Eleven ideas do most of the work. `docs/architecture.md` has the rest.
+Twelve ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -167,6 +206,13 @@ water, so how far you can see depends on how high your eye is — and how far yo
 looking back. Height of eye comes from the compartment you are standing in, so a masthead
 is worth building rather than worth mentioning.
 
+**A hull has two capacities and they are not interchangeable.** Deadweight is the mass she
+can carry before she is too deep; hold volume is the space the cargo occupies. Stowage
+factor decides which one stops you, and the spread is enormous — iron stows at about a
+third of a cubic metre per tonne and hay at nine. So "she is full" is never the whole
+answer: a ship that has *weighed out* will take nothing further, and one that has *cubed
+out* would still carry something denser.
+
 **Where a room is needed at all, it is a view rather than a place.** Open water gets no
 rooms of its own; a small pool is lent out, one to each square of sea that currently has
 somebody in it. Because a swimmer's truth is their position and the room only shows the
@@ -221,6 +267,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |
+| `MARITIME_COMMODITIES` | a standard stowage table | The cargoes this game trades in |
 | `MARITIME_CELL_SIZE` | `100.0` | How wide a projected square of open water is, in metres |
 | `MARITIME_OCEAN_ROOM_TYPECLASS` | `OceanRoom` | Dotted path to the class pool rooms are built from |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
@@ -391,13 +438,19 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1300 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1450 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
-- No crew, cargo or damage yet. Guns fire and hit; what a hit *does* to a hull is the
-  damage phase, and `ShotResult` is deliberately something nothing consumes.
+- No crew or damage yet. Guns fire and hit; what a hit *does* to a hull is the damage
+  phase, and `ShotResult` is deliberately something nothing consumes.
+- Cargo has no price. Contracts, freight rates, who is buying and what a voyage is worth
+  are the game's own economy, and shipping an opinion about them would collide with
+  whatever it already has. Recorded in `DECISIONS.md`.
+- Being tender is reported and costs her nothing. What top-heavy loading should actually
+  do to a ship reaches into sailing and damage at once, and both of those decisions are
+  the game's.
 - Nothing yet puts a player in the water. The projection can hold them, drift them and
   describe the sea to them, but going over the side is something damage and boarding do,
   and neither is built.

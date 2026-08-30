@@ -13,6 +13,70 @@ combat and damage are not.
 
 ### Feat
 
+- Add cargo. A hold has two capacities that are not interchangeable - the mass she
+  can carry before she is too deep, and the space the cargo occupies - and which
+  one binds depends entirely on what you are carrying. Iron stows at about a third
+  of a cubic metre per tonne and hay at nine, so a hull full of one still has most
+  of her volume empty and a hull full of the other is barely down on her marks.
+  That is the whole trade, and both figures are tracked because either can be the
+  one that stops you.
+- `weighs out` and `cubes out` are reported as different answers, because they
+  are: a ship that has weighed out will take nothing further, while one that has
+  cubed out would still carry something denser. Telling a shipper only that she is
+  "full" throws away the half of the answer they can act on.
+- Broken stowage - the space wasted between irregular packages - is charged
+  against packaged cargo and not against bulk, because bulk has no packages to
+  leave gaps between. A hold of loose grain that mysteriously wasted a tenth of
+  itself is something a ship's officer would notice.
+- Cargo is data, not objects. Five hundred tonnes of grain is one parcel rather
+  than five hundred database rows, on the same argument that made shots events. A
+  game wanting a *particular* crate puts an ordinary object in the hold beside the
+  parcels.
+- `Vessel.draft` is derived at last. It carried a docstring promising that cargo
+  would one day make it a worked figure rather than a stored one; it is now light
+  draft plus what the manifest puts her down by, so grounding, keel clearance and
+  whether a berth will take her all read the laden number without one call site
+  changing. Setting it raises and points at `light_draft`, because a stored
+  working draft would be a second source of truth the next transfer overwrites.
+- Loading has four consequences and every one of them lands in a system that was
+  built before cargo and did not have to change to receive it: she grounds where a
+  light ship swims, a berth that took her light refuses her loaded, she is slower,
+  and weight stowed high makes her tender.
+- `working_limits` is a second property rather than a laden `motion_limits`.
+  Draft could become derived silently because almost nothing wrote it; limits are
+  authored on every vessel a game builds, and a getter returning something other
+  than what was set would be a trap.
+- Holds are ordinary compartments with a capacity, so any room aboard could be
+  one and a room with no capacity simply is not. Converting a cabin to cargo space
+  in a refit is then setting a number rather than rebuilding the room - and every
+  compartment already carries the deck level that stowing weight low depends on.
+- Loading fills from the lowest hold up and discharging works from the highest
+  down, which is what a mate would do anyway: it keeps her stiff at both ends of
+  the operation rather than leaving her tender halfway through.
+- The first consumer of `VesselCapacity`, which has existed since vessels did,
+  unused, waiting for something that had to draw on a shared budget.
+- Add `stow`, `discharge` and `manifest`. Cargo only moves alongside - a hold
+  filled in mid-ocean would make the whole of docking optional - and the
+  precondition is the same `held_by` the rest of the system already uses.
+- Add a standard stowage table: twelve real cargoes with their real stowage
+  factors, in the same spirit as the Beaufort scale and the marks on a lead line.
+  Reference data rather than content, and a game that has its own economy points
+  `MARITIME_COMMODITIES` at it and never loads this.
+- `cargo.py` holds the arithmetic and `stowage.py` the two Evennia faces. A
+  departure from how the rest of the contrib is laid out, and a deliberate one:
+  every other domain module has exactly one mixin, and cargo has two that are as
+  different from each other as a room is from a ship.
+
+### Changed
+
+- **`Vessel.draft` is read-only.** It is now the working figure - light draft plus
+  what the manifest puts her down by - and assigning to it raises an
+  `AttributeError` naming `light_draft` instead. A silent setter behind a derived
+  getter would mean `v.draft = 2.0` followed by `v.draft` returning 2.3, which is
+  a worse trap than a loud break. Every reader is unaffected and gets the laden
+  figure for free; six tests across grounding, ports, currents and the swept
+  envelope were the only writers, and the full suite found them at once.
+
 - Add the projected ocean. Open water is somewhere a player can be, without
   building rooms for a sea nobody is in: a small pool of rooms, each lent to
   whichever square of water currently has somebody in it and taken back when they

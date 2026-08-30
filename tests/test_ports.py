@@ -212,7 +212,7 @@ class PortTestCase(EmptySeaMixin, BaseEvenniaTest):
         self.hull.orders = HelmOrders(heading=EAST, speed=0.0)
         self.hull.length = 18.0
         self.hull.beam = 5.4
-        self.hull.draft = 2.2
+        self.hull.light_draft = 2.2
 
 
 class TestPortRoom(PortTestCase):
@@ -403,7 +403,7 @@ class TestCmdDock(EmptySeaMixin, BaseEvenniaCommandTest):
         self.hull.heading = EAST
         self.hull.length = 18.0
         self.hull.beam = 5.4
-        self.hull.draft = 2.2
+        self.hull.light_draft = 2.2
         self.char1.location = self.deck
 
     def test_a_good_approach_makes_her_fast(self):

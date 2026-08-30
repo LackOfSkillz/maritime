@@ -38,6 +38,7 @@ from .position import WorldPosition, normalize_bearing
 from .environment import Situated
 from .floating import Floating
 from .ports import Berthing
+from .stowage import Laden
 from .traffic import traffic
 from .voyage import Conned
 from .weapons import Armed
@@ -57,6 +58,7 @@ class Vessel(
     Navigator,
     Conned,
     Armed,
+    Laden,
     Charted,
     Routed,
     Berthing,
@@ -95,7 +97,6 @@ class Vessel(
         self.db.motion_limits = MotionLimits()
         self.db.anchored = False
         self.db.aground = False
-        self.db.draft = 2.0
 
     # --- position -----------------------------------------------------------
 
@@ -265,31 +266,6 @@ class Vessel(
         self.db.anchored = bool(value)
 
     @property
-    def draft(self):
-        """
-        How deep she sits.
-
-        Returns:
-            draft (float): Metres.
-
-        Notes:
-            The light draft for now. Cargo, flooding and heel will make the
-            working figure a derived one, which is why grounding takes it as an
-            argument rather than reading a template.
-
-        """
-        return float(self.db.draft or 0.0)
-
-    @draft.setter
-    def draft(self, metres):
-        """
-        Args:
-            metres (float): How deep she sits.
-
-        """
-        self.db.draft = float(metres)
-
-    @property
     def aground(self):
         """
         Whether the hull is in the ground.
@@ -416,7 +392,7 @@ class Vessel(
             orders = HelmOrders(heading=orders.heading, speed=orders.speed * (1.0 - drag))
 
         floor = steerage_floor(wind, self.sail_plan) if under_sail else 0.0
-        after = advance(before, orders, self.motion_limits, elapsed, turn_floor=floor)
+        after = advance(before, orders, self.working_limits, elapsed, turn_floor=floor)
 
         if under_sail and after.speed > 0.0:
             slip = leeway_angle(after.heading, wind, self.sail_plan, after.speed)
