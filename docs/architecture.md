@@ -740,7 +740,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 12 | Weather and sea state | done | One provider supplies wind, visibility and sea state together; the sea follows the wind by default and slows her |
 | 13 | Sparse ocean projection | — | Swimmers and floating entities, studied from Wilderness and written maritime-native |
 | 14 | Crew and authority | — | Roles, staffing, skill hooks, command succession |
-| 15 | Tactical geometry | — | Range, bearing, closure, aspect, arcs. The tactical-pacing decision point |
+| 15 | Tactical geometry | partial | Range, bearing, aspect, closure, arcs and `target` are built. The pacing decision is recorded in `DECISIONS.md` and is Gary's |
 | 16 | Weapons | — | Generic mount, reload, projectile travel, impact |
 | 17 | Damage | — | Hull sections, breaches, flooding, fire, repair, sinking, occupant transition |
 | 18 | Boarding and capture | — | Grapples, relative-speed constraints, temporary exits, control transfer |
@@ -859,6 +859,11 @@ behind interfaces that do not change when the structures do.
 ---
 
 ## 23. Open questions
+
+Questions raised while building, with what was done in the meantime, live in `DECISIONS.md`
+at the repository root. This section is the design's own list; that file is the working one.
+
+
 
 Unresolved on purpose. Recording them beats settling them badly.
 

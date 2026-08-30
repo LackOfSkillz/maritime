@@ -226,6 +226,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `sound` | Water under the keel, and a shoal warning |
 | `lookout` | What is in sight from where you are standing |
 | `scan` | The whole horizon, quarter by quarter |
+| `target <name>` | Range, aspect, closure and which arcs bear |
 | `look <direction>` | One quarter or compass point - `look se`, `look port` |
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
@@ -364,7 +365,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1140 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1180 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations

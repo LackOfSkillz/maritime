@@ -181,6 +181,7 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "current",
                 "sound",
                 "scan",
+                "target",
                 "lookout",
                 "drop anchor",
                 "weigh anchor",

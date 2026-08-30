@@ -104,6 +104,18 @@ from .observation import (
     scan,
     sight,
 )
+from .tactical import (
+    ARCS,
+    arcs_bearing,
+    aspect,
+    aspect_name,
+    bears,
+    closure,
+    crossing_the_t,
+    range_band,
+    relative_heading,
+    time_to_close,
+)
 from .traffic import VesselTraffic, traffic
 from .position import (
     DEFAULT_REGION,
@@ -339,6 +351,17 @@ __all__ = (
     "relative_wind_angle",
     "achievable_speed",
     "leeway_angle",
+    # tactical geometry
+    "relative_heading",
+    "aspect",
+    "aspect_name",
+    "closure",
+    "time_to_close",
+    "range_band",
+    "bears",
+    "arcs_bearing",
+    "crossing_the_t",
+    "ARCS",
     # observation
     "horizon_distance",
     "geographic_range",

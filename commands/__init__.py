@@ -18,7 +18,14 @@ package, which is exactly how the first attempt at this split broke.
 """
 
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
-from .lookout import CmdLookAround, CmdLookout, CmdScan, CmdWatch, sightings_toward
+from .lookout import (
+    CmdLookAround,
+    CmdLookout,
+    CmdScan,
+    CmdTarget,
+    CmdWatch,
+    sightings_toward,
+)
 from .pilotage import (
     CmdBelay,
     CmdChart,
@@ -60,6 +67,7 @@ __all__ = (
     "CmdSound",
     "CmdLookout",
     "CmdScan",
+    "CmdTarget",
     "CmdLookAround",
     "CmdWatch",
     "CmdDock",

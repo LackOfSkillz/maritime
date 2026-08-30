@@ -13,6 +13,27 @@ combat and damage are not.
 
 ### Feat
 
+- Add tactical geometry: range, bearing, relative bearing, aspect, relative
+  heading, closure, time to close, range bands and weapon arcs. Arithmetic on
+  what the simulation already holds; nothing here decides anything or resolves
+  anything.
+- Aspect is the one that is not symmetric and the one that matters. A ship broad
+  on your beam who is bow-on is coming for you; the same ship at the same bearing
+  showing her stern is leaving, and nothing else separates those two situations.
+  Demonstrated live at an identical bearing of 0-0-0: bow-on and closing at 16.7
+  knots, then stern-on and opening at 1.9.
+- Range bands are configurable, because what counts as long range depends
+  entirely on what a game arms its ships with, and hard-coding it would put a
+  weapons decision inside a geometry module.
+- `crossing_the_t` falls straight out of holding bearing and aspect separately -
+  she is abeam of you and you are ahead of her - which is the clearest
+  demonstration that they are different questions.
+- Add `target <name>`, which needs an identified contact: you cannot lay a
+  solution on a shape you have not made out.
+- Tactical *pacing* is deliberately not decided. It is an open question in the
+  specification, it belongs to the game, and `tactical.py` takes no time argument
+  at all so it is incapable of having an opinion. Recorded in `DECISIONS.md`.
+
 - Add the sailing master: the smallest automation that gets her from one mark to
   the next. He steers for the mark allowing for the set, carries the most canvas
   the wind permits, takes the way off her coming up to the last mark, and hands
@@ -487,6 +508,14 @@ combat and damage are not.
   tutorial zone a deliverable rather than optional polish.
 
 ### Chore
+
+- Add `DECISIONS.md`: questions raised while building that are not mine to
+  answer, each with what is blocked, what the options look like, and what was
+  done in the meantime so nothing stalled.
+- Remove a dead special case from weapon arcs. An omni mount had a shortcut for
+  its three-hundred-and-sixty degree width; mutation testing pointed out that
+  deleting the shortcut changed no behaviour, because an arc that reaches half a
+  circle either side of its centre already covers every bearing there is.
 
 - Split `commands.py` into a `commands/` package, one module per station: helm,
   sail, pilotage, lookout and mooring. That is how the design has always

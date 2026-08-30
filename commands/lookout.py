@@ -6,7 +6,19 @@ Keeping a lookout: what is in sight, where, and what changes.
 from evennia.commands.default.general import CmdLook
 
 from ..formatting import format_range
+from ..messaging import spell_bearing
+from ..tactical import (
+    arcs_bearing,
+    aspect,
+    aspect_name,
+    closure,
+    crossing_the_t,
+    range_band,
+    time_to_close,
+)
 from ..observation import (
+    IDENTIFIED,
+    bearing_in_points,
     QUARTER_ARC,
     RELATIVE_ARCS,
     direction_named,
@@ -87,6 +99,99 @@ class CmdLookout(MaritimeCommand):
         lines = ["The lookout reports:"]
         lines.extend(vessel.narrator.contact_line(sighting) for sighting in seen)
         self.caller.msg("\n".join(lines))
+
+
+class CmdTarget(MaritimeCommand):
+    """
+    Read the geometry between her and another vessel.
+
+    Usage:
+      target <name>
+
+    Range and bearing, what aspect she shows, how fast the gap is shutting, and
+    which of your arcs would bear. Only for a contact close enough to identify -
+    you cannot take a firing solution on a shape you have not made out.
+
+    Aspect is the one worth reading twice. A ship broad on your beam who is
+    bow-on is coming for you; the same ship at the same bearing, stern-on, is
+    leaving.
+
+    """
+
+    key = "target"
+    aliases = ("solution", "range")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        wanted = self.args.strip().lower()
+        if not wanted:
+            self.caller.msg("Take a solution on which vessel?")
+            return
+
+        room = getattr(self.caller, "location", None)
+        if getattr(room, "exposure", None) not in WEATHER_DECKS:
+            self.caller.msg("You cannot see the sea from in here.")
+            return
+
+        height = getattr(room, "height_of_eye", DEFAULT_HEIGHT_OF_EYE)
+        for sighting in vessel.contacts(height):
+            if sighting.level == IDENTIFIED and wanted in sighting.target.key.lower():
+                self.report(vessel, sighting)
+                return
+        self.caller.msg(
+            "Nothing of that name is near enough to make out. You cannot lay a "
+            "solution on a shape you have not identified."
+        )
+
+    def report(self, vessel, sighting):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+            sighting (Sighting): The identified contact.
+
+        """
+        her = sighting.target
+        showing = aspect(vessel.maritime_position, her.maritime_position, her.heading)
+        _course, made = vessel.made_good() or (vessel.heading, vessel.speed)
+        _her_course, her_made = her.made_good() or (her.heading, her.speed)
+        rate = closure(
+            vessel.maritime_position,
+            vessel.heading,
+            made,
+            her.maritime_position,
+            her.heading,
+            her_made,
+        )
+
+        self.caller.msg(f"{her.key}")
+        self.caller.msg(
+            f"  Range        {format_range(sighting.distance)}  ({range_band(sighting.distance)})"
+        )
+        self.caller.msg(
+            f"  Bearing      {spell_bearing(sighting.bearing)}, "
+            f"{bearing_in_points(sighting.relative)}"
+        )
+        self.caller.msg(f"  Aspect       {aspect_name(showing)}")
+        self.caller.msg(
+            f"  Closing      {abs(rate) * 1.9438:.1f} knots" + ("" if rate > 0 else " - opening")
+        )
+
+        meeting = time_to_close(sighting.distance, rate)
+        if meeting is not None:
+            self.caller.msg(f"  Together in  {meeting / 60.0:.1f} minutes at this rate")
+
+        bearing_arcs = arcs_bearing(sighting.relative)
+        if bearing_arcs:
+            self.caller.msg(f"  Bearing on   {', '.join(bearing_arcs)}")
+        else:
+            self.caller.msg("  Bearing on   nothing; she is in none of your arcs")
+
+        if crossing_the_t(sighting.relative, showing):
+            self.caller.msg("  You have crossed her T.")
 
 
 class CmdScan(MaritimeCommand):
