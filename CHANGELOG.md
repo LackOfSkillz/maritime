@@ -13,6 +13,40 @@ combat and damage are not.
 
 ### Feat
 
+- Add the example world, and with it real installation instructions. The README
+  has said "full installation instructions will accompany the first release"
+  since the beginning, which for a contrib whose acceptance bar is skeptical
+  maintainers was the largest hole in the repository. Four numbered steps now,
+  ending in `example` and a kayak.
+- One mainland with a pond, a river and a harbour town; six islands strung
+  eastward; a kayak, a canoe and a sloop. Between them the three craft use every
+  kind of propulsion here and demonstrate that none of them is a special case.
+- **Land is ordinary rooms with ordinary exits.** An island is a little graph you
+  walk around exactly as you would walk around anywhere else, and one room of it
+  is a `PortRoom` - an ordinary room that also stands at a world position and
+  offers a berth. That is the entire join between a 2D room graph and a 3D sea,
+  and it needed no new machinery: bringing a boat alongside rigs a gangway as two
+  real exits, and letting go deletes them.
+- There is deliberately no path from the river head to the harbour. The river is
+  the road; rowing down it is how you get there and rowing back up it is a
+  different afternoon.
+- Every leg between islands falls between five and ten minutes under working sail,
+  and a test says so rather than a comment. Moving an island a few hundred metres
+  is exactly the sort of edit that looks harmless.
+- Terrain is computed rather than tabulated. This world is twelve kilometres by
+  six, which is nine hundred tiles nobody would want to edit, so `ExampleTile`
+  overrides `terrain_z_at` and works the ground out at each point from a handful
+  of authored shapes - the seam `Tile` documents, used the way it was meant to be.
+- Islands have a foreshore. Without one an island is a cliff: twenty-four metres
+  of water one step and dry sand the next, so a lead line would show nothing at
+  all until she struck. The harbours sit on that foreshore, which is why they come
+  out at five or six metres rather than twenty-five - a small harbour is shallow,
+  and that is a constraint worth having.
+- The river runs per reach rather than as one figure, so the stream follows the
+  bends and a canoe rounding one is set towards the outside of it.
+- The pond is slack on purpose. It is the control against which the river means
+  anything; a boat that behaved the same on both would be demonstrating nothing.
+
 - Add human propulsion: oars and paddles. A sailing vessel is not asked how fast
   to go - she goes as fast as the wind on that heading allows. A pulling boat is
   the exact opposite, and that difference is the whole module.

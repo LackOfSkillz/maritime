@@ -147,6 +147,46 @@ And the draught is not a number on a sheet. Over a shelf with 2.4 metres of wate
 loaded she is 1.5 metres into the ground and light she crosses with 40 centimetres to
 spare — the same water, and the cargo is the whole difference.
 
+## The example world
+
+`example` builds it. One mainland, six islands, three boats:
+
+```text
+Pond Shore  --  Water Meadow  --  River Head
+                                      |
+                                (row down the river)
+                                      |
+                Stone Quay  --  Harbour Town  --  Ferry Steps
+
+Stone Quay  ==  Gullstone  ==  Blackrock  ==  Thornholm  ==  Cradle Isle
+            ==  Farne  ==  Outer Skerry
+```
+
+There is deliberately no path from the river head to the harbour. The river is the road,
+and rowing down it is how you get there — rowing back up it is a different afternoon.
+
+**Each of the three boats teaches one thing.** The kayak is a pond boat: stop paddling and
+the breeze puts you ashore, because nothing else is moving her. The canoe is a river boat:
+the same stroke is seven minutes a kilometre downstream and thirty-seven up, and with one
+paddler instead of two she will not get up it at all. The sloop is a sea boat, and she
+carries two sweeps that do nothing at all until the wind dies.
+
+**Land is ordinary rooms with ordinary exits.** An island is a little graph you walk around
+exactly as you would walk around anywhere else; one room of it is a `PortRoom`, which is an
+ordinary room that also stands at a world position and offers a berth. That is the entire
+join between a 2D room graph and a 3D sea.
+
+Every leg between islands is between five and ten minutes under working sail, and there is
+a test that says so — moving an island a few hundred metres is exactly the kind of edit
+that looks harmless.
+
+The speed that spacing rests on was *measured*, not assumed. The first layout was built
+against a guess of four metres a second; she actually makes 2.2 on that heading, so every
+island was nearly twice as far out as it should have been — and the test passed anyway,
+because it was checking against the same guess. Sailing one leg is what caught it. The
+example's wind is a southerly for the same reason: on an easterly course that puts it
+across her beam, and from the west she makes 1.5 and the chain becomes a slog.
+
 ## Design
 
 Fourteen ideas do most of the work. `docs/architecture.md` has the rest.
@@ -245,14 +285,34 @@ revisit interval rather than blocking the reactor.
 
 ## Installation
 
-Not yet installable as a release. To try the current state, place the package at
-`evennia/contrib/full_systems/maritime` and add the helm command set to a ship's room:
+Requires Evennia 6.1 or later. There is nothing to `pip install` — the package lives at
+`evennia/contrib/full_systems/maritime` like any other contrib.
+
+**1. Point your game at the example world.** In `mygame/server/conf/settings.py`:
 
 ```python
-room.cmdset.add("evennia.contrib.full_systems.maritime.cmdsets.HelmCmdSet", persistent=True)
+MARITIME_MAP_PROVIDER = "evennia.contrib.full_systems.maritime.example.ExampleSeabed"
+MARITIME_CURRENT_PROVIDER = "evennia.contrib.full_systems.maritime.example.ExampleCurrents"
+MARITIME_WIND_BEARING = 165.0
+MARITIME_WIND_SPEED = 6.0
 ```
 
-Add the driver script once per game, or nothing will move:
+Every one of those is optional. With none of them you get a flat, still, windless sea,
+which is a legitimate world and a dull one. Replace them with your own classes when you
+have a coastline of your own — see [Settings](#settings).
+
+**2. Add the builder command.** In `mygame/commands/default_cmdsets.py`:
+
+```python
+from evennia.contrib.full_systems.maritime.example import CmdMaritimeExample
+
+class CharacterCmdSet(default_cmds.CharacterCmdSet):
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+        self.add(CmdMaritimeExample())
+```
+
+**3. Start the driver.** Once per game, or nothing moves:
 
 ```python
 from evennia.utils import create
@@ -261,7 +321,22 @@ from evennia.contrib.full_systems.maritime.scripts import MaritimeDriver
 create.create_script(MaritimeDriver)
 ```
 
-Full installation instructions will accompany the first release.
+**4. Reload, and run `example`** as a builder. It creates a mainland with a pond, a river
+and a harbour town, six islands strung eastward, and three craft. It is safe to run twice.
+
+Then walk to the Pond Shore, board the kayak, and start paddling.
+
+### Putting the commands on your own ships
+
+The example does this for you. For a ship you build yourself, the helm command set goes on
+her compartments — by dotted path, so it survives a reload:
+
+```python
+room.cmdset.add("evennia.contrib.full_systems.maritime.cmdsets.HelmCmdSet", persistent=True)
+```
+
+On the compartments rather than on the character, so that a helm order needs a deck under
+you and cannot be given from a tavern.
 
 ## Settings
 
@@ -456,7 +531,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1620 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1665 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
