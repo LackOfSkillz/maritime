@@ -227,6 +227,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `lookout` | What is in sight from where you are standing |
 | `scan` | The whole horizon, quarter by quarter |
 | `target <name>` | Range, aspect, closure and which arcs bear |
+| `guns` / `load` / `fire <name>` | The battery, serving it, and firing what bears |
 | `look <direction>` | One quarter or compass point - `look se`, `look port` |
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
@@ -365,12 +366,13 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1180 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1220 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
-- No charts, weather, crew, cargo, combat or damage yet.
+- No crew, cargo or damage yet. Guns fire and hit; what a hit *does* to a hull is the
+  damage phase, and `ShotResult` is deliberately something nothing consumes.
 - A port is a quay with berths. Anchorages, pilots, tugs, cargo handling and repair
   facilities are all later phases.
 - The default weather is one wind, one visibility and one sea everywhere. A game supplies

@@ -172,6 +172,9 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
             keys,
             {
                 "helm",
+                "guns",
+                "load",
+                "fire",
                 "speed",
                 "allstop",
                 "position",

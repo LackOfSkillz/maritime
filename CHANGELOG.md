@@ -13,6 +13,28 @@ combat and damage are not.
 
 ### Feat
 
+- Add weapons. A mount is a range, a reload, a projectile speed, an arc and an
+  accuracy - nothing here is a cannon, and a game fills those in for guns,
+  ballistae, harpoons or something that spits lightning. The rules are the same
+  because the geometry is.
+- Shots take time to fly, so guns are laid where she will be rather than where
+  she is. That assumption is wrong the instant she alters course, which is
+  exactly why altering course under fire is worth doing.
+- Hit chance is four independent factors multiplied: the weapon, the range, the
+  sea and how much of herself she is showing. Each is separately arguable and
+  separately tunable, which is the point of not rolling them into one number
+  nobody can reason about. A bow-on target is about a third the size of a
+  beam-on one, which is why a ship under fire turns towards the guns.
+- Shots are events, not objects. A broadside is eight solutions and eight
+  results, not eight database rows tracked across the world for four seconds.
+- The RNG arrives as an argument rather than being reached for, so a fight
+  replays identically from a seed and a test can hand in a fixed roll.
+- Add `guns`, `load` and `fire <name>`. Firing needs an identified target: you
+  cannot lay a solution on a shape you have not made out.
+- Damage is deliberately untouched. A hit says where and how hard and stops;
+  hull sections, breaches and flooding are phase 17 and carry decisions that are
+  Gary's.
+
 - Add tactical geometry: range, bearing, relative bearing, aspect, relative
   heading, closure, time to close, range bands and weapon arcs. Arithmetic on
   what the simulation already holds; nothing here decides anything or resolves

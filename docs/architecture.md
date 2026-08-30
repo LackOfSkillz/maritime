@@ -741,7 +741,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 13 | Sparse ocean projection | — | Swimmers and floating entities, studied from Wilderness and written maritime-native |
 | 14 | Crew and authority | — | Roles, staffing, skill hooks, command succession |
 | 15 | Tactical geometry | partial | Range, bearing, aspect, closure, arcs and `target` are built. The pacing decision is recorded in `DECISIONS.md` and is Gary's |
-| 16 | Weapons | — | Generic mount, reload, projectile travel, impact |
+| 16 | Weapons | done | Generic mounts, reload clocks, time of flight, aiming off, and a hit chance built from range, sea and aspect. Damage is phase 17 and is not touched |
 | 17 | Damage | — | Hull sections, breaches, flooding, fire, repair, sinking, occupant transition |
 | 18 | Boarding and capture | — | Grapples, relative-speed constraints, temporary exits, control transfer |
 | 19 | Strategic maritime world | — | Merchants, patrols, pirates, fishing, strategic encounters |

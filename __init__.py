@@ -134,6 +134,18 @@ from .resolver import (
     resolve_chain,
 )
 from .voyage import approach_speed, course_for_mark, sail_for_wind
+from .weapons import (
+    Mount,
+    ShotResult,
+    WeaponType,
+    aim_point,
+    can_fire,
+    discharge,
+    fire,
+    hit_chance,
+    serve,
+    time_of_flight,
+)
 from .weather import (
     SEA_STATES,
     FlatWeatherProvider,
@@ -330,6 +342,17 @@ __all__ = (
     "course_for_mark",
     "sail_for_wind",
     "approach_speed",
+    # weapons
+    "WeaponType",
+    "Mount",
+    "ShotResult",
+    "time_of_flight",
+    "aim_point",
+    "hit_chance",
+    "can_fire",
+    "fire",
+    "serve",
+    "discharge",
     # weather
     "Weather",
     "MaritimeWeatherProvider",

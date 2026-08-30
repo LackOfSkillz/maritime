@@ -17,6 +17,7 @@ package, which is exactly how the first attempt at this split broke.
 
 """
 
+from .gunnery import CmdFire, CmdGuns, CmdLoad
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
 from .lookout import (
     CmdLookAround,
@@ -50,6 +51,9 @@ __all__ = (
     "ms_to_knots",
     "sightings_toward",
     "BERTH_REFUSALS",
+    "CmdGuns",
+    "CmdLoad",
+    "CmdFire",
     "CmdHelm",
     "CmdSpeed",
     "CmdAllStop",

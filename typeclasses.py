@@ -36,6 +36,7 @@ from .environment import Situated
 from .ports import Berthing
 from .traffic import traffic
 from .voyage import Conned
+from .weapons import Armed
 from .weather import sea_drag
 
 # ShipRoom lives in rooms.py now, and is imported here for `ship_rooms` below - but
@@ -51,6 +52,7 @@ from .routes import Routed
 class Vessel(
     Navigator,
     Conned,
+    Armed,
     Charted,
     Routed,
     Berthing,
