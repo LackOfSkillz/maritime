@@ -25,13 +25,17 @@ from .commands import (
     CmdPosition,
     CmdAnchor,
     CmdCastOff,
+    CmdCutGrapples,
     CmdDischarge,
     CmdEasyOars,
+    CmdGrapple,
+    CmdGrapples,
     CmdGiveWay,
     CmdHoldWater,
     CmdOars,
     CmdPaddleStroke,
     CmdStretchOut,
+    CmdStrike,
     CmdDock,
     CmdLookAround,
     CmdManifest,
@@ -84,6 +88,10 @@ class HelmCmdSet(CmdSet):
         self.add(CmdStow())
         self.add(CmdDischarge())
         self.add(CmdManifest())
+        self.add(CmdGrapple())
+        self.add(CmdCutGrapples())
+        self.add(CmdStrike())
+        self.add(CmdGrapples())
         self.add(CmdGiveWay())
         self.add(CmdPaddleStroke())
         self.add(CmdStretchOut())

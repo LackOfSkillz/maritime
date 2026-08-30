@@ -219,6 +219,7 @@ from .ports import (
 )
 from .routes import NavigationNetwork, Route, Waypoint
 from .rooms import (
+    rig_grapples,
     PortRoom,
     ShipRoom,
     absent_from,
@@ -292,6 +293,19 @@ from .oars import (
     reach,
     rowed_speed,
 )
+from .boarding import (
+    GRAPNEL_RANGE,
+    MAX_BOARDING_CLOSURE,
+    MAX_HOLDING_CLOSURE,
+    Boarded,
+    GrappleResult,
+    bears_alongside,
+    can_grapple,
+    relative_speed,
+    still_holding,
+    velocity,
+    within_reach,
+)
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -360,6 +374,7 @@ __all__ = (
     "absent_from",
     "everyone_in",
     "rig_gangway",
+    "rig_grapples",
     "unrig_gangway",
     "APPROACH_RANGE",
     "ALONGSIDE_SPEED",
@@ -518,6 +533,18 @@ __all__ = (
     "STRETCH_OUT",
     "EASY_OARS",
     "HOLD_WATER",
+    # boarding
+    "Boarded",
+    "GrappleResult",
+    "can_grapple",
+    "still_holding",
+    "relative_speed",
+    "velocity",
+    "within_reach",
+    "bears_alongside",
+    "GRAPNEL_RANGE",
+    "MAX_BOARDING_CLOSURE",
+    "MAX_HOLDING_CLOSURE",
     # weather
     "Weather",
     "MaritimeWeatherProvider",

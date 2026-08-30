@@ -15,9 +15,9 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 **Early development.** Working and tested: the foundations, the spatial model and a tiled
 seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
-tactical geometry, weapons, the projected ocean for anyone in the water, cargo, and
-oars. Not
-built: crew and authority, damage, boarding, the strategic layer, and the service economy.
+tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars
+and boarding. Not
+built: crew and authority, damage, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
@@ -189,7 +189,7 @@ across her beam, and from the west she makes 1.5 and the chain becomes a slog.
 
 ## Design
 
-Fifteen ideas do most of the work. `docs/architecture.md` has the rest.
+Sixteen ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -276,6 +276,13 @@ rooms of its own; a small pool is lent out, one to each square of sea that curre
 somebody in it. Because a swimmer's truth is their position and the room only shows the
 cell it falls in, releasing one loses nothing — and a lone drifter never changes room at
 all, since the room can simply pan to the new water instead.
+
+**Boarding is decided by relative velocity, not by speed.** Two ships running side by side
+at ten knots on the same course are motionless with respect to each other and can be lashed
+together at leisure; the same two on opposing courses tear the irons out of the rail.
+Matching her course and speed *is* the manoeuvre. And the crossing is two ordinary exits —
+`board` is not a command, it is the exit's name — so a hostile traversal can be followed,
+blocked, watched and locked like any other, and none of that needed designing twice.
 
 **A pass is bounded by a clock, not a count.** What one vessel costs depends entirely on the
 world she is in — measured, a five-fold spread — so a fixed batch of twenty-five is
@@ -539,7 +546,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1695 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1760 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -592,6 +599,12 @@ would take half an hour of wall time runs in milliseconds.
   actually sailed.
 - Spatial indexes are a linear scan. The interface is settled; the structure behind it
   lands when there is real traffic to measure it against.
+- Capture confers nothing. A ship can be boarded and can strike, and what a captor may
+  then do with her - who may give her orders, who owns her - is a question about authority,
+  which is phase 14. In `DECISIONS.md`.
+- Two lashed hulls do not move as one. Each is simulated separately and the lines part if
+  their motion diverges far enough, which is the honest half; a coupled two-body model is
+  not built.
 - Nothing decides what happens to an offline passenger aboard a vessel that founders.
   Evennia's default is that they survive and are teleported home without being told, which
   is a policy nobody chose; `Vessel.ships_company()` exists so that any other policy is

@@ -28,6 +28,7 @@ side effect of assignment.
 
 from evennia.objects.objects import DefaultObject
 
+from .boarding import Boarded
 from .charts import Charted
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
@@ -58,6 +59,7 @@ from .routes import Routed
 class Vessel(
     Navigator,
     Conned,
+    Boarded,
     Oared,
     Armed,
     Laden,
@@ -366,6 +368,13 @@ class Vessel(
         # ship at anchor is still visible, and still has a lookout.
         traffic().note(self, position)
         self.narrator.sightings(self.contacts())
+
+        # Lines made up are re-tested rather than granted once. A ship that puts
+        # her helm hard over and fills her sails breaks free, which is what makes
+        # being boarded survivable and worth trying to survive.
+        parted = self.check_grapples()
+        if parted is not None and not parted:
+            self.narrator.grapples_parted(parted)
 
         if self.held_by():
             self.take_way_off()

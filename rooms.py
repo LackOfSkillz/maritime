@@ -441,6 +441,45 @@ def rig_gangway(deck, quay):
     return ashore, aboard
 
 
+def rig_grapples(own_deck, her_deck):
+    """
+    Put a crossing between two decks lashed alongside.
+
+    Args:
+        own_deck (ShipRoom): The deck the irons went from.
+        her_deck (ShipRoom): The deck they went to.
+
+    Returns:
+        exits (tuple): The two exits created, outward first.
+
+    Notes:
+        The same two ordinary exits a gangway is, and for the same reason. Law 7
+        does not have a special case for a hostile traversal: crossing to a ship
+        you are boarding is walking, so it can be followed, blocked, watched and
+        locked exactly like walking ashore, and none of that needed designing
+        twice.
+
+        Named for what a sailor would call them rather than for what they connect,
+        because "the grapples" is what is about to be cut.
+
+    """
+    across = create.create_object(
+        DefaultExit,
+        key="grapples",
+        aliases=["across", "board"],
+        location=own_deck,
+        destination=her_deck,
+    )
+    back = create.create_object(
+        DefaultExit,
+        key="grapples",
+        aliases=["across", "back"],
+        location=her_deck,
+        destination=own_deck,
+    )
+    return across, back
+
+
 def unrig_gangway(exits):
     """
     Take the gangway away.
@@ -455,6 +494,10 @@ def unrig_gangway(exits):
         Tolerant of exits that have already gone. A gangway can be destroyed by
         anything that deletes rooms, and refusing to cast off because one end has
         already vanished would strand a ship at a quay that no longer exists.
+
+        Used for grapples too. Taking a crossing away is the same act whichever
+        way it was made, and a second function that deleted exits slightly
+        differently would be a second place for the same bug.
 
     """
     removed = 0

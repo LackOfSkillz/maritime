@@ -207,3 +207,36 @@ effective number and everything downstream follows.
 
 **What it needs from you:** a direction. It pairs with the water-survival question rather
 than standing alone - both are about what a body can take.
+
+---
+
+## What a captor may do with a prize
+
+**Raised by:** phase 18, boarding.
+**Blocks:** capture meaning anything. Two ships can be lashed together, people can cross,
+and she can strike - and then nothing changes.
+
+Striking is recorded as a fact, because it is one. What follows is not: who may give a
+struck ship her orders, whether her own crew can still work her, whether a prize crew has to
+be aboard for the claim to hold, and what becomes of the people who were on her.
+
+Every one of those is a question about *authority*, which is phase 14 - roles, staffing,
+command succession - and phase 14 is yours. Answering it here would mean inventing a
+concept of "side" that the contrib does not have and that would collide with whatever
+factions, permissions or ownership the host game already runs.
+
+The options, as far as I can see them:
+
+1. **Striking is flavour.** It is recorded and the game does what it likes with the fact.
+   What stands today, and it makes capture a roleplay convention rather than a mechanic.
+2. **A prize master.** A named character holds the ship, and only orders from them are
+   obeyed. Contained, and it needs a way to say who that is - which is phase 14's job.
+3. **Ownership transfers.** She becomes the captor's, whatever "the captor" means to the
+   game. Strongest, and it reaches into phase 24 as well.
+
+**What I did:** option 1, and both directions are representable. `strike` records who she
+struck to; `rehoist` takes it back, because a prize crew can be overwhelmed and a state that
+could only be entered would make that unrepresentable.
+
+**What it needs from you:** a direction, and it will not be answerable before phase 14 -
+"who may command her" has no meaning until there is a notion of who commands anything.

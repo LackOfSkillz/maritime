@@ -833,8 +833,42 @@ Boarding requires acceptable range, manageable relative speed and a valid attach
 creates temporary traversal links between vessel rooms of compatible exposure — you board
 onto a deck, not into a flooded hold.
 
+**Speed is not the constraint. Relative velocity is**, and that distinction is the whole of
+the manoeuvre:
+
+```text
+two ships side by side at 10 kt, same course   ->  0 kt relative, lash at leisure
+the same two at 4 kt on opposing courses       ->  8 kt relative, irons out of the rail
+```
+
+Matching her course and speed *is* boarding her. Modelling it as a speed limit would make a
+chase and an ambush the same problem, and they are not.
+
+**Lines part.** A grapnel that held when she was matched does not hold when she sheers off,
+so the attachment is re-tested on the tick rather than granted once. A made-up line takes
+more strain than a thrown one — but not much more, so a ship that puts her helm hard over
+and fills her sails always breaks free. That is what makes being boarded survivable, and
+worth trying to survive.
+
+> **Invariant:** a refused boarding rigs nothing. There is never an exit anybody can walk
+> through that the grapples did not earn.
+
+> **Invariant:** both hulls know they are fast to each other, and cutting frees both. A
+> one-sided attachment is the first symptom of a much worse bug.
+
+**The crossing is two ordinary exits**, made the same way a gangway is. Law 7 has no special
+case for a hostile traversal: crossing to a ship you are boarding is *walking*, so it can be
+followed, blocked, watched and locked exactly like walking ashore, and none of that needed
+designing twice. `board` is not a command — it is the exit's name.
+
 **Character combat remains the host game's own.** This contrib does not implement a second
 humanoid combat system because the fight happens on a ship.
+
+**Striking is a fact, not a transfer.** That she has struck her colours is recorded, and
+confers nothing. What a captor may then *do* with a prize — who may give her orders, who
+owns her, what becomes of the people aboard — is a question about authority, which is phase
+14. Colours can be rehoisted, because a prize crew can be overwhelmed and a state that could
+only be entered would make that unrepresentable. In `DECISIONS.md`.
 
 While that fight resolves, the vessels keep drifting, fires keep spreading and flooding keeps
 rising. That coupling is deliberate, and it is the main reason tactical pacing is still an
@@ -938,7 +972,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 15 | Tactical geometry | partial | Range, bearing, aspect, closure, arcs and `target` are built. The pacing decision is recorded in `DECISIONS.md` and is Gary's |
 | 16 | Weapons | done | Generic mounts, reload clocks, time of flight, aiming off, and a hit chance built from range, sea and aspect. Damage is phase 17 and is not touched |
 | 17 | Damage | — | Hull sections, breaches, flooding, fire, repair, sinking, occupant transition |
-| 18 | Boarding and capture | — | Grapples, relative-speed constraints, temporary exits, control transfer |
+| 18 | Boarding and capture | partial | Grapples, relative velocity, lines that part on the tick, the crossing as two ordinary exits, and striking as a recorded fact. Control transfer is authority and is recorded in `DECISIONS.md` |
 | 19 | Strategic maritime world | — | Merchants, patrols, pirates, fishing, strategic encounters |
 | 20 | Standing orders | — | Conditions, priorities, conflict resolution, replanning |
 | 21 | Passenger services | — | Timetables, cycle validation, fares, contracts, manifest, purser, disembarkation |

@@ -93,6 +93,9 @@ LET_GO = "let_go"
 WORK_THE_FIX = "work_the_fix"
 STOW_ORDER = "stow_order"
 STROKE_ORDER = "stroke_order"
+GRAPPLE_ORDER = "grapple_order"
+CUT_GRAPPLES = "cut_grapples"
+STRIKE_ORDER = "strike_order"
 DISCHARGE_ORDER = "discharge_order"
 
 
@@ -578,6 +581,28 @@ class VesselNarrator:
                 called=f'You call out, "{called}"',
                 overheard=f'{who} calls out, "{called}"',
                 answered=answered,
+            )
+
+        if event == GRAPPLE_ORDER:
+            name = detail["name"]
+            return Order(
+                called='You call out, "Grapnels away - get her alongside!"',
+                overheard=f'{who} calls out, "Grapnels away!"',
+                answered=f"Irons and lines go across towards the {name}.",
+            )
+
+        if event == CUT_GRAPPLES:
+            return Order(
+                called='You call out, "Cut the grapples!"',
+                overheard=f'{who} calls out, "Cut the grapples!"',
+                answered="Axes come down on the lines.",
+            )
+
+        if event == STRIKE_ORDER:
+            return Order(
+                called='You call out, "Strike the colours."',
+                overheard=f"{who} gives the order to strike.",
+                answered="Nobody says anything at all.",
             )
 
         if event == ALL_STOP:
@@ -1180,6 +1205,122 @@ class VesselNarrator:
                 f"  Over the ground    {format_speed(over_ground)}, "
                 f"course {spell_bearing(course)}"
             )
+        return tuple(lines)
+
+    def grappled(self, result, other):
+        """
+        The irons have gone across and held.
+
+        Args:
+            result (GrappleResult): What the throw achieved.
+            other (Vessel): The hull now alongside.
+
+        Returns:
+            lines (tuple): What the deck hears.
+
+        Notes:
+            Plain metres rather than `format_range`, which is right everywhere
+            else and wrong here: it says "alongside" for anything under a cable,
+            so the sentence came out as "fast alongside, alongside off". At
+            grapnel range a bare number is what a sailor would say anyway.
+
+        """
+        return (
+            f"The irons bite and the lines come taut. The {other.key} is fast "
+            f"alongside, {result.distance:.0f} metres off.",
+            "The grapples are a way across. So are they for her.",
+        )
+
+    def grapples_cut(self, other):
+        """
+        Args:
+            other (Vessel): The hull let go.
+
+        Returns:
+            lines (tuple): What the deck hears.
+
+        """
+        return (
+            f"The lines part under the axes and the {other.key} sheers away.",
+            "Anybody left on the wrong deck is on the wrong deck.",
+        )
+
+    def grapples_parted(self, result):
+        """
+        The lines have gone on their own.
+
+        Args:
+            result (GrappleResult): The reading when they went.
+
+        Notes:
+            Delivered rather than returned, because nobody asked for this - it
+            happens on the tick and the deck finds out about it the way a deck
+            does, which is suddenly.
+
+        """
+        self.deliver(
+            f"The lines come up bar-taut, snap, and whip back across the deck. "
+            f"She has broken free at {format_speed(result.closure)}.",
+            "Something heavy goes over on deck above you.",
+        )
+
+    def struck_colours(self, other):
+        """
+        Args:
+            other (Vessel): Who she struck to.
+
+        Returns:
+            lines (tuple): What the deck hears.
+
+        """
+        return (
+            "The colours come down.",
+            f"She has struck to the {other.key}.",
+        )
+
+    def rehoisted(self, captor):
+        """
+        Args:
+            captor (Vessel or None): Who she had struck to.
+
+        Returns:
+            line (str): What the deck hears.
+
+        """
+        name = f" The {captor.key} is not going to like it." if captor else ""
+        return f"The colours go back up.{name}"
+
+    def grapple_report(self, vessel):
+        """
+        What she is fast to, and how hard the lines are working.
+
+        Args:
+            vessel (Vessel): The hull.
+
+        Returns:
+            lines (tuple): The reading.
+
+        Notes:
+            Reports the relative speed rather than either ship's, because that is
+            what the lines are actually taking. Two hulls matched to a tenth of a
+            knot hold all day at any speed at all.
+
+        """
+        from .boarding import MAX_HOLDING_CLOSURE, relative_speed
+
+        other = vessel.grappled_to
+        closing = relative_speed(vessel.heading, vessel.speed, other.heading, other.speed)
+        lines = [f"|w{vessel.key}|n - fast to the {other.key}"]
+        lines.append(
+            f"  Relative speed  {format_speed(closing)}"
+            f"   (the lines will take {format_speed(MAX_HOLDING_CLOSURE)})"
+        )
+        if closing > MAX_HOLDING_CLOSURE * 0.7:
+            lines.append("  |yThe lines are working hard. She is trying to get away.|n")
+        if vessel.struck:
+            lines.append(f"  She has struck to the {vessel.struck_to.key}.")
+        if other.struck:
+            lines.append(f"  The {other.key} has struck.")
         return tuple(lines)
 
     def passage_made(self):

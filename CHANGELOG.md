@@ -13,6 +13,38 @@ combat and damage are not.
 
 ### Feat
 
+- Add boarding: grapples, the crossing they make, and the lines that part.
+- **Speed is not the constraint - relative velocity is,** and that is the whole of
+  the manoeuvre. Two ships running side by side at ten knots on the same course are
+  motionless with respect to each other and can be lashed together at leisure; the
+  same two at four knots on opposing courses close at eight and tear the irons out
+  of the rail. Matching her course and speed *is* boarding her, and a speed limit
+  would have made a chase and an ambush the same problem.
+- Lines are re-tested on the tick rather than granted once. A made-up line takes
+  more strain than a thrown one - but not much more, so a ship that puts her helm
+  hard over and fills her sails always breaks free. That is what makes being
+  boarded survivable and worth trying to survive.
+- The crossing is two ordinary exits, made the same way a gangway is. Law 7 has no
+  special case for a hostile traversal: crossing to a ship you are boarding is
+  walking, so it can be followed, blocked, watched and locked exactly like walking
+  ashore. `board` is not a command - it is the exit's name.
+- You board onto a deck, never into a hold. The crossing lands on the highest
+  weather deck, because that is where the rail is; a boarding party materialising
+  in a sealed magazine would be a routing accident presented as a tactic.
+- A refused boarding rigs nothing, so there is never an exit anybody can walk
+  through that the grapples did not earn. Both hulls know they are fast to each
+  other and cutting frees both - a one-sided attachment is the first symptom of a
+  much worse bug.
+- Add `grapple`, `cut grapples`, `strike` and `grapples`. Grappling needs an
+  identified contact, exactly as gunnery does: you cannot throw an iron onto a
+  shape you have not made out.
+- Striking is a fact and confers nothing. Colours can be rehoisted, because a
+  prize crew can be overwhelmed and a state that could only be entered would make
+  that unrepresentable. What a captor may *do* with a prize is a question about
+  authority, which is phase 14 - recorded in `DECISIONS.md`.
+- No character combat, and none coming. The fight that follows is the host game's
+  own; a maritime contrib shipping a second would be arguing with it.
+
 - Measure what a vessel tick costs and give the simulation pass a wall-clock
   budget, which closes the reactor-budget open question. Written up in
   `docs/performance.md`, with the behaviour it justified asserted in

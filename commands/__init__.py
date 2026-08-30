@@ -17,6 +17,12 @@ package, which is exactly how the first attempt at this split broke.
 
 """
 
+from .boarding import (
+    CmdCutGrapples,
+    CmdGrapple,
+    CmdGrapples,
+    CmdStrike,
+)
 from .gunnery import CmdFire, CmdGuns, CmdLoad
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
 from .lading import CmdDischarge, CmdManifest, CmdStow
@@ -56,6 +62,10 @@ from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
 __all__ = (
     "MaritimeCommand",
     "CmdStow",
+    "CmdGrapple",
+    "CmdCutGrapples",
+    "CmdStrike",
+    "CmdGrapples",
     "CmdGiveWay",
     "CmdPaddleStroke",
     "CmdStretchOut",
