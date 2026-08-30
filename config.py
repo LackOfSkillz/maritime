@@ -33,6 +33,8 @@ from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
 from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
 from .messaging import VesselNarrator
 from .routes import NavigationNetwork
+from .sailing import WindVector
+from .weather import FlatWeatherProvider, MaritimeWeatherProvider
 from .observation import DEFAULT_VISIBILITY
 from .clock import MaritimeTimeProvider
 from .rng import RNGContext
@@ -253,3 +255,34 @@ def navigation_network():
     if not path:
         return NavigationNetwork()
     return load_class(path, expected=NavigationNetwork)()
+
+
+def weather_provider():
+    """
+    Build the configured weather provider.
+
+    Returns:
+        provider (MaritimeWeatherProvider): What the sky is doing.
+
+    Raises:
+        TypeError: If the configured class is not a weather provider.
+
+    Notes:
+        With no `MARITIME_WEATHER_PROVIDER` set, returns a flat provider built
+        from the individual wind and visibility settings a game may already have.
+        Those settings were the whole of weather before this existed, and a game
+        that set them should not have to learn about providers to keep the
+        weather it already had.
+
+    """
+    path = get_setting("WEATHER_PROVIDER")
+    if path:
+        return load_class(path, expected=MaritimeWeatherProvider)()
+    return FlatWeatherProvider(
+        wind=WindVector(
+            bearing=float(get_setting("WIND_BEARING", 0.0)),
+            speed=float(get_setting("WIND_SPEED", 0.0)),
+        ),
+        visibility=float(get_setting("VISIBILITY", DEFAULT_VISIBILITY)),
+        sea_state=get_setting("SEA_STATE") or None,
+    )

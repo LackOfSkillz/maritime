@@ -129,6 +129,47 @@ class CmdWind(MaritimeCommand):
         )
 
 
+class CmdWeather(MaritimeCommand):
+    """
+    Report the weather: the wind, the sea and how far you can see.
+
+    Usage:
+      weather
+
+    Wind, sea state and visibility together, because they are not independent
+    things that happen to be true at the same time - a gale brings a high sea and
+    takes your visibility with it.
+
+    """
+
+    key = "weather"
+    aliases = ("forecast", "glass")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        from ..environment import weather_at
+        from ..messaging import BEAUFORT_NAMES
+        from ..sailing import beaufort_force
+
+        position = vessel.maritime_position
+        if position is None:
+            self.caller.msg("She is not afloat anywhere with weather.")
+            return
+
+        weather = weather_at(position)
+        force = beaufort_force(weather.wind.speed)
+        self.caller.msg(
+            f"Wind         {BEAUFORT_NAMES[force]} from "
+            f"{spell_bearing(weather.wind.bearing)}, force {force}"
+        )
+        self.caller.msg(f"Sea          {weather.sea_state}, " f"about {weather.wave_height:.1f} m")
+        self.caller.msg(f"Visibility   {format_range(weather.visibility)}")
+
+
 class CmdCurrent(MaritimeCommand):
     """
     Report the set and drift of the current.

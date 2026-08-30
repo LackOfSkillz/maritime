@@ -35,6 +35,7 @@ from .position import WorldPosition, normalize_bearing
 from .environment import Situated
 from .ports import Berthing
 from .traffic import traffic
+from .weather import sea_drag
 
 # ShipRoom lives in rooms.py now, and is imported here for `ship_rooms` below - but
 # also re-exported deliberately. Evennia stores a typeclass as a dotted path on the
@@ -397,6 +398,13 @@ class Vessel(
         # rather than as a raised turn rate: the rate is scaled by speed, being a
         # rudder, and a backed sail is not - which matters precisely when she is
         # stopped dead and pointing the wrong way.
+        # A heavy sea takes her way. Applied to the ordered speed rather
+        # than to the result, so she is slowed by the water rather than
+        # having her acceleration quietly rewritten.
+        drag = sea_drag(self.sea_here())
+        if drag:
+            orders = HelmOrders(heading=orders.heading, speed=orders.speed * (1.0 - drag))
+
         floor = steerage_floor(wind, self.sail_plan) if under_sail else 0.0
         after = advance(before, orders, self.motion_limits, elapsed, turn_floor=floor)
 

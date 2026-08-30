@@ -33,6 +33,7 @@ from .commands import (
     CmdScan,
     CmdSound,
     CmdSpeed,
+    CmdWeather,
     CmdWind,
 )
 
@@ -67,6 +68,7 @@ class HelmCmdSet(CmdSet):
         self.add(CmdCastOff())
         self.add(CmdWeighAnchor())
         self.add(CmdWind())
+        self.add(CmdWeather())
         self.add(CmdCurrent())
         self.add(CmdChart())
         self.add(CmdPlot())

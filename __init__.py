@@ -121,6 +121,14 @@ from .resolver import (
     has_world_position,
     resolve_chain,
 )
+from .weather import (
+    SEA_STATES,
+    FlatWeatherProvider,
+    MaritimeWeatherProvider,
+    Weather,
+    sea_drag,
+    sea_state_for,
+)
 from .vessel import (
     BELOW_WATERLINE,
     EXPOSURES,
@@ -305,6 +313,13 @@ __all__ = (
     "drift_offset",
     "made_good",
     "course_to_steer",
+    # weather
+    "Weather",
+    "MaritimeWeatherProvider",
+    "FlatWeatherProvider",
+    "sea_state_for",
+    "sea_drag",
+    "SEA_STATES",
     # sailing
     "WindVector",
     "PolarCurve",

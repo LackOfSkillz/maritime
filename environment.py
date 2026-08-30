@@ -18,27 +18,62 @@ one module instead of reading settings wherever a value happens to be needed.
 
 from . import config
 from .currents import STILL, carried, made_good
+from .weather import CALM
 from .grounding import keel_clearance
 from .observation import detection_limit, scan
-from .sailing import WindVector
 from .traffic import MAX_TARGET_HEIGHT, traffic
 
 
-def wind_at(position):
+def weather_at(position, game_time=None):
+    """
+    Everything the sky is doing at a place.
+
+    Args:
+        position (WorldPosition): Where to ask.
+        game_time (float, optional): Game time in seconds. Defaults to now.
+
+    Returns:
+        weather (Weather): Wind, visibility and sea state together.
+
+    Notes:
+        One sampling, because these are not independent. Reading the wind from
+        one place and the visibility from another is how a system ends up with a
+        gale you can see forever across.
+
+    """
+    if game_time is None:
+        game_time = config.time_provider().now()
+    return config.weather_provider().weather_at(position, game_time)
+
+
+def wind_at(position, game_time=None):
     """
     The wind at a place.
 
     Args:
-        position (WorldPosition): Where to ask. Ignored while the wind is global.
+        position (WorldPosition): Where to ask.
+        game_time (float, optional): Game time in seconds.
 
     Returns:
         wind (WindVector): Bearing the wind blows *from*, and its speed.
 
     """
-    return WindVector(
-        bearing=float(config.get_setting("WIND_BEARING", 0.0)),
-        speed=float(config.get_setting("WIND_SPEED", 0.0)),
-    )
+    return weather_at(position, game_time).wind
+
+
+def sea_state_at(position, game_time=None):
+    """
+    What the water is doing at a place.
+
+    Args:
+        position (WorldPosition): Where to ask.
+        game_time (float, optional): Game time in seconds.
+
+    Returns:
+        state (str): One of `SEA_STATES`.
+
+    """
+    return weather_at(position, game_time).sea_state
 
 
 def current_at(position, game_time):
@@ -63,19 +98,19 @@ def current_at(position, game_time):
     return config.current_provider().current_at(position, game_time)
 
 
-def visibility_at(position):
+def visibility_at(position, game_time=None):
     """
     How far the air lets you see at a place.
 
     Args:
-        position (WorldPosition): Where to ask. Ignored while visibility is
-            global.
+        position (WorldPosition): Where to ask.
+        game_time (float, optional): Game time in seconds.
 
     Returns:
         visibility (float): Metres.
 
     """
-    return config.visibility()
+    return weather_at(position, game_time).visibility
 
 
 def clearance_at(position, draft, game_time):
@@ -229,6 +264,22 @@ class Situated:
         if position is None:
             return STILL
         return environment.current_at(position, config.time_provider().now())
+
+    def sea_here(self):
+        """
+        What the water is doing where she is.
+
+        Returns:
+            state (str): One of `SEA_STATES`, or a flat calm if she has not been
+                launched.
+
+        """
+        from . import environment
+
+        position = self.maritime_position
+        if position is None:
+            return CALM
+        return environment.sea_state_at(position)
 
     def keel_clearance(self):
         """

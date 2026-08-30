@@ -27,6 +27,7 @@ from .pilotage import (
     CmdPlot,
     CmdPosition,
     CmdSound,
+    CmdWeather,
     CmdWind,
 )
 from .mooring import BERTH_REFUSALS, CmdAnchor, CmdCastOff, CmdDock, CmdWeighAnchor
@@ -46,6 +47,7 @@ __all__ = (
     "CmdSail",
     "CmdPosition",
     "CmdMaritimeStatus",
+    "CmdWeather",
     "CmdWind",
     "CmdChart",
     "CmdPlot",

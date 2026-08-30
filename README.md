@@ -194,6 +194,8 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_CURRENT_DRIFT` | `0.0` | How fast it flows, in metres per second |
 | `MARITIME_CURRENT_PROVIDER` | slack water | Dotted path, for a tidal stream |
 | `MARITIME_NAVIGATION_NETWORK` | no marks | Dotted path to the game's marks and channels |
+| `MARITIME_WEATHER_PROVIDER` | from the settings below | Dotted path to the game's weather |
+| `MARITIME_SEA_STATE` | follows the wind | Override the sea the wind would raise |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_VISIBILITY` | 30 miles | How far the air lets you see, in metres |
@@ -211,6 +213,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `sail <plan>` | `furled`, `storm`, `reefed`, `working`, `full` |
 | `wind` | Where the wind is from and how she lies to it |
 | `current` | Set and drift, and the course she is making good |
+| `weather` | Wind by its force, the sea, and how far you can see |
 | `fix` | Fix her position off a landmark, and learn the set |
 | `chart` | What the paper says is under her, and how far to trust it |
 | `plot <mark>` | Lay a course by way of safe water |
@@ -360,7 +363,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Roughly 1080 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
+Roughly 1110 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
 would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
@@ -368,9 +371,10 @@ would take half an hour of wall time runs in milliseconds.
 - No charts, weather, crew, cargo, combat or damage yet.
 - A port is a quay with berths. Anchorages, pilots, tugs, cargo handling and repair
   facilities are all later phases.
-- One global wind and one global visibility. A weather provider replaces both later; call
-  sites will not change.
-- No sea state. It is a documented input to sailing and stability and is not yet one.
+- The default weather is one wind, one visibility and one sea everywhere. A game supplies
+  a provider for anything better; call sites do not change.
+- Sea state slows a vessel and is described from the deck. Its effect on stability, gunnery,
+  swimming and small craft arrives with the phases that own those.
 - One global current, like the wind. A provider replaces it with a tidal stream later;
   call sites will not change.
 - Ranges and bearings in a sighting are true, not estimated. The vessel's *position* is now

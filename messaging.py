@@ -38,6 +38,7 @@ from .observation import (
     in_arc,
 )
 from .sailing import beaufort_force
+from .weather import CALM, RIPPLED, SMOOTH
 from .position import COMPASS_POINTS, METRES_PER_FATHOM, bearing_difference
 from .vessel import WEATHER_DECKS
 
@@ -141,6 +142,23 @@ DIRECTION_PHRASES = {
     "aft": "astern",
     "port": "to port",
     "starboard": "to starboard",
+}
+
+
+#: What each sea looks like from a deck. A calm and a rippled sea say nothing,
+#: because the absence of waves is not news and repeating it every time somebody
+#: looks is how ambient text becomes wallpaper.
+SEA_DESCRIPTIONS = {
+    CALM: "",
+    RIPPLED: "",
+    SMOOTH: "The water is smooth, with only a low swell running.",
+    "slight": "There is a slight sea, and she lifts gently to it.",
+    "moderate": "A moderate sea runs, and she works in it.",
+    "rough": "The sea is rough, breaking white along her weather side.",
+    "very rough": "A very rough sea, and green water comes aboard forward.",
+    "high": "A high sea runs, and she labours heavily in it.",
+    "very high": "The sea is very high. She is swept from end to end.",
+    "phenomenal": "The sea is beyond anything anyone aboard has words for.",
 }
 
 
@@ -618,10 +636,32 @@ class VesselNarrator:
                 f"{compass_point(wind.bearing)}."
             )
 
+        sea = self.sea_line(vessel.sea_here())
+        if sea:
+            weather += f" {sea}"
+
         current = vessel.current_here()
         if current.running:
             weather += f" The water itself is setting {compass_point(current.set)}."
         return weather
+
+    def sea_line(self, sea_state):
+        """
+        What the water is doing, said the way it looks rather than named.
+
+        Args:
+            sea_state (str): One of `SEA_STATES`.
+
+        Returns:
+            line (str): A sentence, or empty for a sea flat enough not to mention.
+
+        Notes:
+            A calm and a rippled sea are not worth remarking on every time
+            somebody looks - the absence of waves is not news. Everything from a
+            slight sea upward is.
+
+        """
+        return SEA_DESCRIPTIONS.get(sea_state, "")
 
     def sighted_line(self, vessel, height_of_eye=None):
         """

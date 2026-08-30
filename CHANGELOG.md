@@ -13,6 +13,27 @@ combat and damage are not.
 
 ### Feat
 
+- Add weather. Wind, visibility and sea state now arrive together from one
+  provider sampled at a place and a moment, rather than being read separately
+  from three settings wherever somebody happened to need them. They are not
+  independent - a gale brings a high sea and takes your visibility with it - and
+  a system that lets them drift apart will produce a flat calm you cannot see
+  across.
+- Sea state follows the wind by default, on the WMO scale, but a provider can set
+  it against the wind. Waves need fetch and time to build and go on running after
+  the wind drops, so a calm morning with a heavy leftover swell has to be
+  expressible.
+- A heavy sea takes some of her way. Deliberately gently: the danger is meant to
+  come from the lee shore and the flooding, not from an arithmetic wall that
+  makes heavy weather unplayable rather than dangerous.
+- A weather deck describes the sea it is in, and a calm is not remarked on -
+  the absence of waves is not news, and repeating it is how ambient text becomes
+  wallpaper. Add `weather`, reporting all three together.
+- `MARITIME_WIND_BEARING`, `MARITIME_WIND_SPEED` and `MARITIME_VISIBILITY` still
+  work exactly as before, through the default provider. Those settings were the
+  whole of weather until now, and a game that set them should not have to learn
+  about providers to keep what it had.
+
 - Add charts, which are knowledge of the sea rather than the sea. A chart covers
   a rectangle, was made by somebody at a moment, and is wrong - but wrong in the
   *same places every time*, because the error is a deterministic function of its

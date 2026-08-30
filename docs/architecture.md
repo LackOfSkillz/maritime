@@ -737,7 +737,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 9 | Navigation | done | Dead reckoning, estimated position, error that is the water she could not see, fixes off landmarks, charts that are wrong in fixed places, and routes laid over authored marks |
 | 10 | Minimal crew automation | — | Hold a heading, manage sail, follow a route, approach a destination |
 | 11 | Strategic representation | — | Strategic records, analytical travel, materialisation, benchmarks at 100/500/1000 |
-| 12 | Weather and sea state | — | Replaces the single global wind and the single global visibility |
+| 12 | Weather and sea state | done | One provider supplies wind, visibility and sea state together; the sea follows the wind by default and slows her |
 | 13 | Sparse ocean projection | — | Swimmers and floating entities, studied from Wilderness and written maritime-native |
 | 14 | Crew and authority | — | Roles, staffing, skill hooks, command succession |
 | 15 | Tactical geometry | — | Range, bearing, closure, aspect, arcs. The tactical-pacing decision point |
