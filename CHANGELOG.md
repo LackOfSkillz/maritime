@@ -13,6 +13,28 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Publish maritime state to clients that ask for it, as an optional protocol. The
+  contrib now says which interface a situation calls for - ashore, aboard as a
+  passenger, aboard in command, or in the water - and says it again the moment that
+  changes. A browser may draw it. Nothing is required to; the state is not tied to
+  any one way of showing it, so a scriptable terminal client gets the same
+  messages.
+- Notice the crossing without asking a host game to help. Both sides of every
+  boundary are rooms this contrib owns - a gangway runs from a quay to a ship's
+  compartment, going over the side runs from a compartment to open water - so the
+  moment somebody walks aboard is noticed from our own typeclasses. There is no
+  integration step for a game to forget and no character typeclass to override.
+- Keep capability on the session rather than the character. One player may be
+  connected from a browser and a terminal at once, looking at the same ship: the
+  character is not graphical, the connection is. A session that never announced
+  itself is sent nothing at all, because an unknown message is something a terminal
+  is entitled to print at the player.
+- Say it only when it changes. Walking from a deck to a hold is two rooms and one
+  situation, and reports nothing.
+- Version every message, and accept a version from the future rather than refusing
+  it. A client one step ahead of its server should lose the part it asked for
+  differently, not the whole interface.
+
 - Add holding your fire. A captain may run the guns out and leave them, and the
   battery speaks by itself the moment something bears - which our simulation gets
   almost for nothing, because "hold your fire until she crosses the bow" is an

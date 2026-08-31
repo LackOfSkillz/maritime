@@ -17,13 +17,14 @@ from evennia.utils import create
 
 from .observation import DEFAULT_HEIGHT_OF_EYE
 from .stowage import Stowed
+from .client.boundary import NoticesTheWaterline
 from .vessel import WEATHER_DECKS
 from .ports import APPROACH_RANGE
 from .position import WorldPosition
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
 
 
-class ShipRoom(Stowed, DefaultRoom):
+class ShipRoom(NoticesTheWaterline, Stowed, DefaultRoom):
     """
     A compartment aboard a vessel.
 

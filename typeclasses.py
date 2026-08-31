@@ -60,6 +60,27 @@ from .rooms import Compartmented, ShipRoom  # noqa: F401
 from .routes import Routed
 
 
+def _tell_the_boards(vessel):
+    """
+    Send her instruments to any graphical client aboard, and never raise.
+
+    Args:
+        vessel (Vessel): The hull.
+
+    Notes:
+        Guarded for the same reason the room hooks are: a ship must not stop sailing
+        because an interface could not be drawn. The optional half of this contrib
+        may fail in any way it likes and the simulation carries on.
+
+    """
+    try:
+        from .client.transport import broadcast_status
+
+        broadcast_status(vessel)
+    except Exception:  # noqa: BLE001 - a board is never worth a stopped ship
+        pass
+
+
 def _now():
     """
     Returns:
@@ -421,6 +442,11 @@ class Vessel(
         parted = self.check_grapples()
         if parted is not None and not parted:
             self.narrator.grapples_parted(parted)
+
+        # Anybody aboard with a board to draw. Before the movement below rather
+        # than after, so the readings a player is looking at are the ones her helm
+        # is working from this step rather than the last.
+        _tell_the_boards(self)
 
         # Hands who have finished aloft. Above the check below on purpose: whether
         # she is moving has nothing to do with whether her people can work, and a

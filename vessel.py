@@ -277,3 +277,33 @@ class VesselTemplate:
                 f"crew_ideal ({self.crew_ideal}) cannot be below "
                 f"crew_minimum ({self.crew_minimum})."
             )
+
+
+def vessel_in(room):
+    """
+    The vessel a room belongs to, if any.
+
+    Args:
+        room (Object or None): A compartment, a stretch of water, a tavern.
+
+    Returns:
+        vessel (Vessel or None): The hull it is part of.
+
+    Notes:
+        The one definition of what "aboard" means. It walks the same chain the
+        position resolver walks, so a room is part of a ship exactly when the
+        position system says it is, rather than because somebody checked its
+        typeclass in one place and its tags in another.
+
+        Asked of a *room* rather than of a person, because the interesting question
+        is sometimes about a room nobody is standing in yet - the far side of a
+        gangway, at the moment somebody steps onto it.
+
+        The import is deferred because `typeclasses` reaches back into this module
+        and a top-level import would close the circle.
+
+    """
+    from .typeclasses import Vessel
+
+    source = getattr(room, "maritime_position_source", None)
+    return source if isinstance(source, Vessel) else None

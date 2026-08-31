@@ -36,6 +36,7 @@ class.
 from evennia.objects.objects import DefaultRoom
 from evennia.utils import create
 
+from .client.boundary import NoticesTheWaterline, notice
 from .resolver import NoWorldPosition, get_world_position
 from .spatial import cell_centre, cell_of
 
@@ -56,7 +57,7 @@ POOL_TAG = "ocean"
 POOL_ROOM_KEY = "Open water"
 
 
-class OceanRoom(DefaultRoom):
+class OceanRoom(NoticesTheWaterline, DefaultRoom):
     """
     A room lent to one square of open water.
 
@@ -67,6 +68,12 @@ class OceanRoom(DefaultRoom):
         showing different water within the hour.
 
     """
+
+    #: This is water somebody is in rather than a deck they are on. Read by the
+    #: client context resolver, and a plain attribute rather than a typeclass check
+    #: so that a game supplying its own water rooms answers the same question the
+    #: same way.
+    is_open_water = True
 
     def at_object_creation(self):
         """Set up a newly built pool room."""
@@ -428,7 +435,12 @@ class OceanProjection:
 
         """
         obj.maritime_position = position
-        return self.place(obj, position)
+        room = self.place(obj, position)
+        # `place` moves with the hooks off, on purpose, so the crossing has to be
+        # announced here. Going into the sea changes a player's situation about as
+        # much as it can be changed.
+        notice(obj)
+        return room
 
     def recover(self, obj, destination):
         """
@@ -453,4 +465,7 @@ class OceanProjection:
         obj.maritime_position = None
         if previous is not None and previous.db.showing is not None:
             self.release(previous)
+        # Hooks are off here as they are in `place`, so being pulled out of the sea
+        # is announced by hand, the same way going into it is.
+        notice(obj)
         return True

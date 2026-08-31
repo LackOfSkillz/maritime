@@ -1,0 +1,544 @@
+/*
+ * The maritime interface.
+ *
+ * Every colour, radius and font is a custom property declared once below. A host game
+ * that wants the chart to match its own board overrides the variables and touches
+ * nothing else; a game that wants none of this does not load the file.
+ *
+ * The palette is a dark instrument board rather than a parchment one. Charts are read
+ * at night as often as by day, and the terminal beside this has to stay the most
+ * readable thing on the screen - so the brass is for edges and labels, never for text
+ * somebody has to read quickly.
+ */
+
+:root {
+    --maritime-bg: #0b1318;
+    --maritime-panel: #101b21;
+    --maritime-panel-raised: #16242c;
+    --maritime-border: rgba(211, 173, 98, 0.22);
+    --maritime-border-strong: rgba(211, 173, 98, 0.45);
+
+    --maritime-text: #ddd5c5;
+    --maritime-text-soft: #a9a291;
+    --maritime-text-dim: #7d7768;
+
+    --maritime-accent: #d3ad62;
+    --maritime-sea: #12303f;
+    --maritime-sea-deep: #0d222d;
+    --maritime-land: #2b2a22;
+
+    --maritime-caution: #d68a37;
+    --maritime-warning: #d68a37;
+    --maritime-critical: #d05b46;
+    --maritime-good: #6f9c6a;
+
+    --maritime-radius: 6px;
+    --maritime-gap: 10px;
+    --maritime-font: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --maritime-font-instrument: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+
+/* --- the shell ------------------------------------------------------------
+ *
+ * Additive on purpose. The interface adds a strip and a pane; it never rearranges
+ * what the host game had, because a player's own layout is not ours to move.
+ */
+
+/* Padded, because a host may mount this flush against a window edge and text
+ * touching the frame reads as clipped even when it is all there.
+ *
+ * Height is capped and scrolls inside itself. The terminal is still the main thing
+ * on this screen and an interface that pushed it off the bottom would have got the
+ * priority exactly backwards - this helps the text game, it does not replace it. A
+ * host that wants it taller sets --maritime-max-height. */
+#maritime-root {
+    display: none;
+    box-sizing: border-box;
+    padding: 8px;
+    max-height: var(--maritime-max-height, 45vh);
+    overflow-y: auto;
+    font-family: var(--maritime-font);
+    color: var(--maritime-text);
+    background: var(--maritime-bg);
+}
+
+#maritime-root.maritime-on {
+    display: block;
+}
+
+#maritime-root * {
+    box-sizing: border-box;
+}
+
+.maritime-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 1px;
+    background: var(--maritime-border);
+    border: 1px solid var(--maritime-border);
+    border-radius: var(--maritime-radius);
+    overflow: hidden;
+}
+
+/* --- who she is -----------------------------------------------------------
+ *
+ * Leads the board, because a captain with two ships needs to know which one he is
+ * reading before he reads a number off it. Wider than an instrument and set in the
+ * serif face, so the eye separates identity from telemetry without being told.
+ */
+
+.maritime-identity {
+    flex: 0 0 auto;
+    min-width: 168px;
+    padding: 6px 14px 6px 10px;
+    background: var(--maritime-panel-raised);
+}
+
+.maritime-ship-name {
+    font-size: 1.18rem;
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+    color: var(--maritime-accent);
+    white-space: nowrap;
+}
+
+.maritime-ship-class {
+    margin-top: 1px;
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--maritime-text-dim);
+    white-space: nowrap;
+}
+
+/* --- one instrument -------------------------------------------------------
+ *
+ * A label above a value, the value in a monospaced face so that digits do not
+ * shuffle sideways as they change. A helmsman glancing at a heading should not have
+ * to re-find it every second.
+ */
+
+.maritime-reading {
+    flex: 1 1 auto;
+    min-width: 92px;
+    padding: 6px 10px;
+    background: var(--maritime-panel);
+}
+
+.maritime-reading-label {
+    display: block;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--maritime-text-dim);
+}
+
+.maritime-reading-value {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--maritime-font-instrument);
+    font-size: 1.02rem;
+    color: var(--maritime-text);
+    white-space: nowrap;
+}
+
+/* A reading the world cannot answer here is absent, not blank. This is only for a
+ * value that exists and is momentarily unknown. */
+.maritime-reading-value.maritime-unknown {
+    color: var(--maritime-text-dim);
+}
+
+.maritime-reading.maritime-caution .maritime-reading-value {
+    color: var(--maritime-caution);
+}
+
+.maritime-reading.maritime-critical .maritime-reading-value {
+    color: var(--maritime-critical);
+}
+
+/* --- the pane -------------------------------------------------------------- */
+
+.maritime-pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--maritime-gap);
+    margin-top: var(--maritime-gap);
+}
+
+.maritime-card {
+    background: var(--maritime-panel);
+    border: 1px solid var(--maritime-border);
+    border-radius: var(--maritime-radius);
+    overflow: hidden;
+}
+
+.maritime-card-title {
+    padding: 6px 10px;
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--maritime-text-dim);
+    border-bottom: 1px solid var(--maritime-border);
+}
+
+.maritime-card-body {
+    padding: 10px;
+    font-size: 0.9rem;
+    color: var(--maritime-text-soft);
+}
+
+/* A card holding nothing yet takes only the room its message needs. The chart will
+ * ask for more when there is one; until then it should not sit there as a large
+ * empty rectangle implying something failed to load. */
+.maritime-card-body:has(> .maritime-empty:only-child) {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+}
+
+/* --- panel tabs ------------------------------------------------------------ */
+
+.maritime-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px;
+}
+
+.maritime-tab {
+    flex: 1 1 auto;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--maritime-text-soft);
+    background: var(--maritime-panel-raised);
+    border: 1px solid transparent;
+    border-radius: calc(var(--maritime-radius) - 2px);
+    cursor: pointer;
+}
+
+.maritime-tab:hover {
+    color: var(--maritime-text);
+    border-color: var(--maritime-border);
+}
+
+.maritime-tab[aria-selected="true"] {
+    color: var(--maritime-accent);
+    border-color: var(--maritime-border-strong);
+}
+
+/* Visible focus, because a chart panel that can only be driven by mouse excludes
+ * people for no reason. */
+.maritime-tab:focus-visible {
+    outline: 2px solid var(--maritime-accent);
+    outline-offset: 1px;
+}
+
+.maritime-empty {
+    color: var(--maritime-text-dim);
+    font-style: italic;
+}
+
+/* --- narrow screens --------------------------------------------------------
+ *
+ * The terminal and the command line stay usable at every width. When there is not
+ * room for instruments beside each other they wrap rather than shrink, because a
+ * heading squeezed to three pixels is worse than a heading on the next line.
+ */
+
+@media (max-width: 700px) {
+    .maritime-reading {
+        min-width: 78px;
+    }
+
+    .maritime-reading-value {
+        font-size: 0.92rem;
+    }
+}
+
+/* --- panel contents --------------------------------------------------------
+ *
+ * A label on the left and a figure on the right, aligned down the column so the
+ * eye can run a finger down the numbers. Figures use the instrument face for the
+ * same reason the strip does: digits that keep their width do not dance.
+ */
+
+.maritime-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 0;
+}
+
+.maritime-row + .maritime-row {
+    border-top: 1px solid rgba(211, 173, 98, 0.08);
+}
+
+.maritime-row-label {
+    font-size: 0.78rem;
+    color: var(--maritime-text-soft);
+}
+
+.maritime-row-value {
+    font-family: var(--maritime-font-instrument);
+    font-size: 0.86rem;
+    color: var(--maritime-text);
+    white-space: nowrap;
+}
+
+.maritime-attention .maritime-row-value {
+    color: var(--maritime-caution);
+}
+
+/* --- condition bars --------------------------------------------------------
+ *
+ * The figure is always written beside the bar. Colour reinforces it and never
+ * carries it alone, because a captain who cannot distinguish amber from red still
+ * has to be able to read his own ship.
+ */
+
+.maritime-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.maritime-bar .maritime-row-label {
+    flex: 0 0 74px;
+}
+
+.maritime-bar-track {
+    flex: 1 1 auto;
+    height: 7px;
+    background: var(--maritime-sea-deep);
+    border: 1px solid var(--maritime-border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.maritime-bar-fill {
+    height: 100%;
+    background: var(--maritime-good);
+}
+
+.maritime-bar-fill.maritime-bar-caution {
+    background: var(--maritime-caution);
+}
+
+.maritime-bar-fill.maritime-bar-critical {
+    background: var(--maritime-critical);
+}
+
+.maritime-bar .maritime-row-value {
+    flex: 0 0 42px;
+    text-align: right;
+    font-size: 0.76rem;
+}
+
+/* --- contacts --------------------------------------------------------------
+ *
+ * What she is called, and where she lies. A hull nobody has identified is dimmed
+ * and named only by what she looks like, which is the same thing the lookout says.
+ */
+
+.maritime-contact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.maritime-contact + .maritime-contact {
+    border-top: 1px solid rgba(211, 173, 98, 0.08);
+}
+
+.maritime-contact-name {
+    font-size: 0.84rem;
+    color: var(--maritime-text);
+}
+
+.maritime-contact-name.maritime-unknown {
+    color: var(--maritime-text-dim);
+    font-style: italic;
+}
+
+.maritime-contact-where {
+    font-family: var(--maritime-font-instrument);
+    font-size: 0.78rem;
+    color: var(--maritime-text-soft);
+    white-space: nowrap;
+}
+
+/* --- the chart -------------------------------------------------------------
+ *
+ * Sea in the panel's own blues so the chart reads as a different kind of surface
+ * from the instrument strip above it, and darker than the panels so marks on it
+ * carry.
+ */
+
+.maritime-chart-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.maritime-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 46vh;
+    touch-action: none;
+    cursor: grab;
+}
+
+.maritime-chart:active {
+    cursor: grabbing;
+}
+
+.maritime-chart-sea {
+    fill: var(--maritime-sea-deep);
+}
+
+.maritime-chart-ring {
+    fill: none;
+    stroke: var(--maritime-border);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 8;
+}
+
+.maritime-chart-ring-label {
+    fill: var(--maritime-text-dim);
+    font-family: var(--maritime-font-instrument);
+    font-size: 20px;
+}
+
+.maritime-chart-hull {
+    fill: var(--maritime-accent);
+    stroke: var(--maritime-bg);
+    stroke-width: 1.5;
+}
+
+/* A contact she has identified is filled; one she has not is hollow. The shape
+ * carries the distinction as well as the colour, so it survives being looked at by
+ * somebody who cannot tell the two apart. */
+.maritime-chart-contact circle {
+    fill: var(--maritime-text-soft);
+    stroke: var(--maritime-bg);
+    stroke-width: 1.5;
+    cursor: pointer;
+}
+
+.maritime-chart-contact.maritime-unknown circle {
+    fill: none;
+    stroke: var(--maritime-text-dim);
+    stroke-width: 2;
+    stroke-dasharray: 3 3;
+}
+
+.maritime-chart-contact.maritime-selected circle {
+    stroke: var(--maritime-accent);
+    stroke-width: 3;
+    stroke-dasharray: none;
+}
+
+.maritime-chart-contact:focus-visible circle {
+    stroke: var(--maritime-accent);
+    stroke-width: 3;
+}
+
+.maritime-chart-compass path {
+    fill: var(--maritime-accent);
+    opacity: 0.75;
+}
+
+.maritime-chart-compass text {
+    fill: var(--maritime-text-dim);
+    font-family: var(--maritime-font-instrument);
+    font-size: 22px;
+}
+
+.maritime-chart-controls {
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    border-top: 1px solid var(--maritime-border);
+}
+
+.maritime-chart-button {
+    flex: 1 1 auto;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: var(--maritime-text-soft);
+    background: var(--maritime-panel-raised);
+    border: 1px solid var(--maritime-border);
+    border-radius: calc(var(--maritime-radius) - 2px);
+    cursor: pointer;
+}
+
+.maritime-chart-button:hover {
+    color: var(--maritime-accent);
+    border-color: var(--maritime-border-strong);
+}
+
+.maritime-chart-button:focus-visible {
+    outline: 2px solid var(--maritime-accent);
+    outline-offset: 1px;
+}
+
+/* --- the paper -------------------------------------------------------------
+ *
+ * Fathom lines thin and cool, the waterline heavier and warmer, soundings as small
+ * figures. Land is never filled: a contoured coastline is a line somebody surveyed,
+ * and flooding one side of it would claim knowledge of everything inside that nobody
+ * has.
+ */
+
+.maritime-chart-depth {
+    fill: none;
+    stroke: var(--maritime-sea);
+    stroke-width: 1.5;
+}
+
+.maritime-depth-2-0 {
+    stroke: var(--maritime-caution);
+    stroke-width: 2;
+    opacity: 0.65;
+}
+
+.maritime-depth-5-0 {
+    opacity: 0.55;
+}
+
+.maritime-depth-10-0 {
+    opacity: 0.35;
+}
+
+.maritime-chart-coast {
+    fill: none;
+    stroke: var(--maritime-land);
+    stroke: #6a6350;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+
+.maritime-chart-sounding {
+    fill: var(--maritime-text-dim);
+    font-family: var(--maritime-font-instrument);
+    font-size: 16px;
+}
+
+/* The edge of the survey. Drawn as an outline rather than a shaded area, because
+ * shading would imply the water outside it is something; it is unknown. */
+.maritime-chart-coverage {
+    fill: none;
+    stroke: var(--maritime-border-strong);
+    stroke-width: 2;
+    stroke-dasharray: 10 8;
+    opacity: 0.6;
+}

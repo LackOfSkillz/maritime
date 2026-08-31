@@ -6,7 +6,7 @@ The base every maritime command shares, and the units they speak in.
 from evennia.commands.command import Command
 
 from ..formatting import METRES_PER_SECOND_PER_KNOT
-from ..typeclasses import Vessel
+from ..vessel import vessel_in
 
 # How far off a landmark can be and still be worth a bearing, in metres. The
 # same reach as a berth search, because a quay you could tie up to is
@@ -62,9 +62,7 @@ def vessel_of(caller):
         here.
 
     """
-    location = getattr(caller, "location", None)
-    source = getattr(location, "maritime_position_source", None)
-    return source if isinstance(source, Vessel) else None
+    return vessel_in(getattr(caller, "location", None))
 
 
 class MaritimeCommand(Command):

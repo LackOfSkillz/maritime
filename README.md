@@ -294,6 +294,15 @@ second ship and leaves with the loss of one. Whether a given person may give a g
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
 
+**There is an optional client protocol, and it is a protocol rather than an interface.**
+The contrib publishes what a character can see - which situation they are in, and later
+their instruments, chart and contacts - and something may draw it. A browser panel is one
+consumer; a scriptable terminal client is another. Walking aboard is noticed without a host
+game wiring anything, because the rooms on both sides of a gangway belong to this contrib.
+Two rules hold it together: the panel is a repeater rather than an oracle, and a graphical
+client must never make the navigator more knowledgeable than the character. See
+`docs/client.md`.
+
 **Orders take time, and how much depends on who is aboard.** A change of canvas is work:
 hands aloft, laying out along yards, and only so many of them. A crack frigate's crew
 shorten to fighting sail in a bit over two minutes; a pressed crew take better than six,

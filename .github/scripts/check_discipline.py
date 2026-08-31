@@ -75,7 +75,14 @@ ALLOWED_IMPORT_ROOTS = {
 # Packages permitted to talk to players directly. Everywhere else, emitting prose
 # is a layering violation: the domain returns structured results and a separate
 # renderer turns them into text.
-MESSAGING_PACKAGES = {"messaging", "commands", "cmdsets", "typeclasses"}
+#
+# `transport` is named rather than the whole `client` package it lives in, and the
+# narrowness is the point. It is a second speaking layer - the structured one, to
+# `messaging`'s prose - and it is the only file in that package allowed to reach a
+# session. The context resolver, the payload types and the snapshot builder beside
+# it stay under this rule, which is what keeps a payload something you can build in
+# a test without a connection to send it down.
+MESSAGING_PACKAGES = {"messaging", "commands", "cmdsets", "typeclasses", "transport"}
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
