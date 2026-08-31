@@ -13,6 +13,24 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Split fighting from seamanship, which fixes a gap that had already shipped.
+  `ShipsCompany.strength` read `quality.skill` - how well they work the ship - so a
+  crack crew of seamen came out the equal of a party of marines. Exactly backwards:
+  the marines cannot reef a topsail and will still carry a deck. Quality now carries
+  both axes, and they spread differently on purpose - seamanship is a trade that
+  takes years, and standing up in a fight is much less a matter of training.
+- Add ratings and divisions. Seamen work her, oarsmen pull, marines fight and are
+  close to useless at anything else, and a company can be composed of all three.
+  Rating is what they were shipped to do; quality is how good they are at it, and
+  keeping them separate is what lets a crack marine and a crack seaman both be crack
+  and be worth entirely different things.
+- Make a company weigh something. People are deadweight - `deadweight` has said
+  "cargo, stores and people" since it was written - so shipping marines is a decision
+  with no money in it at all. Substituting them for seamen costs nothing in the hold
+  and costs her the hands to work her; adding them costs the hold directly. Casualties
+  do not give the space back, because a hold that grew after a battle would be
+  grotesque.
+
 - Add damage tracks. Hull, rigging, oars, weapons and crew break separately rather
   than draining one pool, because a ship that is fast and toothless, one that is
   intact and cannot steer, and one that is whole and unwilling are three different
@@ -156,6 +174,11 @@ weather, crew, combat and damage are not.
   navigation where correct behaviour looks like a bug.
 
 ### Fix
+
+- The company setter dropped the divisions. A company could be composed with marines
+  aboard, assigned to a hull, read back, and come out an undivided crew of seamen -
+  silently undoing the entire point of composing one. Every pure-domain test passed;
+  only assigning a mixed company to a real ship and then asking her strength caught it.
 
 - Casualties did not weigh on morale. They gated whether striking could be *asked
   about*, so a company could be cut to pieces and feel exactly the same watch to

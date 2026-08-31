@@ -1,26 +1,29 @@
 """
-Tests for the ship's company: what they are made of, what it costs them, and when they
-stop.
+Tests for the rules a ship's company runs on: what they are made of, what it costs them,
+and when they stop.
+
+The arithmetic only. What happens when a company is put aboard an actual hull lives in
+`test_crew_aboard` - these two change for different reasons, which is the test of whether
+a seam is real rather than a convenient place to cut a long file.
 
 """
 
 import math
 
-from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
 from ..crew import (
     ABLE,
     CRACK,
     DEFAULT_QUALITY,
-    LANDSMEN,
-    ORDINARY,
     PRESSED,
     QUALITIES,
     RECOVER_SECONDS,
-    SEASONED,
     SPEND_SECONDS,
-    CrewQuality,
+    Division,
+    MARINES,
+    OARSMEN,
+    SEAMEN,
     ShipsCompany,
     blended,
     spend,
@@ -56,13 +59,6 @@ from ..morale import (
     strikes,
     when_asked,
 )
-from ..motion import MotionLimits
-from ..oars import GIVE_WAY, OAR_PLANS, STRETCH_OUT, EASY_OARS, rowed_speed
-from ..position import WorldPosition
-from ..rooms import ShipRoom
-from ..typeclasses import Vessel
-from ..vessel import OPEN
-from .base import EmptySeaMixin
 
 
 def never(*_args):
@@ -567,379 +563,165 @@ class TestMutiny(BaseEvenniaTest):
         self.assertTrue(furious)
 
 
-class CrewedTestCase(EmptySeaMixin, BaseEvenniaTest):
-    """A hull with people in her."""
+class TestRatings(BaseEvenniaTest):
+    """What a group aboard was shipped to do, as against how good they are."""
 
-    def setUp(self):
-        super().setUp()
-        self.hull = self.a_ship("Kestrel")
+    def test_seamen_work_her_best(self):
+        self.assertGreater(SEAMEN.working, OARSMEN.working)
+        self.assertGreater(OARSMEN.working, MARINES.working)
 
-    def a_ship(self, key):
-        hull = create.create_object(Vessel, key=key)
-        hull.length, hull.beam = 18.0, 5.4
-        hull.motion_limits = MotionLimits(max_speed=6.0, acceleration=0.5, turn_rate=5.0)
-        hull.maritime_position = WorldPosition(0.0, 0.0)
-        deck = create.create_object(ShipRoom, key=f"{key} Deck")
-        deck.vessel = hull
-        deck.exposure = OPEN
-        return hull
+    def test_marines_fight_best(self):
+        self.assertGreater(MARINES.fighting, SEAMEN.fighting)
+        self.assertGreater(SEAMEN.fighting, OARSMEN.fighting)
 
-
-class TestCrewedShip(CrewedTestCase):
-    """The Evennia-side face."""
-
-    def test_she_starts_with_nobody(self):
+    def test_a_marine_cannot_reef_a_topsail(self):
         """
-        Not an empty company - no company. A game that has adopted none of this must
-        still be able to sail, and every other test in this contrib builds ships
-        nobody has crewed.
+        Close to useless at working her, which is the whole cost of carrying them
+        and the reason a merchantman has to think about it.
 
         """
-        self.assertIsNone(self.hull.company)
+        self.assertLess(MARINES.working, 0.3)
 
-    def test_manning_her_fills_her(self):
-        self.hull.man(60, ABLE)
-        self.assertEqual(self.hull.company.complement, 60)
-        self.assertEqual(self.hull.company.fit, 60)
+    def test_rating_and_quality_are_different_questions(self):
+        """
+        A crack marine and a crack seaman are both crack, and only one of them can
+        hand a topsail in a gale.
 
-    def test_and_sets_them_where_men_of_that_quality_start(self):
-        self.hull.man(60, CRACK)
-        self.assertAlmostEqual(self.hull.morale, CRACK.base_morale)
-
-    def test_casualties_take_them_down(self):
-        self.hull.man(60, ABLE)
-        self.hull.take_casualties(20)
-        self.assertEqual(self.hull.company.fit, 40)
-        self.assertAlmostEqual(self.hull.company.casualty_fraction, 1.0 / 3.0)
-
-    def test_hurting_a_ship_with_no_company_is_not_an_error(self):
-        self.assertIsNone(self.hull.take_casualties(10))
-
-    def test_she_can_be_paid_off(self):
-        self.hull.man(60, ABLE)
-        self.hull.company = None
-        self.assertIsNone(self.hull.company)
-
-    def test_the_band_follows_the_number(self):
-        self.hull.man(60, CRACK)
-        self.assertEqual(self.hull.morale_band, STEADY)
-        self.hull.morale = 0.1
-        self.assertEqual(self.hull.morale_band, BROKEN)
-
-    def test_hesitation_follows_the_band(self):
-        self.hull.man(60, CRACK)
-        steady = self.hull.hesitation
-        self.hull.morale = 0.1
-        self.assertGreater(self.hull.hesitation, steady)
-
-    def test_morale_stays_on_the_scale(self):
-        self.hull.morale = 40.0
-        self.assertAlmostEqual(self.hull.morale, 1.0)
-        self.hull.morale = -3.0
-        self.assertAlmostEqual(self.hull.morale, 0.0)
+        """
+        crack_seaman = Division(SEAMEN, 1, 1, CRACK)
+        crack_marine = Division(MARINES, 1, 1, CRACK)
+        self.assertGreater(crack_seaman.hands, crack_marine.hands)
+        self.assertGreater(crack_marine.strength, crack_seaman.strength)
 
 
-class TestSheSeesForHerself(CrewedTestCase):
-    """Conditions a game should not have to remember to report."""
+class TestFightingIsNotSeamanship(BaseEvenniaTest):
+    """
+    The gap this item exists to close.
 
-    def test_no_captain_aboard(self):
-        self.hull.man(60, ABLE)
-        self.assertIn(CAPTAIN_LOST, self.hull.conditions())
+    `strength` read `quality.skill`, which is how well they work the ship - so a
+    crack crew of seamen was the equal of a party of marines, which is exactly
+    backwards. The marines cannot reef a topsail and will still carry a deck.
 
-    def test_and_one_who_is(self):
-        self.hull.man(60, ABLE)
-        self.hull.captain = create.create_object(
-            "evennia.objects.objects.DefaultCharacter", key="The master"
-        )
-        self.assertNotIn(CAPTAIN_LOST, self.hull.conditions())
+    """
 
-    def test_being_aground(self):
-        self.hull.man(60, ABLE)
-        self.hull.aground = True
-        self.assertIn(AGROUND, self.hull.conditions())
+    def test_quality_carries_both_axes(self):
+        for quality in QUALITIES:
+            self.assertGreater(quality.skill, 0.0)
+            self.assertGreater(quality.fighting, 0.0)
 
-    def test_a_crew_who_mind_being_aground(self):
-        """The point of deriving them: a game that supplies nothing still gets this."""
-        self.hull.man(60, ABLE)
-        self.hull.captain = create.create_object(
-            "evennia.objects.objects.DefaultCharacter", key="The master"
-        )
-        self.hull.feel(600.0)
-        steady = self.hull.morale
-
-        self.hull.aground = True
-        self.hull.feel(600.0)
-        self.assertLess(self.hull.morale, steady)
-
-
-class TestTimePassingOverThem(CrewedTestCase):
-    """The standing condition, on a real hull."""
-
-    def test_a_watch_with_nothing_happening_costs_nothing(self):
-        self.hull.man(60, ABLE)
-        self.hull.captain = create.create_object(
-            "evennia.objects.objects.DefaultCharacter", key="The master"
-        )
-        self.hull.exhaustion = 0.0
-        self.hull.stand_watch(600.0)
-        self.assertAlmostEqual(self.hull.exhaustion, 0.0, places=3)
-
-    def test_pulling_hard_spends_them(self):
-        self.hull.man(6, ABLE)
-        self.hull.oar_plan = OAR_PLANS["gig"]
-        self.hull.stroke = STRETCH_OUT
-        self.hull.stand_watch(1200.0)
-        self.assertGreater(self.hull.exhaustion, 0.2)
-
-    def test_and_easy_oars_bring_them_back(self):
-        self.hull.man(6, ABLE)
-        self.hull.oar_plan = OAR_PLANS["gig"]
-        self.hull.exhaustion = 0.9
-        self.hull.stroke = EASY_OARS
-        self.hull.stand_watch(1200.0)
-        self.assertLess(self.hull.exhaustion, 0.9)
-
-    def test_a_ship_with_no_company_stands_no_watch(self):
-        self.assertFalse(self.hull.stand_watch(600.0))
-
-    def test_morale_settles_towards_what_is_happening(self):
-        self.hull.man(60, PRESSED)
-        self.hull.morale = 1.0
-        self.hull.feel(3600.0)
-        self.assertLess(self.hull.morale, 1.0)
-
-
-class TestExhaustionSlowsHer(CrewedTestCase):
-    """What the stat is for."""
-
-    def test_spent_men_pull_slower(self):
-        plan = OAR_PLANS["gig"]
-        fresh = rowed_speed(plan, GIVE_WAY, 6, exhaustion=0.0)
-        spent_crew = rowed_speed(plan, GIVE_WAY, 6, exhaustion=1.0)
-        self.assertLess(spent_crew, fresh)
-
-    def test_but_they_still_pull(self):
-        """A boat rowed by exhausted men is slow rather than stopped."""
-        self.assertGreater(rowed_speed(OAR_PLANS["gig"], GIVE_WAY, 6, exhaustion=1.0), 0.0)
-
-    def test_a_fresh_crew_is_unchanged(self):
-        plan = OAR_PLANS["gig"]
-        self.assertAlmostEqual(
-            rowed_speed(plan, GIVE_WAY, 6, exhaustion=0.0),
-            plan.rated_speed * 0.75,
+    def test_they_are_not_the_same_number(self):
+        self.assertNotEqual(
+            [quality.skill for quality in QUALITIES],
+            [quality.fighting for quality in QUALITIES],
         )
 
-    def test_the_boat_feels_it(self):
-        self.hull.man(6, ABLE)
-        self.hull.oar_plan = OAR_PLANS["gig"]
-        self.hull.stroke = GIVE_WAY
-        fresh = self.hull.rowing_speed()
-        self.hull.exhaustion = 1.0
-        self.assertLess(self.hull.rowing_speed(), fresh)
-
-
-class TestWhoIsAtTheOars(CrewedTestCase):
-    """Two ways of knowing, both real."""
-
-    def test_a_company_mans_the_looms(self):
+    def test_courage_spreads_less_than_trade(self):
         """
-        A galley's two hundred oarsmen are a number on the hull. Two hundred objects
-        to be counted every tick would be absurd.
+        Seamanship is a trade and takes years; standing up in a melee is much less
+        a matter of training, so the spread between the worst and best is narrower.
 
         """
-        self.hull.man(200, PRESSED)
-        self.hull.oar_plan = OAR_PLANS["cutter"]
-        self.assertEqual(self.hull.rowing_crew, OAR_PLANS["cutter"].positions)
+        skills = [quality.skill for quality in QUALITIES]
+        fights = [quality.fighting for quality in QUALITIES]
+        self.assertLess(max(fights) - min(fights), max(skills) - min(skills))
 
-    def test_a_shorthanded_company_leaves_looms_empty(self):
-        self.hull.man(12, ABLE)
-        self.hull.oar_plan = OAR_PLANS["cutter"]
-        self.hull.take_casualties(8)
-        self.assertEqual(self.hull.rowing_crew, 4)
-
-    def test_a_boat_nobody_crewed_still_counts_heads(self):
-        """A gig pulled by whoever climbed into her is exactly the people in her."""
-        self.hull.oar_plan = OAR_PLANS["gig"]
-        deck = self.hull.ship_rooms[0]
-        for number in range(3):
-            create.create_object(
-                "evennia.objects.objects.DefaultCharacter",
-                key=f"Hand {number}",
-                location=deck,
-            )
-        self.assertEqual(self.hull.rowing_crew, 3)
+    def test_blending_carries_the_fighting_axis(self):
+        mixed = blended(((PRESSED, 10), (CRACK, 10)))
+        self.assertGreater(mixed.fighting, PRESSED.fighting)
+        self.assertLess(mixed.fighting, CRACK.fighting)
 
 
-class TestSheStopsOrRises(CrewedTestCase):
-    """The two collapses, on a real hull."""
+class TestDivisions(BaseEvenniaTest):
+    """A company made of groups."""
 
-    def a_captain(self):
-        captain = create.create_object("evennia.objects.objects.DefaultCharacter", key="The master")
-        self.hull.captain = captain
-        return captain
-
-    def test_a_fresh_crew_do_neither(self):
-        self.hull.man(60, ABLE)
-        self.a_captain()
-        self.assertFalse(self.hull.will_strike())
-        self.assertFalse(self.hull.will_mutiny())
-
-    def test_a_beaten_crew_strike(self):
-        self.hull.man(60, ABLE)
-        self.a_captain()
-        self.hull.take_casualties(40)
-        self.hull.morale = 0.0
-        self.assertTrue(self.hull.will_strike())
-
-    def test_a_ship_with_no_company_does_not(self):
-        self.hull.morale = 0.0
-        self.assertFalse(self.hull.will_strike())
-        self.assertFalse(self.hull.will_mutiny())
-
-    def test_a_driven_leaderless_crew_rise(self):
-        """Both grievances are command's doing, which is what makes it a mutiny."""
-        self.hull.man(60, ABLE)
-        self.hull.exhaustion = 1.0
-        self.hull.morale = 0.0
-        held = self.hull.held_against_command()
-        self.assertEqual(set(held), {DRIVEN, LEADERLESS})
-        self.assertTrue(self.hull.will_mutiny())
-
-    def test_a_crew_who_have_struck_do_not_rise(self):
-        """The fight is over. Rising now is a different story than this one."""
-        self.hull.man(60, ABLE)
-        self.hull.exhaustion = 1.0
-        self.hull.morale = 0.0
-        self.hull.db.struck_to = self.a_ship("Petrel")
-        self.assertTrue(self.hull.struck)
-        self.assertFalse(self.hull.will_mutiny())
-
-    def test_being_boarded_is_not_command_s_fault(self):
-        """
-        The distinction the two collapses exist to draw. An enemy on the deck ruins
-        morale and gives the crew nothing to hold against their own captain.
-
-        """
-        self.hull.man(60, ABLE)
-        self.a_captain()
-        self.hull.morale = 0.0
-        self.assertNotIn(DRIVEN, self.hull.held_against_command())
-        self.assertFalse(self.hull.will_mutiny())
-
-    def test_a_roll_is_obeyed_here_too(self):
-        self.hull.man(60, ABLE)
-        self.a_captain()
-        self.hull.take_casualties(40)
-        self.hull.morale = 0.0
-        self.assertFalse(self.hull.will_strike(roll=always))
-        self.assertTrue(self.hull.will_strike(roll=never))
-
-    def test_quarter_refused_stiffens_them(self):
-        """
-        An enemy who kills prisoners is a reason to keep fighting, and it bears on
-        this question only - it does not change how they feel hour to hour.
-
-        """
-        self.hull.man(60, SEASONED)
-        self.a_captain()
-        self.hull.take_casualties(40)
-        self.hull.morale = STRIKE_READING
-        self.assertTrue(self.hull.will_strike(factors=(QUARTER_OFFERED,)))
-        self.assertFalse(self.hull.will_strike(factors=(QUARTER_REFUSED,)))
-
-
-class TestQualityIsStored(CrewedTestCase):
-    """It has to survive a reload, which means it has to survive a pickle."""
-
-    def test_it_comes_back_as_what_it_was(self):
-        self.hull.man(60, SEASONED)
-        self.assertEqual(self.hull.company.quality, SEASONED)
-
-    def test_a_blended_quality_survives_too(self):
-        mixed = blended(((LANDSMEN, 30), (ORDINARY, 10)))
-        self.hull.company = ShipsCompany(complement=40, fit=40, quality=mixed)
-        self.assertAlmostEqual(self.hull.company.quality.skill, mixed.skill)
-
-    def test_a_custom_quality_is_allowed(self):
-        """A game with its own gradations should not have to use ours."""
-        marines = CrewQuality("marines", base_morale=0.9, casualty_floor=0.9, skill=0.5)
-        self.hull.company = ShipsCompany(complement=20, fit=20, quality=marines)
-        self.assertEqual(self.hull.company.quality.key, "marines")
-
-
-class TestTheCrewCommand(CrewedTestCase):
-    """What a captain actually sees."""
-
-    def voice(self):
+    def a_mixed_company(self, marines=20, seamen=40):
         """
         Returns:
-            text (str): The report, as one block.
+            company (ShipsCompany): Seamen and marines together.
 
         """
-        return chr(10).join(self.hull.narrator.crew_report(self.hull))
+        parts = [Division(SEAMEN, seamen, seamen, ABLE)]
+        if marines:
+            parts.append(Division(MARINES, marines, marines, ABLE))
+        return ShipsCompany.of(parts)
 
-    def test_a_ship_nobody_crewed_says_so(self):
-        self.assertIn("no ship's company", self.voice())
+    def test_the_totals_add_up(self):
+        company = self.a_mixed_company()
+        self.assertEqual(company.complement, 60)
+        self.assertEqual(company.fit, 60)
 
-    def test_it_counts_them(self):
-        self.hull.man(60, ABLE)
-        self.assertIn("60 of 60 hands", self.voice())
+    def test_the_parts_are_kept(self):
+        company = self.a_mixed_company()
+        self.assertIsNotNone(company.division(MARINES))
+        self.assertEqual(company.division(MARINES).complement, 20)
 
-    def test_it_says_what_they_are_rated(self):
-        self.hull.man(60, SEASONED)
-        self.assertIn("seasoned", self.voice())
+    def test_a_group_she_does_not_carry(self):
+        self.assertIsNone(self.a_mixed_company(marines=0).division(MARINES))
 
-    def test_casualties_appear_only_once_there_are_some(self):
-        self.hull.man(60, ABLE)
-        self.assertNotIn("Casualties", self.voice())
-        self.hull.take_casualties(15)
-        self.assertIn("Casualties", self.voice())
-
-    def test_it_describes_the_band_rather_than_the_number(self):
-        """Nobody on a deck ever knew their crew were at sixty-one per cent."""
-        self.hull.man(60, CRACK)
-        said = self.voice()
-        self.assertIn("steady", said)
-        self.assertNotIn("0.8", said)
-
-    def test_a_broken_crew_read_differently(self):
-        self.hull.man(60, ABLE)
-        self.hull.morale = 0.0
-        self.assertIn("half done", self.voice())
-
-    def test_it_describes_how_spent_they_are(self):
-        self.hull.man(60, ABLE)
-        self.assertIn("fresh", self.voice())
-        self.hull.exhaustion = 1.0
-        self.assertIn("nothing left in them", self.voice())
-
-    def test_every_exhaustion_has_words(self):
-        self.hull.man(60, ABLE)
-        for spent in (0.0, 0.2, 0.5, 0.7, 0.9, 1.0):
-            self.assertTrue(self.hull.narrator.spent_words(spent))
-
-    def test_every_band_has_words(self):
-        self.hull.man(60, ABLE)
-        for value in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0):
-            self.hull.morale = value
-            self.assertIn("They are", self.voice())
-
-    def test_grievances_are_named_rather_than_counted(self):
+    def test_marines_make_her_a_worse_ship_and_a_harder_prize(self):
         """
-        The part worth having. A number says his people are unhappy; this says what
-        about, and every one of them is something he did.
+        The trade Gary asked for, and it needs no money to be real: the same sixty
+        people, and every marine is one fewer hand to work her.
 
         """
-        self.hull.man(60, ABLE)
-        self.hull.exhaustion = 1.0
-        said = self.voice()
-        self.assertIn("hold against you", said)
-        self.assertIn("driven past what they have in them", said)
-        self.assertIn("nobody aft giving orders", said)
+        without = self.a_mixed_company(marines=0, seamen=60)
+        heavy = self.a_mixed_company(marines=30, seamen=30)
+        self.assertGreater(without.hands, heavy.hands)
+        self.assertGreater(heavy.strength, without.strength)
 
-    def test_a_well_led_rested_crew_hold_nothing(self):
-        self.hull.man(60, ABLE)
-        self.hull.captain = create.create_object(
-            "evennia.objects.objects.DefaultCharacter", key="The master"
+    def test_marines_earn_their_keep_at_equal_quality(self):
+        """Otherwise nobody would ever ship them."""
+        seamen_only = ShipsCompany.of([Division(SEAMEN, 60, 60, ABLE)])
+        with_marines = self.a_mixed_company(marines=20, seamen=40)
+        self.assertGreater(with_marines.strength, seamen_only.strength)
+
+    def test_an_undivided_company_is_taken_for_seamen(self):
+        """What a merchantman's whole company is."""
+        plain = ShipsCompany(complement=60, fit=60, quality=ABLE)
+        divided = ShipsCompany.of([Division(SEAMEN, 60, 60, ABLE)])
+        self.assertAlmostEqual(plain.strength, divided.strength)
+        self.assertAlmostEqual(plain.hands, divided.hands)
+
+    def test_the_blend_reflects_who_is_left(self):
+        company = ShipsCompany.of(
+            [Division(SEAMEN, 40, 40, PRESSED), Division(MARINES, 20, 20, CRACK)]
         )
-        self.assertNotIn("hold against you", self.voice())
+        self.assertGreater(company.quality.fighting, PRESSED.fighting)
+        self.assertLess(company.quality.fighting, CRACK.fighting)
+
+    def test_a_company_of_nobody_is_refused(self):
+        """
+        And refused in terms the caller can act on. `blended` would raise anyway,
+        further down, complaining about qualities - which is true and unhelpful when
+        what actually happened is that somebody built a company with nobody in it.
+        Mutation testing found the guard unkillable precisely because the deeper
+        error was masking it.
+
+        """
+        with self.assertRaises(ValueError) as refused:
+            ShipsCompany.of([])
+        self.assertIn("division", str(refused.exception))
+
+    def test_casualties_in_one_division_weaken_that_trade(self):
+        """
+        Losing the marines and losing the topmen are different losses, and a
+        company that could not say which had happened would be back where it
+        started.
+
+        """
+        whole = ShipsCompany.of([Division(SEAMEN, 40, 40, ABLE), Division(MARINES, 20, 20, ABLE)])
+        marines_gone = ShipsCompany.of(
+            [Division(SEAMEN, 40, 40, ABLE), Division(MARINES, 20, 0, ABLE)]
+        )
+        seamen_gone = ShipsCompany.of(
+            [Division(SEAMEN, 40, 20, ABLE), Division(MARINES, 20, 20, ABLE)]
+        )
+
+        # Twenty of each, lost. Which twenty decides what she can no longer do.
+        working_cost_of_marines = whole.hands - marines_gone.hands
+        working_cost_of_seamen = whole.hands - seamen_gone.hands
+        self.assertLess(working_cost_of_marines, working_cost_of_seamen)
+
+        fighting_cost_of_marines = whole.strength - marines_gone.strength
+        fighting_cost_of_seamen = whole.strength - seamen_gone.strength
+        self.assertGreater(fighting_cost_of_marines, fighting_cost_of_seamen)

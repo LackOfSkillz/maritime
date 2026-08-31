@@ -17,7 +17,8 @@ seabed, vessels and their interiors, the simulation service, sailing, currents, 
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
 tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
 boarding, who owns and commands a ship, her company - quality, morale, exhaustion and
-mutiny - buoyage with safe-water steering, and damage tracks. Not built: the rest of
+mutiny with marines, seamen and oarsmen as distinct divisions - buoyage with safe-water
+steering, and damage tracks. Not built: the rest of
 ship combat, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
@@ -292,6 +293,12 @@ on every call from how many decks answer to you rather than stored, so it arrive
 second ship and leaves with the loss of one. Whether a given person may give a given hull an
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
+
+**Rating is not quality, and a company is made of divisions.** Seamen work her, oarsmen
+pull, marines fight and are close to useless at anything else. A crack marine and a crack
+seaman are both crack, and only one of them can hand a topsail. Carrying marines is a real
+decision with no money in it — people are deadweight, so a fighting complement is freight
+she did not carry, and hands that cannot reef.
 
 **Five damage tracks, not one pool.** Hull, rigging, oars, weapons and crew break
 separately, because a ship that is fast and toothless, one that is intact and cannot steer,

@@ -775,6 +775,25 @@ and a galley two hundred oarsmen. Creating those as individuals to be counted ev
 would be absurd; named characters aboard remain the host game's, and this counts the rest,
 because the rest is what makes her work.
 
+**A company is made of divisions, and rating is not quality.** Seamen work her, oarsmen
+pull, marines fight and are close to useless at everything else. That is *rating* — what
+they were shipped to do — and it is a different question from *quality*, which is how good
+they are at it. A crack marine and a crack seaman are both crack, and only one of them can
+hand a topsail in a gale while the other is worth three of him on a boarding.
+
+Collapsing the two made a crack crew of seamen the equal of a party of marines, which is
+exactly backwards. So quality carries two axes: `skill` for working her and `fighting` for a
+melee. They spread differently on purpose — seamanship is a trade that takes years, and
+standing up in a fight is much less a matter of training, so the fighting spread is the
+narrower of the two.
+
+**Carrying marines costs cargo, and needs no economy to do it.** People are deadweight —
+`deadweight` has always said "cargo, stores and people" — so every fighting man shipped is
+mass that could have been freight. Substituting marines for seamen costs nothing in the
+hold and costs her the hands to work her; *adding* them costs the hold directly. Either way
+it is a decision, and it is one the contrib can own completely, because what a man is *paid*
+is the host game's business and what he *weighs* is not.
+
 **Crew quality is two claims.** How well they work her, and how much they will take before
 they stop. Genuinely separate — a pressed crew who cannot reef in a squall may still be too
 frightened of the alternative to run, and a crack crew who can do anything will still not

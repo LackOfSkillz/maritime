@@ -62,6 +62,7 @@ class CrewQuality:
             striking is even a question. Better crews have a higher one and so must
             be hurt more before it can be asked.
         skill (float): How well they work her, 0 to 1.
+        fighting (float): How much they are worth in a melee, 0 to 1.
 
     Notes:
         The floor is the quiet half of this. Two gates decide a surrender - a bad
@@ -69,27 +70,45 @@ class CrewQuality:
         beat rather than merely brave. A crack company that has taken a fifth of its
         number is not asked the question at all.
 
+        **Skill and fighting are separate on purpose.** Working a ship and boarding
+        one are different trades, and a company that is superb at the first may be
+        indifferent at the second. Collapsing them made a crack crew of seamen the
+        equal of a party of marines, which is exactly backwards - the marines cannot
+        reef a topsail and will still carry a deck.
+
     """
 
     key: str
     base_morale: float
     casualty_floor: float
     skill: float
+    fighting: float = 0.5
 
 
 #: The gradations, worst to best. The names are ratings and the language sailors used for
 #: them: a landsman is a man who has never been to sea, an ordinary seaman has, an able
 #: seaman can do the whole of the work, and a crack ship is one whose company can do it
 #: faster than the ship alongside.
-PRESSED = CrewQuality("pressed", base_morale=0.30, casualty_floor=0.30, skill=0.35)
-LANDSMEN = CrewQuality("landsmen", base_morale=0.40, casualty_floor=0.35, skill=0.45)
-ORDINARY = CrewQuality("ordinary", base_morale=0.50, casualty_floor=0.40, skill=0.60)
-ABLE = CrewQuality("able", base_morale=0.60, casualty_floor=0.50, skill=0.75)
-SEASONED = CrewQuality("seasoned", base_morale=0.70, casualty_floor=0.60, skill=0.85)
-PICKED = CrewQuality("picked", base_morale=0.80, casualty_floor=0.70, skill=0.95)
-CRACK = CrewQuality("crack", base_morale=0.85, casualty_floor=0.80, skill=1.00)
+PRESSED = CrewQuality("pressed", base_morale=0.30, casualty_floor=0.30, skill=0.35, fighting=0.30)
+LANDSMEN = CrewQuality("landsmen", base_morale=0.40, casualty_floor=0.35, skill=0.45, fighting=0.40)
+ORDINARY = CrewQuality("ordinary", base_morale=0.50, casualty_floor=0.40, skill=0.60, fighting=0.50)
+ABLE = CrewQuality("able", base_morale=0.60, casualty_floor=0.50, skill=0.75, fighting=0.60)
+SEASONED = CrewQuality("seasoned", base_morale=0.70, casualty_floor=0.60, skill=0.85, fighting=0.70)
+PICKED = CrewQuality("picked", base_morale=0.80, casualty_floor=0.70, skill=0.95, fighting=0.80)
+CRACK = CrewQuality("crack", base_morale=0.85, casualty_floor=0.80, skill=1.00, fighting=0.85)
 
 QUALITIES = (PRESSED, LANDSMEN, ORDINARY, ABLE, SEASONED, PICKED, CRACK)
+
+#: What one person aboard weighs, in kilograms, counting their kit, hammock and the
+#: water and provisions they will get through. Not a body weight - a body weight would
+#: be a lie by omission, because what a hand actually costs a ship is himself and
+#: everything he needs to keep being useful.
+#:
+#: This is the number that makes carrying marines a decision with no money in it. Every
+#: fighting man shipped is deadweight that could have been cargo, so a merchantman who
+#: wants a hard prize gives up part of what she came to carry - and that is true in a
+#: game with an economy and in one without.
+MASS_PER_HAND = 120.0
 
 #: What a ship gets when nobody has said. Ordinary seamen: competent, unremarkable, and
 #: the sort of company most vessels actually sail with.
@@ -130,7 +149,84 @@ def blended(parts):
         base_morale=sum(q.base_morale * n for q, n in parts) / total,
         casualty_floor=sum(q.casualty_floor * n for q, n in parts) / total,
         skill=sum(q.skill * n for q, n in parts) / total,
+        fighting=sum(q.fighting * n for q, n in parts) / total,
     )
+
+
+@dataclass(frozen=True)
+class Rating:
+    """
+    What a group of people aboard are *for*.
+
+    Attributes:
+        key (str): What they are called.
+        working (float): How much of a hand each is at working the ship, 0 to 1.
+        fighting (float): How much of a fighting man each is, 0 to 1.
+
+    Notes:
+        Rating and quality are different questions and both are needed. Quality is
+        how good these people are; rating is what they were shipped to do. A crack
+        marine and a crack seaman are both crack, and only one of them can reef a
+        topsail in a gale - while the other is worth three of him on a boarding.
+
+    """
+
+    key: str
+    working: float
+    fighting: float
+
+
+#: Seamen work her and can fight at need, which is what makes them the default. A
+#: merchantman's whole company is these.
+SEAMEN = Rating("seamen", working=1.0, fighting=0.5)
+
+#: Oarsmen pull. They are hands aboard and can be armed, but nobody shipped them to
+#: hand a topsail or to carry a deck.
+OARSMEN = Rating("oarsmen", working=0.6, fighting=0.35)
+
+#: Marines are shipped to fight and for nothing else. They are close to useless in
+#: working the ship - and they are the reason a merchantman thinks about carrying any,
+#: because every one of them is a man who eats and occupies space and cannot reef.
+MARINES = Rating("marines", working=0.15, fighting=1.0)
+
+RATINGS = (SEAMEN, OARSMEN, MARINES)
+
+
+@dataclass(frozen=True)
+class Division:
+    """
+    One group aboard: what they are, how good, and how many are left.
+
+    Attributes:
+        rating (Rating): What they were shipped to do.
+        complement (int): How many she carries when full.
+        fit (int): How many are still standing.
+        quality (CrewQuality): What they are made of.
+
+    """
+
+    rating: Rating
+    complement: int
+    fit: int
+    quality: CrewQuality = DEFAULT_QUALITY
+
+    @property
+    def hands(self):
+        """
+        Returns:
+            hands (float): What they are worth at working the ship.
+
+        """
+        return self.fit * self.rating.working * self.quality.skill
+
+    @property
+    def strength(self):
+        """
+        Returns:
+            strength (float): What they are worth in a melee.
+
+        """
+        return self.fit * self.rating.fighting * self.quality.fighting
 
 
 @dataclass(frozen=True)
@@ -148,6 +244,35 @@ class ShipsCompany:
     complement: int
     fit: int
     quality: CrewQuality = DEFAULT_QUALITY
+    divisions: tuple = ()
+
+    @classmethod
+    def of(cls, divisions):
+        """
+        Build a company out of the groups aboard.
+
+        Args:
+            divisions (iterable): `Division` objects.
+
+        Returns:
+            company (ShipsCompany): Their sum, with the parts kept.
+
+        Notes:
+            The blended totals are real fields rather than properties, so every
+            caller that only wants "how many are aboard and what are they like"
+            keeps working untouched. The divisions ride alongside for the questions
+            that need them - which is boarding, and almost nothing else.
+
+        """
+        divisions = tuple(divisions)
+        if not divisions:
+            raise ValueError("A company needs at least one division.")
+        return cls(
+            complement=sum(part.complement for part in divisions),
+            fit=sum(part.fit for part in divisions),
+            quality=blended((part.quality, part.fit or part.complement) for part in divisions),
+            divisions=divisions,
+        )
 
     def __post_init__(self):
         """
@@ -198,12 +323,62 @@ class ShipsCompany:
             strength (float): What they are worth in a fight, in effective hands.
 
         Notes:
-            Numbers times what they are made of. Twenty able seamen and forty
-            pressed men are not the same boarding party, and the point of holding
-            quality at all is that this can say so.
+            Read off what they were shipped to *do*, not off how well they work the
+            ship. A crack crew of seamen is not a party of marines, and until the
+            two axes were separated this said they were - which would have made
+            boarding a matter of counting bodies.
+
+            A company nobody has divided into groups is taken to be seamen, which is
+            what a merchantman's whole company is.
 
         """
-        return self.fit * self.quality.skill
+        if self.divisions:
+            return sum(part.strength for part in self.divisions)
+        return self.fit * SEAMEN.fighting * self.quality.fighting
+
+    @property
+    def hands(self):
+        """
+        Returns:
+            hands (float): What they are worth at working the ship.
+
+        Notes:
+            The other half of the same split. Forty marines are forty people aboard
+            and almost no help at all in a squall, which is precisely the cost of
+            carrying them.
+
+        """
+        if self.divisions:
+            return sum(part.hands for part in self.divisions)
+        return self.fit * SEAMEN.working * self.quality.skill
+
+    @property
+    def mass(self):
+        """
+        Returns:
+            mass (float): What her people and their keep weigh, in kilograms.
+
+        Notes:
+            Counted on her *complement* rather than on who is still standing.
+            Casualties do not free up cargo space in any sense a shipmaster would
+            recognise, and a hold that grew after a battle would be grotesque.
+
+        """
+        return self.complement * MASS_PER_HAND
+
+    def division(self, rating):
+        """
+        Args:
+            rating (Rating): Which group to look for.
+
+        Returns:
+            division (Division or None): That group, if she carries one.
+
+        """
+        for part in self.divisions:
+            if part.rating is rating:
+                return part
+        return None
 
     def hurt(self, lost):
         """
@@ -287,6 +462,7 @@ class Crewed:
         self.db.complement = 0
         self.db.fit = 0
         self.db.crew_quality = DEFAULT_QUALITY
+        self.db.divisions = ()
         self.db.morale = DEFAULT_QUALITY.base_morale
         self.db.exhaustion = 0.0
 
@@ -312,6 +488,7 @@ class Crewed:
             complement=complement,
             fit=self.db.fit or 0,
             quality=self.db.crew_quality or DEFAULT_QUALITY,
+            divisions=tuple(self.db.divisions or ()),
         )
 
     @company.setter
@@ -326,6 +503,8 @@ class Crewed:
                 self.db.complement = 0
             if self.db.fit != 0:
                 self.db.fit = 0
+            if self.db.divisions:
+                self.db.divisions = ()
             return
         if self.db.complement != company.complement:
             self.db.complement = company.complement
@@ -333,6 +512,12 @@ class Crewed:
             self.db.fit = company.fit
         if self.db.crew_quality != company.quality:
             self.db.crew_quality = company.quality
+        # The divisions have to be stored as well, or a company assigned with
+        # marines in her comes back as an undivided crew of seamen - which silently
+        # undoes the entire point of composing one.
+        stored = tuple(self.db.divisions or ())
+        if stored != company.divisions:
+            self.db.divisions = company.divisions
 
     def man(self, complement, quality=DEFAULT_QUALITY):
         """

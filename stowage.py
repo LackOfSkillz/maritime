@@ -481,7 +481,13 @@ class Laden:
             deadweight (float): Kilograms of cargo she can take in all.
 
         """
-        return deadweight(self.capacity, self.light_displacement)
+        # Her people are deadweight too, and the `deadweight` docstring has always
+        # said so - cargo, stores and people out of one budget. Every marine shipped
+        # is cargo she did not carry, which is what makes a fighting complement a
+        # decision rather than a free upgrade.
+        company = self.company
+        aboard = company.mass if company is not None else 0.0
+        return max(0.0, deadweight(self.capacity, self.light_displacement) - aboard)
 
     @property
     def tonnes_per_centimetre(self):
