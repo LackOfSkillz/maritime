@@ -300,8 +300,9 @@ their instruments, chart and contacts - and something may draw it. A browser pan
 consumer; a scriptable terminal client is another. Walking aboard is noticed without a host
 game wiring anything, because the rooms on both sides of a gangway belong to this contrib.
 Two rules hold it together: the panel is a repeater rather than an oracle, and a graphical
-client must never make the navigator more knowledgeable than the character. See
-`docs/client.md`.
+client must never make the navigator more knowledgeable than the character. It ships no
+artwork and is finished without any, offering variables a host game can point at pictures of
+its own; anything not supplied is simply not drawn. See `docs/client.md`.
 
 **Orders take time, and how much depends on who is aboard.** A change of canvas is work:
 hands aloft, laying out along yards, and only so many of them. A crack frigate's crew

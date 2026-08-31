@@ -112,6 +112,26 @@ The client examined already themes with CSS custom properties. Maritime publishi
 host that wants the chart to match its own colours overrides the variables rather than
 editing anything here.
 
+Artwork composes the same way and on the same terms. This contrib ships no images and the
+interface is finished without any; what it provides is the fitting they screw into, so a
+host game points `--maritime-profile-<plan>` at files of its own and touches nothing else.
+Absence needs no guard, which is the reason it is done with variables at all: an unset
+custom property falls back to `none`, `background-image: none` draws nothing, and every
+artwork block has zero height until `--maritime-artwork-height` switches the lot on. A
+missing asset is therefore not an error to handle or a broken image to hide - it is simply
+not drawn, and a host that supplies three sail plans out of six gets pictures for three and
+unchanged text for the other three.
+
+The blend mode is load-bearing rather than decorative. Art of this kind generates far more
+reliably on a black ground than with a transparent one, and `screen` maps black exactly to
+the backdrop - so an ordinary opaque PNG composites as though it had been cut out, with no
+alpha channel and no tooling in between. A host whose artwork *is* cut out sets
+`--maritime-artwork-blend: normal`.
+
+One rule constrains all of it: a picture is not a reading. The sail-plan drawing sits above
+the row that names the plan and never replaces it, because the words have to survive a
+player with no artwork, a slow connection, or a screen reader.
+
 ### Dead reckoning is already the whole point
 
 The hardest rule to hold - that the chart must not become a satellite fix - turns out to be

@@ -642,3 +642,87 @@
     outline: 2px solid var(--maritime-accent);
     outline-offset: 1px;
 }
+
+/* --- optional artwork -------------------------------------------------------
+ *
+ * This contrib ships no images, and the interface is finished without any. What is
+ * here is the fitting they screw into: a host game that has artwork points these
+ * variables at its own files and touches nothing else, and a host game that has none
+ * gets exactly the interface it has today.
+ *
+ * Absence needs no guard, which is why it is done this way. An unset custom property
+ * falls back to `none`, and `background-image: none` draws nothing - so a missing
+ * asset is not an error to handle, a broken image to hide, or a branch to test. It
+ * simply is not drawn. Every block below also has zero height until artwork is
+ * switched on, so nothing reserves a gap for a picture that never arrives.
+ *
+ * `--maritime-artwork-height` is that switch, and one token deliberately governs the
+ * lot: artwork is on or it is off, rather than each piece being separately half
+ * configured. Anything a host has not supplied stays absent even when it is on.
+ *
+ * The blend mode is doing real work. Art of this kind is generated far more reliably
+ * on a black ground than with a transparent one, and `screen` maps black to the
+ * backdrop exactly - so an ordinary opaque PNG behaves as though it were cut out,
+ * with no alpha channel and no tooling in between. A host whose artwork *is* cut out
+ * sets `--maritime-artwork-blend: normal` and gets ordinary compositing back.
+ */
+
+:root {
+    /* Off. A host with artwork gives this a height and the blocks below appear. */
+    --maritime-artwork-height: 0;
+    --maritime-artwork-blend: screen;
+    --maritime-artwork-opacity: 0.9;
+}
+
+/* Shared by every optional image. Never in the flow when switched off, never in the
+ * way of a click when switched on. */
+.maritime-artwork {
+    height: var(--maritime-artwork-height);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    background-image: none;
+    mix-blend-mode: var(--maritime-artwork-blend);
+    opacity: var(--maritime-artwork-opacity);
+    pointer-events: none;
+}
+
+/* Her sail plan, drawn rather than named.
+ *
+ * The one piece of artwork worth more than decoration: it shows the same reading the
+ * panel gives in words directly underneath, so a captain who has set storm canvas
+ * sees storm canvas. Which is also why it must never be the *only* place the plan
+ * appears - the row above it stays whatever a host does here, because a player with
+ * no artwork, a slow connection or a screen reader is reading the words. */
+.maritime-profile[data-sail-plan="furled"] {
+    background-image: var(--maritime-profile-furled, none);
+}
+
+.maritime-profile[data-sail-plan="storm"] {
+    background-image: var(--maritime-profile-storm, none);
+}
+
+.maritime-profile[data-sail-plan="reefed"] {
+    background-image: var(--maritime-profile-reefed, none);
+}
+
+.maritime-profile[data-sail-plan="battle"] {
+    background-image: var(--maritime-profile-battle, none);
+}
+
+.maritime-profile[data-sail-plan="working"] {
+    background-image: var(--maritime-profile-working, none);
+}
+
+.maritime-profile[data-sail-plan="full"] {
+    background-image: var(--maritime-profile-full, none);
+}
+
+/* Chart furniture - paper texture behind the plot, a compass rose watermark - is the
+ * obvious next thing to hang here and is deliberately not written yet. Both would sit
+ * under the coastline, and a chart made harder to read by a texture behind it is a
+ * worse chart however well it photographs, so neither goes in before there is real
+ * artwork to judge that against.
+ *
+ * Nothing here animates either, so there is no reduced-motion case to answer. Noted
+ * so that whoever adds artwork next knows both omissions were deliberate. */

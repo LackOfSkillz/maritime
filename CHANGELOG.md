@@ -13,6 +13,22 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Provide a fitting for optional artwork without shipping any. A host game points
+  `--maritime-profile-<plan>` at pictures of its own and changes nothing else, and
+  the sail plan she is under is drawn rather than only named. Absence needs no guard:
+  an unset variable falls back to `none`, which draws nothing and occupies no height,
+  so a game supplying three plans out of six gets pictures for three and unchanged
+  text for the rest, and a game supplying none gets exactly the interface it had. The
+  drawing sits above the row naming the plan and never replaces it, because a picture
+  is not a reading and the words have to survive a player with no artwork, a slow
+  connection or a screen reader.
+- Composite artwork with `screen` by default, which is doing real work rather than
+  styling: art of this kind generates far more reliably on a black ground than with a
+  transparent one, and screen maps black exactly to the backdrop - so an ordinary
+  opaque PNG behaves as though it had been cut out, with no alpha channel and no
+  tooling in between. A host whose artwork is already cut out sets
+  `--maritime-artwork-blend: normal`.
+
 - Draw a chart, contoured out of the ship's own paper rather than authored anywhere.
   A coastline is where the ground crosses datum, so a game that authored a shoal has
   authored the shape of it; marching squares over a sampled grid costs about six

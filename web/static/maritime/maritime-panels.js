@@ -364,9 +364,27 @@ window.MaritimePanels = (function () {
         });
     }
 
+    /* A place for a host game's sail-plan drawing, if it has one.
+     *
+     * The element is always built and is always empty: it carries no image, and the
+     * stylesheet gives it no height, until a host points --maritime-profile-<plan> at
+     * a file of its own. That is the whole of the feature on this side - which plan
+     * she is under, said in an attribute, for CSS to answer or ignore.
+     *
+     * Deliberately added *above* the row that names the plan rather than instead of
+     * it. A picture is not a reading, and the words have to survive a player who has
+     * no artwork, a slow connection, or a screen reader. */
+    function sailProfile(plan) {
+        var figure = element("div", "maritime-artwork maritime-profile");
+        figure.setAttribute("data-sail-plan", plan);
+        figure.setAttribute("aria-hidden", "true");
+        return figure;
+    }
+
     function sailsBody(state, into) {
         var driving = (state.status && state.status.propulsion) || {};
         if (driving.sail_plan) {
+            into.appendChild(sailProfile(driving.sail_plan));
             into.appendChild(row("Set", title(driving.sail_plan)));
         }
         if (driving.anchor) {
