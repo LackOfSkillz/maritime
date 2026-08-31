@@ -381,3 +381,88 @@ leagues - but "2.9 miles" and "1.5 leagues" must not appear in the same list.
 
 Small, self-contained, and touches `formatting.format_range` plus whoever chooses the
 unit for a whole report rather than per line.
+
+---
+
+# Optional, not scheduled  *(TBD - Gary's call)*
+
+Two ideas worth keeping, neither committed to and neither in the order above. Recorded
+here with their reasoning so the thinking survives if we take them up.
+
+## T1. A MARITIME INTERFACE  *(TBD)*
+
+**The idea:** a player crossing from an ordinary Evennia room into the maritime coordinate
+system gets a maritime interface, and gets their usual one back on stepping ashore.
+
+**The reframe worth arguing about:** the contrib should ship *the protocol, not the
+interface*. Everything else here is a seam rather than an implementation - the command
+policy, the map provider, the deliberate refusal to ship a skill system - and a UI is the
+least seam-like thing there is. Publish ship state as structured OOB/GMCP and Mudlet gets
+it too, where a webclient-only feature serves half the audience. It also keeps a JS bundle
+out of a directory reviewers will expect to be Python.
+
+So: the contrib publishes a state payload, and a reference panel ships as an optional extra
+a game installs deliberately.
+
+**The payload is only what the ship already knows:** heading and ordered heading, speed,
+sail plan, wind bearing and relative angle, depth under the keel, the four damage tracks,
+morale band, and contacts. Emitted on transition and on meaningful change - the same
+"which change is worth mentioning" discipline `messaging` already implements, which is the
+same problem solved once already.
+
+**The rule to hold hardest:** the panel is a repeater, not an oracle. It shows exactly what
+`contacts()` returns at that height of eye, so an unidentified hull is a bearing-only blip.
+Honest, dramatic, and structurally incapable of leaking what the fiction has not granted.
+
+**Two hazards found while looking:**
+
+  - GoldenLayout's config global is overwritten by the player's saved layout in
+    localStorage. Swapping the interface and swapping back would stomp arrangements people
+    made on purpose. Additive instead: open a pane on entering, close it on leaving, never
+    touch their layout.
+  - A player can be on our deck inside a game with its own HUD. We do not own the screen.
+
+**Open:** whether the reference panel lives in this repo at all or in a companion one.
+
+## T2. PROVISIONS, FISHING AND SHORE LEAVE  *(TBD)*
+
+**The idea:** stock the sea with fish, for players and for crew morale - stop and fish when
+morale is low, and give shore leave between voyages.
+
+**The trap:** food is the host game's economy. Shipping species, weights and prices is the
+same mistake as shipping a skill system, and every game with cooking or fishing would have
+to fight us.
+
+**What is ours:** provisions as a physical quantity. Item R already established that people
+are deadweight, occupy hold volume and eat, and stowage exists. So the contrib owns how
+much a company eats, what is aboard, and what running short does to morale - and owns
+nothing about what the food *is*. Fishing becomes an activity converting crew time into
+provisions and publishing an event the game hooks, which is exactly the career-roadmap
+rule.
+
+**Why it is cheap:** fishing grounds are already in the world. Banks and soundings are
+where fish are, historically and actually, so a game that authored a shoal authored a
+fishing bank without knowing it. The same shape as raking falling out of the geometry.
+
+**The part that is actually interesting - morale needs a second time constant.** The
+current one is tactical: falls in a minute, recovers over fifteen. Right for a battle and
+wrong for a six-week passage. Two different quantities:
+
+    nerve         fast, driven by casualties and danger        (what we have)
+    contentment   slow, driven by provisions, time at sea,     (new)
+                  punishment and shore leave
+
+Contentment sets the level nerve settles toward, so a well-fed crew stands fire better.
+
+**And it gives the failure mode somewhere to go that is not mutiny.** Mutiny is already
+what nerve failing looks like. Contentment failing *in port* is DESERTION - and after item
+P, losing hands makes her measurably slower to shorten sail for the rest of her life. That
+closes a hard loop: neglect the crew, lose people, and the ship is worse at everything
+afterwards. It also makes shore leave a decision rather than a button, because time in port
+is time not earning and skipping it costs you hands.
+
+Heaving to in order to fish costs steerage way, which is the same shape as fire needing her
+stopped for the pumps to draw. Fishing is a situation, not a menu.
+
+**Open:** whether provisions are modelled here at all, and whether desertion - which
+destroys something a player owns - is acceptable.
