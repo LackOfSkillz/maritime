@@ -20,6 +20,7 @@ from .commands import (
     CmdWeighAnchor,
     CmdFire,
     CmdGuns,
+    CmdHoldFire,
     CmdHelm,
     CmdLoad,
     CmdLookout,
@@ -79,6 +80,7 @@ class HelmCmdSet(CmdSet):
         self.add(CmdGuns())
         self.add(CmdLoad())
         self.add(CmdFire())
+        self.add(CmdHoldFire())
         self.add(CmdLookout())
         self.add(CmdSpeed())
         self.add(CmdAllStop())

@@ -4,7 +4,7 @@ Tests for the helm commands.
 """
 
 from evennia.utils import create
-from evennia.utils.test_resources import BaseEvenniaCommandTest
+from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTestCase
 
 from .base import EmptySeaMixin
 
@@ -226,3 +226,46 @@ class TestHelmDrivesTheHull(HelmTestCase):
         for _ in range(60):
             self.hull.at_maritime_tick(5.0)
         self.assertEqual(self.hull.speed, 0.0)
+
+
+class TestNoTwoCommandsAnswerToTheSameWord(BaseEvenniaTestCase):
+    """
+    Every key and alias in the contrib, checked for collisions.
+
+    Written after `hold fire` shipped with a bare `hold` alias, which the oar
+    order to hold water already answered to. Nothing caught it - the command had
+    tests, they passed, and the collision only showed up when a captain on a deck
+    tried to run his guns out and was told the ship had no oars aboard.
+
+    A game may of course shadow any of these with its own; that is its business.
+    This is only about the contrib not arguing with itself.
+
+    """
+
+    def spoken_words(self):
+        """
+        Returns:
+            words (dict): Each key or alias, against the commands claiming it.
+
+        """
+        from .. import commands as command_module
+
+        claimed = {}
+        for name in dir(command_module):
+            cmd = getattr(command_module, name)
+            key = getattr(cmd, "key", None)
+            if not isinstance(key, str) or not isinstance(cmd, type):
+                continue
+            for word in (key, *getattr(cmd, "aliases", ())):
+                claimed.setdefault(word, set()).add(cmd.__name__)
+        return claimed
+
+    def test_nothing_is_claimed_twice(self):
+        clashes = {
+            word: sorted(owners) for word, owners in self.spoken_words().items() if len(owners) > 1
+        }
+        self.assertEqual(clashes, {})
+
+    def test_and_the_check_is_actually_looking_at_something(self):
+        """Guards the test above: an empty sweep would pass it trivially."""
+        self.assertGreater(len(self.spoken_words()), 40)

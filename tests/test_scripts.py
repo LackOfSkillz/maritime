@@ -176,6 +176,7 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "guns",
                 "load",
                 "fire",
+                "hold fire",
                 "speed",
                 "allstop",
                 "position",

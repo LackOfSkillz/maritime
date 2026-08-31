@@ -13,6 +13,25 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add holding your fire. A captain may run the guns out and leave them, and the
+  battery speaks by itself the moment something bears - which our simulation gets
+  almost for nothing, because "hold your fire until she crosses the bow" is an
+  order that means something on a clock rather than a turn.
+- Make it two orders with different risks, which is the whole decision. Holding on
+  a *named* ship is safe and requires her to be identified first, so it does
+  nothing in fog, in the dark, or at the edge of vision - exactly where a captain
+  most wants his guns held ready. Holding on an *arc* fires at whatever crosses it
+  and works in any weather. Nothing here knows what a friend is, and nothing needs
+  to: an order to fire on anything crossing to starboard is already an order that
+  will take your own consort, and the captain who gave it said so.
+- Charge for the snatched shot. Opportunity fire is laid on a bearing rather than
+  on a considered solution, so it tells less often - and worse again in a
+  frightened crew, `hesitation` degrading rather than gating, as it does at the
+  serving and in the rigging.
+- Let the order stand after it is used. A captain watching a channel wants every
+  ship that comes through it, and making him say so again after each would leave
+  the order useless for the one thing it is for. `secure the guns` ends it.
+
 - Make orders take time. An order at sea is not a state change: somebody has to go
   aloft, lay out along a yard and cast off or make up a gasket, and there are only
   so many of them. Until that work is done she carries what she carried - so a
@@ -280,6 +299,16 @@ weather, crew, combat and damage are not.
   navigation where correct behaviour looks like a bug.
 
 ### Fix
+
+- A gun that could not reach fired anyway. `can_fire` refuses for four reasons and
+  the broadside loop skipped two of them, so a target inside the arc but beyond the
+  guns' range discharged every piece aboard for a shot nobody took - and reported a
+  broadside. A shot that *falls short* is deliberately not among the refusals: that
+  gun did go off, and the charge is the price of having loaded grape.
+- A ship aground, docked or anchored never finished a change of sail. The tick gave
+  up on a held vessel before it reached the hands. Whether she is going anywhere has
+  nothing to do with whether her people can work, and a ship hard on the ground is
+  one whose captain very much wants his canvas off her.
 
 - Reports mixed their units. Seen live in one sweep: a horizon "2.9 miles off",
   then contacts at "2.7 miles" and "1.5 leagues" in the same list - three ranges,

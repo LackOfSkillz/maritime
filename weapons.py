@@ -31,6 +31,7 @@ from dataclasses import dataclass, replace
 from .ammunition import DEFAULT_SHOT, in_range, told_by
 from .damage import guns_serviceable
 from .results import Result
+from .observation import IDENTIFIED
 from .tactical import aspect, bears, raking, raking_weight
 from .weather import SEA_STATES
 
@@ -55,6 +56,11 @@ STILL_RELOADING = "still_reloading"
 SHOT_FALLS_SHORT = "shot_falls_short"
 WILL_NOT_BEAR = "will_not_bear"
 OUT_OF_RANGE = "out_of_range"
+
+#: Refusals where the gun never went off, so no charge was spent and nothing was
+#: heard. `SHOT_FALLS_SHORT` is deliberately not among them: that gun *fired* and
+#: the shot simply did not carry, which is the price of having loaded grape.
+NEVER_FIRED = (NOT_LOADED, STILL_RELOADING, WILL_NOT_BEAR, OUT_OF_RANGE)
 
 
 @dataclass(frozen=True)
@@ -386,6 +392,7 @@ def fire(
     sea_state,
     now,
     roll,
+    steadiness=1.0,
 ):
     """
     Lay the gun and pull the lanyard.
@@ -401,6 +408,9 @@ def fire(
         sea_state (str): The sea being fired from.
         now (float): Game time in seconds.
         roll (callable): Returns a float from 0 to 1 - an injected RNG stream.
+        steadiness (float, optional): How well laid the gun is, 1.0 for a shot
+            taken deliberately. Below that for one snatched as a target crosses,
+            and lower again for a crew too frightened to take their time.
 
     Returns:
         result (ShotResult): Successful on a hit, failed on a miss or a refusal,
@@ -425,7 +435,11 @@ def fire(
     flight = time_of_flight(distance, mount.weapon.projectile_speed)
     laid = aim_point(target_position, target_heading, target_speed, flight)
     showing = aspect(position, target_position, target_heading)
-    chance = hit_chance(mount.weapon, distance, sea_state, showing) * mount.shot.accuracy
+    chance = (
+        hit_chance(mount.weapon, distance, sea_state, showing)
+        * mount.shot.accuracy
+        * max(0.0, steadiness)
+    )
 
     common = {
         "mount": mount.key,
@@ -453,6 +467,70 @@ def fire(
         told = told_by(mount.shot, mount.weapon.damage) * raking_weight(showing)
         return ShotResult.ok(damage=told, **common)
     return ShotResult.failed("missed", damage=0.0, **common)
+
+
+#: How well a gun is laid when the shot is snatched rather than taken. A crew
+#: holding their fire are laying on a target that is crossing them, and they pull
+#: the lanyard on a bearing rather than on a considered solution.
+OPPORTUNITY_ACCURACY = 0.7
+
+#: How much of that is lost again by a wholly shaken crew, on the same terms as
+#: the serving and handling penalties. Frightened people snatch harder.
+HESITATION_ON_LAYING = 0.5
+
+
+@dataclass(frozen=True)
+class Broadside:
+    """
+    What a broadside did, for somebody else to put into words.
+
+    Attributes:
+        target (any): What was fired on.
+        distance (float): How far off she was, in metres.
+        fired (int): How many guns actually spoke.
+        hits (int): How many of them told.
+        rakes (tuple): The rakes among those hits.
+        carried_away (tuple): What was newly broken about her.
+
+    """
+
+    target: object
+    distance: float
+    fired: int
+    hits: int
+    rakes: tuple = ()
+    carried_away: tuple = ()
+
+
+@dataclass(frozen=True)
+class Holding:
+    """
+    Guns run out and held, waiting for something to bear.
+
+    Attributes:
+        target_key (str or None): The name she is waiting for, lowercased. None
+            if she is watching an arc rather than a ship.
+        arc (str or None): The arc she is watching. None if she is waiting on a
+            named ship.
+
+    Notes:
+        Exactly one of the two is set, and the difference between them is the
+        whole decision.
+
+        Waiting on a **named ship** is safe and requires you to have identified
+        her, so it does not work in fog, in the dark, or at the edge of vision -
+        which is where you most want your guns held ready.
+
+        Watching an **arc** works in any weather and fires at whatever crosses it.
+        That is the teeth. Nothing here knows what a friend is - factions are the
+        host game's business - and nothing needs to: an order to fire at anything
+        that crosses to starboard is *already* an order that will kill your own
+        consort, and the captain who gave it said so.
+
+    """
+
+    target_key: str = None
+    arc: str = None
 
 
 class Armed:
@@ -575,3 +653,226 @@ class Armed:
         return tuple(
             mount for mount in self.serviceable_mounts if bears(relative_bearing, mount.arc)
         )
+
+    # --- holding fire -------------------------------------------------------
+
+    @property
+    def holding(self):
+        """
+        Returns:
+            holding (Holding or None): What the battery is waiting for, if
+                anything.
+
+        """
+        return self.db.holding
+
+    @holding.setter
+    def holding(self, order):
+        """
+        Args:
+            order (Holding or None): What to wait for, or None to stand down.
+
+        """
+        self.db.holding = order
+
+    def hold_fire(self, target_key=None, arc=None):
+        """
+        Run the guns out and wait.
+
+        Args:
+            target_key (str, optional): A ship to wait for by name.
+            arc (str, optional): An arc to watch instead.
+
+        Returns:
+            holding (Holding): The order now standing.
+
+        Raises:
+            ValueError: If neither or both are given. "Hold your fire" with
+                nothing named is not an order, and a gun crew told to watch both
+                a ship and a bearing would have to guess which the captain meant.
+
+        """
+        named = bool(target_key)
+        watching = bool(arc)
+        if named == watching:
+            raise ValueError("Hold fire on a named ship or on an arc, not neither and not both.")
+        self.holding = Holding(
+            target_key=target_key.lower() if named else None,
+            arc=arc if watching else None,
+        )
+        return self.holding
+
+    def stand_down(self):
+        """
+        Returns:
+            stood_down (bool): True if she had been holding.
+
+        """
+        if self.holding is None:
+            return False
+        self.holding = None
+        return True
+
+    def opportunity(self, sightings):
+        """
+        What the standing order says to fire on, now.
+
+        Args:
+            sightings (iterable): `Sighting` objects, as the lookout has them.
+
+        Returns:
+            sighting (Sighting or None): The contact to fire on, or None if
+                nothing the order covers is bearing.
+
+        Notes:
+            Nearest first, because that is the order the lookout reports in and
+            the one a gunner would choose anyway.
+
+            A named ship has to be *identified*, which is the cost of the safe
+            order: a shape on the water is not a name, so holding fire on the
+            Marigold does nothing in fog. An arc asks only that something is
+            there, which is why it works in fog and why it is dangerous.
+
+        """
+        held = self.holding
+        if held is None:
+            return None
+
+        for seen in sightings:
+            if not self.guns_bearing(seen.relative):
+                continue
+            if held.target_key is not None:
+                if seen.level != IDENTIFIED:
+                    continue
+                if held.target_key not in seen.target.key.lower():
+                    continue
+            elif not bears(seen.relative, held.arc):
+                continue
+            return seen
+        return None
+
+    def fire_broadside(self, sighting, now, roll, steadiness=1.0):
+        """
+        Fire everything that bears on this contact, and apply what tells.
+
+        Args:
+            sighting (Sighting): What is being fired on.
+            now (float): Game time in seconds.
+            roll (callable): An injected RNG stream.
+            steadiness (float, optional): How well the guns are laid.
+
+        Returns:
+            broadside (Broadside): What happened, for somebody else to say.
+
+        Notes:
+            Domain returns data and `messaging` speaks, so nothing here says a
+            word. It exists at all because the deck gun command and the standing
+            order both have to resolve a broadside, and two copies of this loop
+            would drift - one of them getting raking right and the other not.
+
+        """
+        from .ammunition import CREW
+
+        her = sighting.target
+        _course, her_speed = her.made_good() or (her.heading, her.speed)
+
+        fired = hits = 0
+        rakes = []
+        failures = []
+        for mount in self.guns_bearing(sighting.relative):
+            shot = fire(
+                mount,
+                self.maritime_position,
+                self.heading,
+                her,
+                her.maritime_position,
+                her.heading,
+                her_speed,
+                self.sea_here(),
+                now,
+                roll,
+                steadiness,
+            )
+            # Every refusal where she never went off, not just the two obvious
+            # ones. A gun that will not reach is a gun that did not fire, and
+            # counting it would spend the charge and report a broadside for a
+            # shot nobody took.
+            if shot.code in NEVER_FIRED:
+                continue
+            fired += 1
+            self.replace_mount(discharge(mount))
+            if not shot:
+                continue
+
+            hits += 1
+            if shot.rake:
+                rakes.append(shot.rake)
+            # Which track it tells on is what the gunner loaded, which is what he
+            # meant to do. The crew are people rather than a track, so they go
+            # through the company and morale answers for free.
+            if shot.shot.aimed_at is CREW:
+                her.take_crew_casualties(shot.damage)
+            else:
+                failures.extend(her.take_damage(shot.shot.aimed_at, shot.damage))
+
+        return Broadside(
+            target=her,
+            distance=sighting.distance,
+            fired=fired,
+            hits=hits,
+            rakes=tuple(rakes),
+            carried_away=tuple(failures),
+        )
+
+    def take_opportunity(self):
+        """
+        Fire on a standing order, if anything the order covers now bears.
+
+        Returns:
+            broadside (Broadside or None): What happened, or None if she was not
+                holding, nothing bore, or not a gun was ready.
+
+        Notes:
+            Called every tick and does nothing on almost all of them, which is
+            why it asks the cheap question first. A ship not holding her fire
+            pays one attribute read for this.
+
+            The order stands after it is used. A captain who wants one broadside
+            and no more stands his guns down; one watching a channel wants every
+            ship that comes through it, and having to say so again after each
+            would make the order useless for the thing it is for.
+
+        """
+        from . import config
+        from .rng import COMBAT
+
+        if self.holding is None:
+            return None
+
+        seen = self.opportunity(self.contacts())
+        if seen is None:
+            return None
+
+        now = config.time_provider().now()
+        roll = config.rng_context().stream(COMBAT).random
+        result = self.fire_broadside(seen, now, roll, self.laying_steadiness())
+        if not result.fired:
+            return None
+
+        self.narrator.opportunity_fire(seen, self.holding)
+        self.narrator.broadside(result)
+        return result
+
+    def laying_steadiness(self):
+        """
+        Returns:
+            steadiness (float): How well the battery lays a snatched shot.
+
+        Notes:
+            Opportunity fire is worse than a shot taken deliberately, and worse
+            again in a frightened crew. `hesitation` degrades rather than gates
+            here, as it does at the serving and in the rigging - a shaken crew
+            fire, they just fire badly.
+
+        """
+        return OPPORTUNITY_ACCURACY * (1.0 - HESITATION_ON_LAYING * self.hesitation)

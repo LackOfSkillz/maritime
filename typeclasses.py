@@ -431,6 +431,12 @@ class Vessel(
         if set_now is not None:
             self.narrator.sail_set(set_now)
 
+        # A battery that has been told to hold its fire, finding something in its
+        # arc. Above the check below because guns do not care whether she is
+        # moving - a ship anchored across a channel with her guns held is doing
+        # something deliberate, and one aground still has a broadside.
+        self.take_opportunity()
+
         if self.held_by():
             self.take_way_off()
             return False

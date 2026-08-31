@@ -228,23 +228,63 @@ class TestChangingYourMind(HandlingShipTestCase):
 
 
 class TestAFrightenedCrewAloft(HandlingShipTestCase):
-    """Morale's second customer, after the gun deck."""
+    """
+    Morale's second customer, after the gun deck.
 
-    def test_a_shaken_crew_are_slower_aloft(self):
-        steady = self.hull.time_to_set(FURLED)
-        self.hull.take_casualties(120)
-        self.assertGreater(self.hull.hesitation, 0.0)
-        self.assertGreater(self.hull.time_to_set(FURLED), steady)
+    These have to work to isolate fear, because casualties do two things at once
+    and the larger of them is not fear. Losing 120 of 200 hands would slow her
+    right down if the survivors were perfectly steady, so a test that merely
+    checks "she got slower" proves nothing about morale at all - which is what
+    the first version of this did.
 
-    def test_casualties_cost_her_twice(self):
+    Morale also does not move at the instant people fall. It settles towards the
+    new state over the following minute, so nothing here is true until a watch
+    has passed over them.
+
+    """
+
+    def maul_her(self, seconds=60.0):
         """
-        Fewer hands to do the work, and the ones left are frightened. Both are
-        true and both should tell, which is why they compound rather than compete.
+        Take heavy casualties and let it sink in.
+
+        Returns:
+            hands (tuple): Effective hands before and after.
+
+        """
+        before = self.hull.hands_to_work_her()
+        self.hull.take_casualties(120)
+        self.hull.stand_watch(seconds)
+        return before, self.hull.hands_to_work_her()
+
+    def test_casualties_alone_do_not_frighten_anybody_yet(self):
+        """The fall is not instantaneous, and pretending otherwise hid this."""
+        steady = self.hull.hesitation
+        self.hull.take_casualties(120)
+        self.assertAlmostEqual(self.hull.hesitation, steady)
+
+    def test_but_a_watch_over_them_does(self):
+        steady = self.hull.hesitation
+        self.maul_her()
+        self.assertGreater(self.hull.hesitation, steady)
+
+    def test_casualties_cost_her_more_than_the_hands_they_took(self):
+        """
+        The claim worth making, and the only one that isolates fear: she is slower
+        by *more* than the missing hands account for. Fewer people and frightened
+        people compound rather than competing.
 
         """
         before = self.hull.time_to_set(FURLED)
-        self.hull.take_casualties(120)
-        self.assertGreater(self.hull.time_to_set(FURLED), before * 2)
+        had, left = self.maul_her()
+        after = self.hull.time_to_set(FURLED)
+
+        hands_alone = had / left
+        self.assertGreater(after / before, hands_alone * 1.05)
+
+    def test_and_they_still_get_it_done(self):
+        """Fear is a cost, not a kill switch."""
+        self.maul_her()
+        self.assertLess(self.hull.time_to_set(FURLED), float("inf"))
 
 
 class TestWhatTheDeckIsTold(HandlingShipTestCase):

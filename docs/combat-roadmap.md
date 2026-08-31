@@ -304,6 +304,11 @@ at a penalty, and those guns are then unavailable next phase.
 **Ours:** the same. A last broadside into an oncoming rammer at point-blank range, paid for
 with your next one.
 
+**Ordering:** this was listed before item E and cannot be built before it - there is no
+rammer to fire into until ramming exists. It also wants most of what N built: a battery that
+fires on something crossing, at a penalty, without being told to each time. Swapped with E
+in the order below.
+
 ## R. COMPLEMENT COMPOSITION — and why it needs no money
 
 **Source:** marines, seamen and oarsmen are separate groups with separate fighting values,
@@ -346,9 +351,9 @@ your consort is a genuine mistake you can make.
     K1  battle sails                 DONE
     M   blocked wind / wind shadow   DONE
     P   how fast a crew answers      DONE
-    N   opportunity fire             needs C
-    Q   defensive fire               falls out of N and E
+    N   opportunity fire             DONE
     E   ramming and sheering         needs B and D
+    Q   defensive fire               needs E - there is no rammer to fire at without it
     L   grappling as a count         small, precedes H
     H   boarding melee               needs R
     I   capture                      completes H and item 1
@@ -409,6 +414,65 @@ sail plan, wind bearing and relative angle, depth under the keel, the four damag
 morale band, and contacts. Emitted on transition and on meaningful change - the same
 "which change is worth mentioning" discipline `messaging` already implements, which is the
 same problem solved once already.
+
+**The interface is composed from the hull, not chosen from a list.** A kayak, a ship's
+boat, a cutter and a frigate are not four skins of one dashboard - they are four different
+sets of questions that have answers. Every one of those questions is already asked
+somewhere:
+
+    no ship's company            no crew panel        `company is None`
+    one paddling position        no helm, no orders   `oar_plan.positions == 1`, PADDLED
+    no rig                       no sail panel        `sail_plan.area` never rises
+    no guns aboard               no battery panel     `mounts` is empty
+    nothing that will stow       no cargo panel       hold volume of nothing
+
+This is the rule `Handled.hands_to_work_her` already follows when it refuses to invent a
+crew for a hull that has none, and the reason a dinghy answers her helm at once. The panel
+must refuse on the same terms. A kayaker looking at a crew morale gauge and an anchor
+windlass would be reading somebody else's ship.
+
+**The same goes for the water.** A pond has no tide, a lake has no swell worth reporting, a
+river's current is the single most important number on the strip, and only at sea does the
+horizon or the state of the tide mean much. The temptation is an enum - pond, lake, river,
+ocean - and it should be resisted, for the same reason there is no skill system here: the
+moment the contrib classifies water, every game with its own idea of water has to argue
+with it.
+
+Instead the strip is composed of readings the world can honestly answer *here*. No tide
+model, no tide field. No current, no current field. Flat water reports no sea state. On a
+pond the strip collapses to almost nothing on its own, with nobody having declared it a
+pond - and a tidal river shows tide *and* current because both are genuinely true there,
+which an enum would have made a special case.
+
+*Open:* whether a game may pass an optional hint to force a presentation it prefers. That
+would be a seam with a derived default, not a taxonomy.
+
+**Two layers, and they must not be confused.** The chart divides cleanly in two, and the
+division is what keeps it from becoming a radar screen:
+
+    charted    persistent    from `charts`      land, soundings, marks, hazards
+    sighted    volatile      from `contacts()`  other ships
+
+Charted things stay on the paper whether or not anybody is looking at them, because somebody
+wrote them down. **Sighted things exist only while the lookout has them** - a contact appears
+when she is reported and goes when she is lost, and nothing about her persists. A ship that
+stayed on the chart after the lookout lost her would be a radar repeater, and would quietly
+undo detection in the same way a true-position marker would quietly undo navigation.
+
+*Open:* whether a lost contact leaves a fading last-known bearing, which is what a navigator
+would actually plot. The default is that she simply goes.
+
+**And the chart is generated, not drawn.** Sample `charted_terrain_z_at` over the visible
+window and contour it - coastline where it crosses datum, depth areas at fathom bands. That
+is a hundred lines of marching squares and no dependencies. Contouring the *chart* rather
+than the sea gives three things for nothing: the coastline is wrong in the same places every
+voyage, water nobody has surveyed renders as a hole in the paper rather than as empty sea,
+and a better chart is visibly better. It also satisfies the rule below structurally rather
+than by discipline, because the true seabed is never asked for and so can never leak.
+
+*Open:* whether a game may supply a hand-authored coastline to render instead of a contoured
+one. Some games have drawn a world map and will want the chart to match it. That is a
+provider seam rather than a rewrite.
 
 **The rule to hold hardest:** the panel is a repeater, not an oracle. It shows exactly what
 `contacts()` returns at that height of eye, so an unidentified hull is a bearing-only blip.
@@ -481,3 +545,52 @@ stopped for the pumps to draw. Fishing is a situation, not a menu.
 
 **Open:** whether provisions are modelled here at all, and whether desertion - which
 destroys something a player owns - is acceptable.
+
+## T3. SURVEY AND DISCOVERY  *(TBD)*
+
+**The idea:** charted land stays on the chart always, because somebody wrote it down - but it
+must be possible to find land nobody has written down, and to be the one who writes it.
+
+**Why it is nearly free:** `charts` already models coverage. A chart covers where its
+surveyor went and nowhere else, and off the chart is a *state* rather than a failure. So
+uncharted water already exists, is already dangerous, and already renders as a hole in the
+paper once the chart panel contours charted rather than true depths. Discovery is the act of
+filling one in.
+
+**The mechanic worth stealing, and it is not the obvious one.** In the space-exploration
+games that do this best, the credit does not go to whoever *saw* a thing first. It goes to
+whoever first brought the record home and lodged it. Everything good follows from that one
+choice:
+
+  - Survey data is a thing you are *carrying*, not a thing you have achieved
+  - It is worth nothing until you make port, so the voyage home is the dangerous half
+  - Sink on the way back and the discovery is simply lost, and somebody else will have it
+  - Two ships may survey the same coast, and the fast one home gets the name on it
+
+That is also how it actually worked. Hydrographic offices paid for surveys on delivery, and
+the reason so many straits and inlets carry a surname is that somebody sailed home with the
+paper. We are not borrowing a game mechanic so much as arriving at the same one from the
+same pressures.
+
+**What is ours and what is not.** The contrib owns the survey: what was covered, how well,
+how far it lay from any charted water, whether anybody had lodged it before, and the fact
+that a chart records who first surveyed it. The contrib does **not** own what that is worth.
+Money is the host game's, exactly as with prizes and cargo. Publish the event with enough
+detail to price it - area, quality, distance beyond the charted world, first or not - and let
+the game decide what the chart house pays.
+
+**How it composes with what exists:**
+
+  - Sounding while off the chart is what generates survey data, so the lead line finally has
+    a second use besides not dying
+  - Lodging a survey extends chart coverage, so the hole in the paper visibly fills in - a
+    player can watch their own chart grow over a career
+  - A ship carrying an unlodged survey has something to lose in a fight, which gives a
+    merchant a reason to run that is not cargo
+  - It feeds the sea career directly: "a coast surveyed" is exactly the kind of countable
+    event that roadmap is built around
+
+**Open:** whether a surveyor may name what they found, and if so who arbitrates the name;
+whether a lodged survey is public to every chart in the world or sold chart by chart; and
+whether an inaccurate survey can be lodged in good faith and get somebody else killed, which
+is tempting and possibly too cruel.

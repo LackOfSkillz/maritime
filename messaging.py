@@ -1431,6 +1431,82 @@ class VesselNarrator:
             f"Her sails slat and go slack in {who}'s lee.",
         )
 
+    def opportunity_fire(self, sighting, holding):
+        """
+        The moment a held battery decides to speak.
+
+        Args:
+            sighting (Sighting): What crossed the arc.
+            holding (Holding): What the order was.
+
+        Notes:
+            Said before the broadside rather than after, because the order the
+            deck hears matters: the guns going off on their own is alarming, and
+            the sentence that explains it should arrive first.
+
+            A ship held on an *arc* is named only as what the lookout can honestly
+            call her, which may be nothing more than a shape. That is the whole
+            danger of the order, and softening it here by using her real name
+            would hide the one thing the captain needs to see.
+
+        """
+        if holding.target_key is not None:
+            self.deliver(
+                '"There she is!" The battery goes off without further orders.',
+                "The guns go off overhead without an order being passed.",
+            )
+            return
+        self.deliver(
+            f"{open_sentence(describe_contact(sighting))} crosses the "
+            f"{holding.arc}, and the held guns take her.",
+            "The guns go off overhead without an order being passed.",
+        )
+
+    def broadside(self, result):
+        """
+        Say what a broadside did, on both decks.
+
+        Args:
+            result (Broadside): What it did.
+
+        Notes:
+            Gathered into one place because two callers fire broadsides now - a
+            captain who orders one, and a battery that has been holding its fire
+            and just found something in its arc. From a deck they are the same
+            event and should sound like it.
+
+            What broke aboard the other ship is said aboard *her*, through her own
+            narrator. A rake is said here, because it is this ship's achievement
+            and what it looked like from the receiving end is her business, and
+            worse.
+
+        """
+        if not result.fired:
+            self.deliver(
+                "Not a gun is ready. The crews are still at it.",
+                "The guns stay silent; they are still being served.",
+            )
+            return
+
+        guns = f"{result.fired} gun{'s' if result.fired != 1 else ''}"
+        self.deliver(
+            f"{guns} go off together, and the smoke rolls away to leeward.",
+            f"{guns} go off overhead, and the whole hull jumps with it.",
+        )
+
+        if result.hits:
+            self.deliver(
+                f"{result.hits} of them tell on {result.target.key}, "
+                f"{format_range(result.distance)} off."
+            )
+        else:
+            self.deliver(f"The whole broadside goes wide of {result.target.key}.")
+
+        for rake in result.rakes:
+            self.raked(result.target, rake)
+        if result.carried_away:
+            result.target.narrator.carried_away(result.carried_away)
+
     def crew_report(self, vessel):
         """
         Who she is manned by, and how they are bearing it.

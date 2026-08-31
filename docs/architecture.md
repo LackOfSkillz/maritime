@@ -1023,6 +1023,32 @@ Two consequences worth stating, because both were things the code got wrong firs
   give up on a held vessel before it reached the hands, which was found by running her
   aground with an order outstanding and watching them stay aloft for good.
 
+**Holding your fire is two orders, and the difference between them is the decision.** A
+captain may run his guns out and leave them; the battery speaks by itself the moment
+something bears. A continuous simulation gets this almost for nothing, because "hold your
+fire until she crosses the bow" is an instruction about a clock rather than about a turn.
+
+```text
+                  sees                       fires on              risk
+held on a ship    only what is identified    that ship             none, and blind in fog
+held on an arc    anything at all            whatever crosses      everything that crosses
+```
+
+Nothing in the contrib knows what a friend is — factions are the host game's — and nothing
+needs to. An order to fire on whatever crosses to starboard is *already* an order that will
+take your own consort, and the captain who gave it said so. Meanwhile the safe order is
+bought with `Sighting.level`: a shape on the water is not a name, so holding fire on the
+Marigold does nothing at the edge of vision, which is precisely where a captain most wants
+his guns held ready. Both halves fall out of the observation system that was already there.
+
+A snatched shot is not a laid one, so opportunity fire tells less often, and worse again in
+a frightened crew — `hesitation`'s third customer after the serving and the rigging,
+degrading rather than gating as it does everywhere else.
+
+The order stands after it is used. A captain watching a channel wants every ship that comes
+through it, and having to give the order again after each would make it useless for the one
+thing it is for.
+
 **Raking is not a rule.** A shot that strikes a ship end-on runs her whole length instead of
 stopping at a plank, and goes through everything between: guns, gun crews, and the company of
 a deck. It was the manoeuvre of the age, and here it costs nothing to model, because the

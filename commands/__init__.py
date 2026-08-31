@@ -23,7 +23,7 @@ from .boarding import (
     CmdGrapples,
     CmdStrike,
 )
-from .gunnery import CmdFire, CmdGuns, CmdLoad
+from .gunnery import CmdFire, CmdGuns, CmdHoldFire, CmdLoad
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
 from .lading import CmdDischarge, CmdManifest, CmdStow
 from .lookout import (
@@ -85,6 +85,7 @@ __all__ = (
     "CmdGuns",
     "CmdLoad",
     "CmdFire",
+    "CmdHoldFire",
     "CmdCrew",
     "CmdHelm",
     "CmdSpeed",

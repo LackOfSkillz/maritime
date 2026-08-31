@@ -4,14 +4,14 @@ The gun deck: serving her, laying her, and firing.
 """
 
 from ..config import rng_context, time_provider
-from ..formatting import format_range
 from ..observation import DEFAULT_HEIGHT_OF_EYE, IDENTIFIED
 from ..rng import COMBAT
 from ..vessel import WEATHER_DECKS
-from ..ammunition import CREW, DEFAULT_SHOT, SHOT_TYPES, shot_named
+from ..ammunition import DEFAULT_SHOT, SHOT_TYPES, shot_named
 from ..damage import serving_time
 from ..sailing import hands_aloft
-from ..weapons import discharge, fire, serve
+from ..tactical import AFT, FORWARD, PORT_BROADSIDE, STARBOARD_BROADSIDE
+from ..weapons import serve
 from .base import MaritimeCommand
 
 
@@ -166,69 +166,125 @@ class CmdFire(MaritimeCommand):
             self.caller.msg("Nothing of that name is near enough to lay a gun on.")
             return
 
-        bearing_guns = vessel.guns_bearing(sighting.relative)
-        if not bearing_guns:
+        if not vessel.guns_bearing(sighting.relative):
             self.caller.msg("Not a gun aboard bears on her. Bring her round.")
             return
 
-        her = sighting.target
-        _course, her_speed = her.made_good() or (her.heading, her.speed)
         now = time_provider().now()
         roll = rng_context().stream(COMBAT).random
 
         self.caller.msg('You call out, "Fire!"')
         self.announce(f'{self.caller.key} calls out, "Fire!"')
 
-        hits = 0
-        fired = 0
-        for mount in bearing_guns:
-            shot = fire(
-                mount,
-                vessel.maritime_position,
-                vessel.heading,
-                her,
-                her.maritime_position,
-                her.heading,
-                her_speed,
-                vessel.sea_here(),
-                now,
-                roll,
-            )
-            if shot.code in ("not_loaded", "still_reloading"):
-                continue
-            fired += 1
-            vessel.replace_mount(discharge(mount))
-            if shot:
-                hits += 1
-                # What the shot did to her, rather than that it connected. A hit is
-                # a number; a mast coming down is the thing anybody will remember.
-                #
-                # Which track it tells on is what the gunner loaded, which is what
-                # he meant to do. Ball opens her, chain brings her spars down, grape
-                # clears her decks - and the crew are people rather than a track, so
-                # they go through the company and morale answers for free.
-                if shot.rake:
-                    vessel.narrator.raked(her, shot.rake)
-                if shot.shot.aimed_at is CREW:
-                    her.take_crew_casualties(shot.damage)
-                else:
-                    carried_away = her.take_damage(shot.shot.aimed_at, shot.damage)
-                    if carried_away:
-                        her.narrator.carried_away(carried_away)
+        vessel.narrator.broadside(vessel.fire_broadside(sighting, now, roll))
 
-        if not fired:
-            self.aboard(vessel, "Not a gun is ready. The crews are still at it.")
+
+class CmdHoldFire(MaritimeCommand):
+    """
+    Run the guns out and hold them until something bears.
+
+    Usage:
+      hold fire <name>
+      hold fire to port
+      hold fire to starboard
+      hold fire forward
+      hold fire
+      secure the guns
+
+    Named ship or open arc, and the difference is the whole decision.
+
+    Holding on a *named* ship is safe: she has to be identified before the guns
+    will speak, so nobody else is fired on by mistake. It also does nothing at all
+    in fog, in the dark, or at the edge of vision - which is exactly where you most
+    want your guns held ready.
+
+    Holding on an *arc* fires at whatever crosses it, whether or not anybody knows
+    what she is. That works in any weather. It will also take the first ship into
+    that arc, and the sea does not check whose she is before she gets there.
+
+    A snatched shot is not a laid one, so opportunity fire is less accurate than a
+    broadside you called yourself - and worse again in a frightened crew.
+
+    With no argument, reports what the battery is waiting for.
+
+    """
+
+    key = "hold fire"
+    # Not "hold" - that is the oar order to hold water, and a captain who meant to
+    # stop his boat would have run his guns out instead. Not "stand down" either;
+    # `belay` already answers to it, for taking the con back. The first was found
+    # live and the second by the test that was written because of the first.
+    aliases = ("hold your fire", "secure the guns")
+
+    #: What a captain may say, and the arc he means by it.
+    ARCS = {
+        "to port": PORT_BROADSIDE,
+        "port": PORT_BROADSIDE,
+        "to starboard": STARBOARD_BROADSIDE,
+        "starboard": STARBOARD_BROADSIDE,
+        "forward": FORWARD,
+        "ahead": FORWARD,
+        "aft": AFT,
+        "astern": AFT,
+    }
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        wanted = self.args.strip().lower()
+
+        securing = self.cmdstring.strip().lower() == "secure the guns"
+        if securing or wanted in ("down", "off", "none"):
+            if vessel.stand_down():
+                self.caller.msg('You call out, "Secure the guns!"')
+                self.announce(f'{self.caller.key} calls out, "Secure the guns!"')
+                self.aboard(vessel, "The crews house their pieces and stand away.")
+                return
+            self.caller.msg("The battery is not holding for anything.")
             return
 
-        self.aboard(
-            vessel,
-            f"{fired} gun{'s' if fired != 1 else ''} go off together, and the smoke "
-            f"rolls away to leeward.",
-        )
-        if hits:
+        if not wanted:
+            self.report(vessel)
+            return
+
+        if not vessel.mounts:
+            self.caller.msg("She carries no guns at all.")
+            return
+
+        arc = self.ARCS.get(wanted)
+        if arc is not None:
+            vessel.hold_fire(arc=arc)
+            self.caller.msg(f'You call out, "Hold your fire, watch {wanted}!"')
+            self.announce(f'{self.caller.key} calls out, "Hold your fire, watch {wanted}!"')
             self.aboard(
                 vessel,
-                f"{hits} of them tell on {her.key}, {format_range(sighting.distance)} off.",
+                "The gun crews stand to their pieces, watching the empty water. "
+                "They will fire on whatever comes into it.",
             )
-        else:
-            self.aboard(vessel, f"The whole broadside goes wide of {her.key}.")
+            return
+
+        vessel.hold_fire(target_key=wanted)
+        self.caller.msg(f'You call out, "Hold your fire until the {wanted} bears!"')
+        self.announce(f'{self.caller.key} calls out, "Hold your fire until the {wanted} bears!"')
+        self.aboard(vessel, "The gun crews stand to their pieces.")
+
+    def report(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull.
+
+        """
+        held = vessel.holding
+        if held is None:
+            self.caller.msg("The battery is not holding for anything.")
+            return
+        if held.target_key is not None:
+            self.caller.msg(f"The guns are held, waiting on the {held.target_key} to bear.")
+            return
+        self.caller.msg(
+            f"The guns are held, watching the {held.arc} - "
+            f"and they will fire on whatever crosses it."
+        )

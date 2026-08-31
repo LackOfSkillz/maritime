@@ -317,6 +317,12 @@ of somebody's lee is a manoeuvre, not a wait. The mate names the ship doing it �
 loss of a third of her speed would just send her captain hunting for damage that is not
 there.
 
+**Holding your fire is a decision, not a delay.** Run the guns out and leave them, and the
+battery speaks the moment something bears. Hold on a named ship and she must be identified
+first — safe, and useless in fog. Hold on an arc and the guns take whatever crosses it, in
+any weather, including your own consort. The contrib never needs to know what a friend is:
+the second order is dangerous by construction, and the captain who gave it knew that.
+
 **Raking falls out of the geometry.** A shot that strikes end-on runs the length of a ship,
 and the angle on her bow *is* the point of impact — so crossing an enemy's stern is worth
 three times an ordinary broadside without a table anywhere. A hex game needs impact modifiers
