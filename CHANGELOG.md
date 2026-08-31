@@ -13,6 +13,52 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Draw a chart, contoured out of the ship's own paper rather than authored anywhere.
+  A coastline is where the ground crosses datum, so a game that authored a shoal has
+  authored the shape of it; marching squares over a sampled grid costs about six
+  milliseconds and needs no libraries. It contours the *chart* rather than the sea,
+  which buys three things at once: the coast is wrong in the same places every
+  voyage, water nobody surveyed comes back as a hole in the paper rather than as
+  open sea, and a better chart is visibly better. The true seabed is never fetched
+  and so cannot leak.
+- Plot her from where she *reckons* she is. A ship whose dead reckoning has drifted
+  draws the coast in the wrong place, and the cure is to take a fix - which is the
+  whole of navigation, arriving for nothing, because the pipeline never asks for the
+  truth.
+- Keep the charted and the sighted apart. Land, soundings and buoyage stay on the
+  paper in fog, at night and when nobody is looking; other ships exist only while the
+  lookout has them. A contact that outlived the sighting would be a radar repeater.
+- Mark buoyage by shape as well as colour - a can to port, a cone to starboard, a
+  diamond for a danger - and carry each mark's meaning beside its kind. Somebody who
+  cannot tell red from green still has to pass a buoy on the correct side.
+- Report instruments a captain reads: heading beside course made good, speed through
+  the water beside speed over the ground, wind, current, the charted depth, what she
+  has set. Each appears only when it is true here, so a pond reports no tide and a
+  ship off her chart reports no sounding.
+- Offer controls, each of them a way of typing a command that already worked. A press
+  runs that command through the same handler, against the same locks, with the same
+  authority check a captain shouting it would pass, and nothing a browser sends
+  reaches a command line. A passenger is offered no helm - not a disabled one - and
+  the board is built per authority, so a captain and a passenger on one deck are sent
+  different boards from the same tick.
+- Publish morale as a band and never as a number, because the simulation bands it on
+  purpose: a captain is told his people are wavering, which he can act on, rather
+  than handed a percentage to manage.
+
+### Fix
+
+- A client that understood only part of the protocol was sent all of it, and printed
+  several hundred chart coordinates across the player's message window. Capabilities
+  were declared and never checked; each payload is now gated on the one it needs.
+- A chart drawn to one scale and shown at another put an entire coastline into the
+  middle fifth of the panel. The client says how much sea it is showing and the
+  server draws to that.
+- An action name that was not a name crashed the handler, because `dict.get` raises
+  on an unhashable key rather than politely missing.
+- Contouring a cell with an unsounded corner. The line now stops where the survey
+  does rather than being guessed across it, which is what leaves the hole in the
+  paper.
+
 - Publish maritime state to clients that ask for it, as an optional protocol. The
   contrib now says which interface a situation calls for - ashore, aboard as a
   passenger, aboard in command, or in the water - and says it again the moment that
