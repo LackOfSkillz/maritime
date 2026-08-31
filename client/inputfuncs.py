@@ -78,3 +78,37 @@ def maritime_view(session, *args, **kwargs):
 
     session.ndb.maritime_reach = max(MIN_REACH, min(MAX_REACH, wanted))
     redraw_chart(session)
+
+
+def maritime_action(session, *args, **kwargs):
+    """
+    A control was pressed.
+
+    Args:
+        session (Session): The connection that pressed it.
+        *args: Ignored.
+        **kwargs: `action`, and whatever that control carries.
+
+    Notes:
+        Turned into the ordinary command it stands for and executed as though the
+        player had typed it - same handler, same locks, same authority check, same
+        refusals in the same words. The button is a keyboard.
+
+        Nothing is pre-authorised. A control was offered because she was in a
+        position to use it a moment ago; whether she still is gets asked here, by
+        the command itself, at the moment it runs.
+
+    """
+    from ..vessel import vessel_in
+    from .controls import order_for
+
+    character = getattr(session, "puppet", None)
+    if character is None:
+        return
+
+    vessel = vessel_in(getattr(character, "location", None))
+    line = order_for(kwargs.get("action"), kwargs, vessel)
+    if line is None:
+        return
+
+    character.execute_cmd(line, session=session)

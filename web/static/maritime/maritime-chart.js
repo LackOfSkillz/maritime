@@ -153,7 +153,10 @@ window.MaritimeChart = (function () {
      * drawn hollow and named only by what it looks like - the payload never carried a
      * name, so there is none here to show. */
     function drawContacts(into, contacts, onSelect, selectedId) {
-        (contacts || []).forEach(function (contact) {
+        (Array.isArray(contacts) ? contacts : []).forEach(function (contact) {
+            if (!contact || typeof contact.bearing !== "number" || typeof contact.range !== "number") {
+                return;
+            }
             var span = reach();
             if (contact.range > span * 1.05) {
                 return;
@@ -211,7 +214,11 @@ window.MaritimeChart = (function () {
         }
 
         Object.keys(sheet.depths || {}).forEach(function (fathom) {
-            sheet.depths[fathom].forEach(function (line) {
+            var lines = sheet.depths[fathom];
+            if (!Array.isArray(lines)) {
+                return;
+            }
+            lines.forEach(function (line) {
                 layers.depths.appendChild(
                     node("path", {
                         d: pathOf(line),
@@ -221,12 +228,15 @@ window.MaritimeChart = (function () {
             });
         });
 
-        (sheet.coastline || []).forEach(function (line) {
+        (Array.isArray(sheet.coastline) ? sheet.coastline : []).forEach(function (line) {
             layers.land.appendChild(node("path", { d: pathOf(line), class: "maritime-chart-coast" }));
         });
 
         var span = reach();
-        (sheet.soundings || []).forEach(function (sounding) {
+        (Array.isArray(sheet.soundings) ? sheet.soundings : []).forEach(function (sounding) {
+            if (!Array.isArray(sounding) || sounding.length < 3) {
+                return;
+            }
             if (Math.abs(sounding[0]) > span || Math.abs(sounding[1]) > span) {
                 return;
             }
@@ -257,6 +267,94 @@ window.MaritimeChart = (function () {
                 })
             );
         }
+    }
+
+    /* The plotted course, drawn under everything else so marks and contacts sit on
+     * top of it rather than being hidden by it. */
+    function drawRoute(into, route) {
+        if (!route || route.length < 2) {
+            return;
+        }
+        var parts = [];
+        for (var i = 0; i < route.length; i++) {
+            var at = toChart({ east: route[i][0], north: route[i][1] });
+            parts.push((i ? "L" : "M") + at.x.toFixed(1) + " " + at.y.toFixed(1));
+        }
+        into.appendChild(node("path", { d: parts.join(" "), class: "maritime-chart-route" }));
+    }
+
+    /* Buoyage.
+     *
+     * Charted, so it stays on the paper in fog, at night and when nobody is looking
+     * - the same as the coastline. Only ships come and go with the lookout.
+     *
+     * Shaped by what each mark means rather than only coloured by it: a can, a cone,
+     * a diamond for a danger. A player who cannot tell red from green still has to be
+     * able to pass a buoy on the correct side, and that is not a small matter. */
+    function drawMarks(into, marks) {
+        (Array.isArray(marks) ? marks : []).forEach(function (mark) {
+            if (!mark || typeof mark.east !== "number" || typeof mark.kind !== "string") {
+                return;
+            }
+            var span = reach();
+            if (Math.abs(mark.east) > span * 1.05 || Math.abs(mark.north) > span * 1.05) {
+                return;
+            }
+            var at = toChart({ east: mark.east, north: mark.north });
+            var group = node("g", {
+                class: "maritime-chart-mark maritime-mark-" + mark.kind.replace(/ /g, "-"),
+                tabindex: "0",
+                role: "button"
+            });
+
+            if (mark.danger) {
+                group.appendChild(
+                    node("path", {
+                        d:
+                            "M " + at.x + " " + (at.y - 7) +
+                            " L " + (at.x + 6) + " " + at.y +
+                            " L " + at.x + " " + (at.y + 7) +
+                            " L " + (at.x - 6) + " " + at.y + " Z"
+                    })
+                );
+            } else if (mark.kind === "port hand") {
+                group.appendChild(
+                    node("rect", { x: at.x - 5, y: at.y - 5, width: 10, height: 10 })
+                );
+            } else if (mark.kind === "starboard hand") {
+                group.appendChild(
+                    node("path", {
+                        d: "M " + at.x + " " + (at.y - 7) + " L " + (at.x + 6) + " " +
+                            (at.y + 5) + " L " + (at.x - 6) + " " + (at.y + 5) + " Z"
+                    })
+                );
+            } else {
+                group.appendChild(node("circle", { cx: at.x, cy: at.y, r: 5 }));
+            }
+
+            var told = node("title");
+            told.textContent =
+                mark.label +
+                " - " +
+                mark.kind +
+                (mark.safe_water ? ", safe water to the " + compassOf(mark.safe_water) : "") +
+                (mark.danger ? ", foul ground" : "");
+            group.appendChild(told);
+            into.appendChild(group);
+        });
+    }
+
+    /* Buoyage answers a bearing for where the safe water lies; a player wants a
+     * point of the compass. */
+    function compassOf(bearing) {
+        if (typeof bearing !== "number") {
+            return String(bearing);
+        }
+        var points = [
+            "north", "north-east", "east", "south-east",
+            "south", "south-west", "west", "north-west"
+        ];
+        return points[Math.round((bearing % 360) / 45) % 8];
     }
 
     function drawCompass(into) {
@@ -441,6 +539,10 @@ window.MaritimeChart = (function () {
         });
 
         drawSheet(layers, state.chart);
+        if (state.chart) {
+            drawRoute(layers.marks, state.chart.route);
+            drawMarks(layers.marks, state.chart.marks);
+        }
         drawRings(layers.rings);
         drawContacts(layers.contacts, state.contacts, function (id) {
             MaritimeState.select(id);
@@ -465,6 +567,7 @@ window.MaritimeChart = (function () {
         reach: reach,
         ringLabel: ringLabel,
         askForSheet: askForSheet,
+        compassOf: compassOf,
         fitToContacts: fitToContacts,
         render: render
     };

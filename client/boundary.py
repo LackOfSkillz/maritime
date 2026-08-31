@@ -22,7 +22,7 @@ makes.
 
 """
 
-from evennia.server.signals import SIGNAL_OBJECT_POST_PUPPET
+from evennia.server.signals import SIGNAL_OBJECT_POST_PUPPET, SIGNAL_OBJECT_POST_UNPUPPET
 
 from . import transport
 
@@ -130,4 +130,42 @@ def _puppeted(sender, session=None, **kwargs):
         pass
 
 
+def _unpuppeted(sender, session=None, **kwargs):
+    """
+    A session has let go of a character.
+
+    Args:
+        sender (Object): The character released.
+        session (Session, optional): The connection that let go.
+
+    Notes:
+        The interface goes with them. A session that dropped a captain and is still
+        showing his quarterdeck would be showing a ship it no longer has any claim
+        to, and the next character it takes up might be standing in a field.
+
+    """
+    try:
+        if session is None:
+            return
+        session.ndb.maritime_mode = None
+        session.ndb.maritime_status = None
+        session.ndb.maritime_chart_stamp = None
+        transport.announce(session, _nothing())
+    except Exception:  # noqa: BLE001 - an interface is never worth a failed logout
+        pass
+
+
+def _nothing():
+    """
+    Returns:
+        mode (Mode): The ashore interface, which is to say none at all.
+
+    """
+    from .context import NONE
+    from .payloads import Mode
+
+    return Mode(mode=NONE)
+
+
 SIGNAL_OBJECT_POST_PUPPET.connect(_puppeted, dispatch_uid="maritime_client_puppet")
+SIGNAL_OBJECT_POST_UNPUPPET.connect(_unpuppeted, dispatch_uid="maritime_client_unpuppet")

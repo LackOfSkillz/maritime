@@ -542,3 +542,103 @@
     stroke-dasharray: 10 8;
     opacity: 0.6;
 }
+
+/* --- buoyage and the plotted course ----------------------------------------
+ *
+ * Marks are distinguished by shape as well as by colour: a can to port, a cone to
+ * starboard, a diamond for a danger. A player who cannot tell red from green still
+ * has to pass a buoy on the correct side, and getting that wrong sinks ships.
+ */
+
+.maritime-chart-mark {
+    cursor: pointer;
+}
+
+.maritime-chart-mark rect,
+.maritime-chart-mark path,
+.maritime-chart-mark circle {
+    fill: var(--maritime-text-soft);
+    stroke: var(--maritime-bg);
+    stroke-width: 1.2;
+}
+
+.maritime-mark-port-hand rect {
+    fill: #b4574c;
+}
+
+.maritime-mark-starboard-hand path {
+    fill: #5f8f62;
+}
+
+.maritime-mark-isolated-danger path,
+.maritime-mark-north-cardinal path,
+.maritime-mark-south-cardinal path,
+.maritime-mark-east-cardinal path,
+.maritime-mark-west-cardinal path {
+    fill: var(--maritime-caution);
+}
+
+.maritime-mark-safe-water circle {
+    fill: none;
+    stroke: var(--maritime-text-soft);
+    stroke-width: 2.5;
+}
+
+.maritime-chart-mark:focus-visible rect,
+.maritime-chart-mark:focus-visible path,
+.maritime-chart-mark:focus-visible circle {
+    stroke: var(--maritime-accent);
+    stroke-width: 3;
+}
+
+/* The course as pencilled on the paper: a thin dashed run through the marks. */
+.maritime-chart-route {
+    fill: none;
+    stroke: var(--maritime-accent);
+    stroke-width: 2;
+    stroke-dasharray: 12 6;
+    opacity: 0.7;
+}
+
+/* --- controls ---------------------------------------------------------------
+ *
+ * Plain buttons. Each is a way of typing a command that already existed, so they
+ * are styled as orders rather than as a game's action bar.
+ */
+
+.maritime-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--maritime-border);
+}
+
+.maritime-control {
+    flex: 1 1 auto;
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--maritime-text-soft);
+    background: var(--maritime-panel-raised);
+    border: 1px solid var(--maritime-border);
+    border-radius: calc(var(--maritime-radius) - 2px);
+    cursor: pointer;
+}
+
+.maritime-control:hover {
+    color: var(--maritime-accent);
+    border-color: var(--maritime-border-strong);
+}
+
+.maritime-control:active {
+    background: var(--maritime-panel);
+}
+
+.maritime-control:focus-visible {
+    outline: 2px solid var(--maritime-accent);
+    outline-offset: 1px;
+}

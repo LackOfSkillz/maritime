@@ -110,7 +110,10 @@ class Status(Payload):
 
     Attributes:
         vessel (dict): Who she is - name, and how she is rigged.
+        controls (list): What this person may be offered on this hull.
         company (dict): Who is aboard, and how they are bearing it.
+        battery (dict): Her guns, if she carries any.
+        cargo (dict): What is in her hold, if she has one.
         motion (dict): Where she points and where she is actually going.
         environment (dict): What the sea and sky are doing to her.
         propulsion (dict): What is driving her.
@@ -134,7 +137,10 @@ class Status(Payload):
     """
 
     vessel: dict = field(default_factory=dict)
+    controls: list = field(default_factory=list)
     company: dict = field(default_factory=dict)
+    battery: dict = field(default_factory=dict)
+    cargo: dict = field(default_factory=dict)
     motion: dict = field(default_factory=dict)
     environment: dict = field(default_factory=dict)
     propulsion: dict = field(default_factory=dict)
@@ -149,7 +155,10 @@ class Status(Payload):
         return {
             "version": self.version,
             "vessel": dict(self.vessel),
+            "controls": list(self.controls),
             "company": dict(self.company),
+            "battery": dict(self.battery),
+            "cargo": dict(self.cargo),
             "motion": dict(self.motion),
             "environment": dict(self.environment),
             "propulsion": dict(self.propulsion),
@@ -198,6 +207,8 @@ class ChartSheet(Payload):
         coastline (list): Polylines of the waterline, as offsets in metres.
         depths (dict): Fathom lines, keyed by the fathom they trace.
         soundings (list): `[east, north, fathoms]` figures to print.
+        marks (list): Buoyage on the paper, each with its kind and its meaning.
+        route (list): The plotted course, as offsets in metres.
         coverage (dict): The edges of the sheet, so the interface can show where
             surveying stops.
         revision (int): Changes when the drawing does, so an unchanged sheet is
@@ -215,6 +226,8 @@ class ChartSheet(Payload):
     coastline: list = field(default_factory=list)
     depths: dict = field(default_factory=dict)
     soundings: list = field(default_factory=list)
+    marks: list = field(default_factory=list)
+    route: list = field(default_factory=list)
     coverage: dict = field(default_factory=dict)
     revision: int = 0
 
@@ -229,6 +242,8 @@ class ChartSheet(Payload):
             "coastline": list(self.coastline),
             "depths": {str(line): paths for line, paths in self.depths.items()},
             "soundings": list(self.soundings),
+            "marks": list(self.marks),
+            "route": list(self.route),
             "coverage": dict(self.coverage),
             "revision": self.revision,
         }

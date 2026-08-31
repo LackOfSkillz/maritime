@@ -191,17 +191,28 @@ def broadcast_status(vessel):
     if not listening:
         return 0
 
-    status = status_for(vessel)
-    if status is None:
-        return 0
+    # One board per authority, not one per ship. A passenger and her captain are
+    # looking at the same weather and very different sets of controls, and sending
+    # one of them the other's would either offer a passenger the helm or take it
+    # away from the master. Two readings at most, so the common case still builds
+    # the expensive part once.
+    from .context import COMMAND, resolve_maritime_ui_context
 
-    message = status.as_message()
-    if message == vessel.ndb.maritime_status:
-        return 0
-    vessel.ndb.maritime_status = message
-
+    boards = {}
     told = 0
     for session in listening:
+        context = resolve_maritime_ui_context(getattr(session, "puppet", None))
+        commanding = context == COMMAND
+        if commanding not in boards:
+            boards[commanding] = status_for(vessel, commanding=commanding)
+        status = boards[commanding]
+        if status is None:
+            continue
+
+        message = status.as_message()
+        if message == session.ndb.maritime_status:
+            continue
+        session.ndb.maritime_status = message
         if announce(session, status, "status"):
             told += 1
 

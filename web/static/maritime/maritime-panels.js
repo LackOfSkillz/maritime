@@ -342,6 +342,10 @@ window.MaritimePanels = (function () {
         if (typeof motion.speed_over_ground === "number") {
             into.appendChild(row("Over the ground", knots(motion.speed_over_ground)));
         }
+        var wheel = helmControls(state);
+        if (wheel) {
+            into.appendChild(wheel);
+        }
     }
 
     /* Condition, worst first, and only the tracks the server reported. A ship with
@@ -367,6 +371,10 @@ window.MaritimePanels = (function () {
         }
         if (driving.anchor) {
             into.appendChild(row("Anchor", title(driving.anchor)));
+        }
+        var canvas = sailControls(state);
+        if (canvas) {
+            into.appendChild(canvas);
         }
         conditionBody(state, into);
     }
@@ -407,6 +415,14 @@ window.MaritimePanels = (function () {
         }
         if (sea.sea_state) {
             into.appendChild(row("Sea", title(sea.sea_state)));
+        }
+        var tools = controlsFor(state, [
+            { key: "sound", label: "SOUND", title: "Cast the lead" },
+            { key: "fix", label: "TAKE A FIX", title: "Fix her position" },
+            { key: "scan", label: "SCAN", title: "Sweep the horizon" }
+        ]);
+        if (tools) {
+            into.appendChild(tools);
         }
     }
 
@@ -487,8 +503,117 @@ window.MaritimePanels = (function () {
         });
     }
 
+    /* A control is a way of typing a command. It sends the name of an action and
+     * whatever that action carries; the server rebuilds the command line from its own
+     * table, so nothing typed here reaches one. */
+    function act(action, detail) {
+        if (!window.Evennia || typeof Evennia.msg !== "function") {
+            return;
+        }
+        var payload = detail || {};
+        payload.action = action;
+        Evennia.msg("maritime_action", [], payload);
+    }
+
+    function control(label, action, detail, title) {
+        var made = element("button", "maritime-control", label);
+        made.type = "button";
+        made.title = title || label;
+        made.setAttribute("aria-label", title || label);
+        made.addEventListener("click", function () {
+            act(action, detail);
+        });
+        return made;
+    }
+
+    function has(state, key) {
+        var offered = (state.status && state.status.controls) || [];
+        return offered.indexOf(key) !== -1;
+    }
+
+    /* Controls are drawn because the server said this person may have them. It says
+     * so again when one is pressed, so this list is a courtesy rather than a
+     * permission - a passenger who forges a press is refused by the command, in the
+     * same words a passenger who typed it would be. */
+    function controlsFor(state, keys) {
+        var bar = element("div", "maritime-controls");
+        var drawn = 0;
+        keys.forEach(function (spec) {
+            if (!has(state, spec.key)) {
+                return;
+            }
+            bar.appendChild(control(spec.label, spec.key, spec.detail, spec.title));
+            drawn += 1;
+        });
+        return drawn ? bar : null;
+    }
+
+    function helmControls(state) {
+        return controlsFor(state, [
+            { key: "port", label: "◀ 10°", detail: { degrees: 10 }, title: "Ten degrees to port" },
+            { key: "steady", label: "STEADY", title: "Steady as she goes" },
+            { key: "starboard", label: "10° ▶", detail: { degrees: 10 }, title: "Ten degrees to starboard" }
+        ]);
+    }
+
+    function sailControls(state) {
+        if (!has(state, "sail")) {
+            return null;
+        }
+        var bar = element("div", "maritime-controls");
+        ["furled", "reefed", "working", "full", "battle"].forEach(function (plan) {
+            bar.appendChild(
+                control(title(plan), "sail", { plan: plan }, "Set " + plan + " sail")
+            );
+        });
+        return bar;
+    }
+
+    function batteryBody(state, into) {
+        var guns = (state.status && state.status.battery) || {};
+        if (!guns.carried) {
+            into.appendChild(element("p", "maritime-empty", "She carries no guns."));
+            return;
+        }
+        into.appendChild(row("Carried", String(guns.carried)));
+        into.appendChild(row("Ready", String(guns.ready || 0)));
+        if (guns.dismounted) {
+            into.appendChild(row("Dismounted", String(guns.dismounted), "maritime-attention"));
+        }
+        if (guns.shot && guns.shot.length) {
+            into.appendChild(row("Loaded with", guns.shot.map(title).join(", ")));
+        }
+    }
+
+    function cargoBody(state, into) {
+        var hold = (state.status && state.status.cargo) || {};
+        if (!hold.hold && !hold.deadweight) {
+            into.appendChild(element("p", "maritime-empty", "She has no hold."));
+            return;
+        }
+        if (typeof hold.mass === "number") {
+            into.appendChild(row("Aboard", hold.mass.toFixed(1) + " / " + hold.deadweight + " t"));
+        }
+        if (typeof hold.draft === "number") {
+            into.appendChild(row("Draught", hold.draft.toFixed(2) + " m"));
+        }
+        if (typeof hold.freeboard === "number") {
+            /* Freeboard is the number that decides whether a sea comes aboard, so
+             * a low one is worth colouring rather than merely printing. */
+            into.appendChild(
+                row(
+                    "Freeboard",
+                    hold.freeboard.toFixed(2) + " m",
+                    hold.freeboard < 0.4 ? "maritime-attention" : null
+                )
+            );
+        }
+    }
+
     var BODIES = {
         helm: helmBody,
+        battery: batteryBody,
+        cargo: cargoBody,
         sails: sailsBody,
         crew: crewBody,
         navigation: navigationBody,
@@ -533,6 +658,7 @@ window.MaritimePanels = (function () {
         PANELS: PANELS,
         setUnits: setUnits,
         isReadable: isReadable,
+        act: act,
         has: has,
         pickScale: pickScale,
         reading: reading,

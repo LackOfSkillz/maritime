@@ -15,8 +15,9 @@ step to forget.
 """
 
 from ..vessel import vessel_in
-from .context import resolve_maritime_ui_context
+from .context import COMMAND, PASSENGER, resolve_maritime_ui_context
 from .payloads import CAPABILITIES, ChartSheet, Contacts, Mode, Status, Sync
+from .controls import offered as controls_offered
 
 
 def mode_for(character, room=None):
@@ -41,7 +42,7 @@ def mode_for(character, room=None):
     )
 
 
-def status_for(vessel):
+def status_for(vessel, commanding=True):
     """
     What her instruments read, as far as anybody aboard may know it.
 
@@ -62,7 +63,11 @@ def status_for(vessel):
         gap between them is the whole of what the water is doing to her.
 
     """
-    if vessel is None:
+    # A hull that has been destroyed under a session comes back as None from
+    # Evennia, and one being taken apart mid-tick may answer partially. Neither is
+    # worth an interface falling over, and the honest answer to "what do her
+    # instruments read" for a ship that is gone is nothing at all.
+    if vessel is None or getattr(vessel, "maritime_position", None) is None:
         return None
 
     motion = {"heading": _rounded(vessel.heading), "speed_through_water": vessel.speed}
@@ -78,8 +83,11 @@ def status_for(vessel):
         motion["speed_over_ground"] = over_ground
 
     return Status(
+        controls=controls_offered(vessel, COMMAND if commanding else PASSENGER),
         vessel=_who_she_is(vessel),
         company=_who_is_aboard(vessel),
+        battery=_what_she_carries_in_guns(vessel),
+        cargo=_what_she_carries_below(vessel),
         motion=motion,
         environment=_what_the_sea_is_doing(vessel),
         propulsion=_what_drives_her(vessel),
@@ -227,10 +235,170 @@ def chart_for(vessel, reach=10000.0):
         reach=reach,
         coastline=coast,
         depths=depths,
+        marks=_marks_within(here, reach),
+        route=_route_of(vessel, here),
         soundings=cartography.soundings(grid, west, south, span, here),
         coverage=cartography.coverage(chart, here),
         revision=int(now // 60),
     )
+
+
+def _what_she_carries_in_guns(vessel):
+    """
+    Returns:
+        battery (dict): Her guns, or nothing if she carries none.
+
+    Notes:
+        A hull with no guns reports no battery, so no battery panel is drawn -
+        which is the composition rule, not a special case for unarmed ships. A
+        kayak is not a warship with an empty gun deck.
+
+        Reported as counts rather than a list of every piece. A captain wants to
+        know how many bear and how many are ready; which particular gun is being
+        served is the gun deck's business and is on the `guns` report already.
+
+    """
+    mounts = getattr(vessel, "mounts", ())
+    if not mounts:
+        return {}
+
+    serviceable = set(vessel.serviceable_mounts)
+    now = _now()
+    ready = sum(1 for mount in serviceable if mount.loaded and now >= mount.ready_at)
+    return {
+        "carried": len(mounts),
+        "serviceable": len(serviceable),
+        "ready": ready,
+        "dismounted": len(mounts) - len(serviceable),
+        "shot": sorted({mount.shot.key for mount in serviceable if mount.shot}),
+    }
+
+
+def _what_she_carries_below(vessel):
+    """
+    Returns:
+        cargo (dict): What is in her hold and what it is doing to her.
+
+    Notes:
+        Mass and volume both, because a hull can run out of either and they are
+        different problems: a ship full of feathers is out of room with tons to
+        spare, and one full of shot is down to her marks with the hold half empty.
+
+        Her draught is here rather than with the other instruments because it is a
+        consequence of what she is carrying, and a captain reading it wants the
+        reason next to the number.
+
+    """
+    hold = getattr(vessel, "hold_volume", 0.0)
+    deadweight = getattr(vessel, "deadweight", 0.0)
+    if not hold and not deadweight:
+        # No hold and nothing she may carry: a boat rather than a ship, and there is
+        # no cargo panel to draw for her.
+        return {}
+
+    out = {
+        "mass": round(getattr(vessel, "cargo_tonnes", 0.0), 1),
+        "deadweight": round(deadweight, 1),
+        "hold": round(hold, 1),
+    }
+
+    draft = getattr(vessel, "draft", None)
+    if draft:
+        out["draft"] = round(draft, 2)
+    freeboard = getattr(vessel, "freeboard", None)
+    if freeboard:
+        out["freeboard"] = round(freeboard, 2)
+    return out
+
+
+def _now():
+    """
+    Returns:
+        now (float): The time on the simulation clock.
+
+    """
+    from .. import config
+
+    return config.time_provider().now()
+
+
+def _marks_within(here, reach):
+    """
+    The buoyage on the paper, out to the edge of the sheet.
+
+    Args:
+        here (WorldPosition): Where she reckons she is.
+        reach (float): How far the sheet extends, in metres.
+
+    Returns:
+        marks (list): Each mark as an offset, with its kind and what it means.
+
+    Notes:
+        Charted rather than sighted, and the distinction is the one the whole panel
+        turns on. A buoy is a thing somebody wrote down: it stays on the paper in
+        fog, at night, and when nobody is looking at it, exactly as the coastline
+        does. Only *ships* come and go with the lookout.
+
+        The meaning travels beside the kind, as the two facts buoyage already
+        answers: which way the safe water lies, and whether the mark is there
+        because something will sink you. A mark whose significance a player has to
+        look up is a mark that will be passed on the wrong side.
+
+    """
+    from .. import config
+    from ..buoyage import marks_danger, safe_water_from
+
+    network = config.navigation_network()
+    if network is None:
+        return []
+
+    out = []
+    for mark in network.marks():
+        if mark.position.region != here.region:
+            continue
+        east = mark.position.x - here.x
+        north = mark.position.y - here.y
+        if abs(east) > reach or abs(north) > reach:
+            continue
+        out.append(
+            {
+                "id": mark.key,
+                "east": round(east, 1),
+                "north": round(north, 1),
+                "kind": mark.kind,
+                "label": mark.key,
+                "safe_water": safe_water_from(mark.kind),
+                "danger": marks_danger(mark.kind),
+            }
+        )
+    return out
+
+
+def _route_of(vessel, here):
+    """
+    The course she is following, if she has one.
+
+    Args:
+        vessel (Vessel): The hull.
+        here (WorldPosition): Where she reckons she is.
+
+    Returns:
+        route (list): `[east, north]` for each mark still to make.
+
+    Notes:
+        Offsets from the reckoning like everything else, so a course plotted on a
+        chart that has drifted is drawn where the navigator believes it runs. That
+        is what he would have pencilled on the paper.
+
+    """
+    route = getattr(vessel, "route", None)
+    if not route:
+        return []
+    return [
+        [round(mark.position.x - here.x, 1), round(mark.position.y - here.y, 1)]
+        for mark in route.waypoints
+        if mark.position.region == here.region
+    ]
 
 
 def _what_the_sea_is_doing(vessel):

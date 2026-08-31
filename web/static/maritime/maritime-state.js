@@ -70,7 +70,29 @@ window.MaritimeState = (function () {
 
     /* --- applying what the server said ------------------------------------- */
 
+    /* Everything arriving from the server goes through here first.
+     *
+     * A payload from a newer server may carry fields this build has never heard of,
+     * and one from an older server may be missing fields this build expects. Neither
+     * may throw: a client that falls over on an unfamiliar message is a client that
+     * breaks every time the server is upgraded before it is. Unknown fields are kept
+     * and ignored; missing ones stay missing and are simply not drawn. */
+    function usable(payload) {
+        if (!payload || typeof payload !== "object") {
+            return null;
+        }
+        var version = payload.version;
+        if (typeof version === "number" && version > PROTOCOL_VERSION && window.console) {
+            console.warn(
+                "maritime: server speaks protocol " + version + ", this client speaks " +
+                PROTOCOL_VERSION + " - showing what is recognised"
+            );
+        }
+        return payload;
+    }
+
     function applyMode(payload) {
+        payload = usable(payload);
         if (!payload) {
             return;
         }
@@ -91,6 +113,7 @@ window.MaritimeState = (function () {
     }
 
     function applyStatus(payload) {
+        payload = usable(payload);
         if (!payload) {
             return;
         }
@@ -102,17 +125,19 @@ window.MaritimeState = (function () {
     }
 
     function applyContacts(payload) {
+        payload = usable(payload);
         if (!payload) {
             return;
         }
         /* Replaced wholesale, never merged. A contact list is what the lookout has
          * right now; merging would keep ships on the board after they were lost, and
          * a mark that outlives the sighting is a radar return. */
-        state.contacts = payload.contacts || [];
+        state.contacts = Array.isArray(payload.contacts) ? payload.contacts : [];
         changed();
     }
 
     function applyChart(payload) {
+        payload = usable(payload);
         if (!payload) {
             return;
         }
@@ -125,7 +150,7 @@ window.MaritimeState = (function () {
             return;
         }
         state.serverVersion = payload.version || null;
-        state.capabilities = payload.capabilities || [];
+        state.capabilities = Array.isArray(payload.capabilities) ? payload.capabilities : [];
         applyMode(payload.mode);
         if (payload.status) {
             applyStatus(payload.status);
@@ -180,6 +205,7 @@ window.MaritimeState = (function () {
 
     return {
         PROTOCOL_VERSION: PROTOCOL_VERSION,
+        usable: usable,
         get: get,
         onChange: onChange,
         applyMode: applyMode,
