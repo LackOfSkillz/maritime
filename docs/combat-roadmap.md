@@ -422,7 +422,22 @@ Honest, dramatic, and structurally incapable of leaking what the fiction has not
     touch their layout.
   - A player can be on our deck inside a game with its own HUD. We do not own the screen.
 
-**Open:** whether the reference panel lives in this repo at all or in a companion one.
+**A design concept exists:** `ideas/maritime-interface-mockup.png`, with notes in
+`ideas/README.md`. It settles the layout question - additive, a status strip and a
+right-hand column around the game's own output pane, so nothing has to stomp a player's
+saved arrangement. It also shows an unidentified contact sitting in the list as
+"Unknown Sail", which is `Sighting.level` doing exactly the job the repeater rule asks
+of it.
+
+It assumes several things that are the host game's rather than ours - gold, experience,
+stamina, a rank, and morale as a bare percentage where ours is banded on purpose. The
+payload must not carry any of them.
+
+**Open:** whether the reference panel lives in this repo at all or in a companion one,
+and whether its buttons send ordinary commands - in which case the panel is a keyboard
+and needs no new server surface - or a control channel of their own, which would need
+every one of them to pass the same authority check `MARITIME_COMMAND_POLICY` already
+performs.
 
 ## T2. PROVISIONS, FISHING AND SHORE LEAVE  *(TBD)*
 
