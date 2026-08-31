@@ -10,6 +10,7 @@ from ..rng import COMBAT
 from ..vessel import WEATHER_DECKS
 from ..ammunition import CREW, DEFAULT_SHOT, SHOT_TYPES, shot_named
 from ..damage import serving_time
+from ..sailing import hands_aloft
 from ..weapons import discharge, fire, serve
 from .base import MaritimeCommand
 
@@ -98,7 +99,13 @@ class CmdLoad(MaritimeCommand):
         served = 0
         for mount in vessel.serviceable_mounts:
             if not mount.loaded:
-                seconds = serving_time(mount.weapon.reload_time, vessel.damage, vessel.hesitation)
+                # Hands on sheets and halyards are hands that are not at the guns,
+                # so a ship that has shortened down serves her battery faster. That
+                # is the other half of what fighting sail buys, and the reason a ship
+                # cleared for action carries less canvas than one on passage.
+                seconds = serving_time(
+                    mount.weapon.reload_time, vessel.damage, vessel.hesitation
+                ) * (1.0 + hands_aloft(vessel.sail_plan))
                 vessel.replace_mount(serve(mount, now, seconds, charge))
                 served += 1
 
@@ -196,11 +203,6 @@ class CmdFire(MaritimeCommand):
                 # What the shot did to her, rather than that it connected. A hit is
                 # a number; a mast coming down is the thing anybody will remember.
                 #
-                # Every shot goes into the hull for now. Which track a shot takes is
-                # the gunner's *intent* - ball to sink her, chain to bring her masts
-                # down, grape to clear her decks - and that is the next item. Until
-                # then this is deliberately the sinking one, so the placeholder is at
-                # least the honest default rather than a lucky guess.
                 # Which track it tells on is what the gunner loaded, which is what
                 # he meant to do. Ball opens her, chain brings her spars down, grape
                 # clears her decks - and the crew are people rather than a track, so

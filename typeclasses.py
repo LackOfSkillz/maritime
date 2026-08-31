@@ -421,7 +421,13 @@ class Vessel(
         limits = self.working_limits
         under_sail = self.sail_plan.area > 0.0 and wind.speed > 0.0
         if under_sail:
-            orders = HelmOrders(heading=orders.heading, speed=self.sailing_speed())
+            # Asked once and used twice: to work out how fast she is going, and to
+            # tell the deck why. Querying the register a second time to narrate what
+            # has just been computed would double the cost of the commonest step
+            # in the simulation.
+            shadow = self.shadow()
+            orders = HelmOrders(heading=orders.heading, speed=self.sailing_speed(shadow))
+            self.narrator.in_the_lee(shadow)
         elif self.under_oars:
             # A pulling boat is the opposite of a sailing one: she is not asked how
             # fast to go, she goes as fast as the people in her are working. Holding

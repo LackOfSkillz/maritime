@@ -209,6 +209,24 @@ def share_of(amount, length):
     return max(0.0, amount) / resilience(length)
 
 
+def _rigging_exposure(plan):
+    """
+    Args:
+        plan (SailPlan): How much canvas is set.
+
+    Returns:
+        exposure (float): How much of her rigging is there to be hit.
+
+    Notes:
+        Imported late. `sailing` reads `canvas_drawing` from here, so reaching for
+        it at module level would close the circle.
+
+    """
+    from .sailing import rigging_exposed
+
+    return rigging_exposed(plan)
+
+
 def casualties_from(amount, length, complement):
     """
     How many of her people a weight of damage takes.
@@ -416,7 +434,16 @@ class Damaged:
 
         """
         before = set(structural(self.damage))
-        self.damage = self.damage.hurt(track, share_of(amount, self.length))
+
+        # Rigging is the one track whose exposure she controls. A ship under a full
+        # press has everything aloft for chain to cut; one under fighting sail has
+        # handed most of it, and cannot be dismasted as easily. She cannot make
+        # herself immune - the masts are still up there.
+        weight = amount
+        if track == RIGGING:
+            weight *= _rigging_exposure(self.sail_plan)
+
+        self.damage = self.damage.hurt(track, share_of(weight, self.length))
         return tuple(wrong for wrong in structural(self.damage) if wrong not in before)
 
     def take_crew_casualties(self, amount):

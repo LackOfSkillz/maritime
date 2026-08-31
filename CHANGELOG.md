@@ -13,6 +13,54 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add blanketing: a ship steals the wind of anyone in her lee. A cone reaches
+  downwind of every hull, its length scaled by the canvas she has aloft, and anyone
+  inside it loses drive in proportion to how deep in it they are - tapering both
+  across the cone and along it, because the edge of a blanket is a gradient rather
+  than a wall. This is the first thing in the contrib that makes a ship's position
+  relative to *other ships* matter rather than only her position relative to the
+  wind, which is what the weather gage was actually worth.
+- Make the blanket the fourth side of the fighting-sail trade, and the one a captain
+  is least likely to have thought about: shortening down shortens your shadow too,
+  so clearing for action gives up an advantage you may not have known you had.
+- Take the worst single shadow rather than the sum of them. Lying behind two ships
+  is not twice as calm as lying behind one - the air is already spoiled, and adding
+  shadows would let a squadron becalm a ship entirely. Nobody is becalmed outright
+  in any case: the air is disturbed rather than absent, or the weather gage would be
+  an execution rather than an advantage.
+- Say who is doing it. `shadow()` returns the ship alongside the number and the mate
+  names her - "Weatherly has the wind of us, sir" going in, "Our wind again, sir"
+  coming out - once each, keyed by *who* rather than by whether, so passing out of
+  one ship's lee straight into another's is reported as the new ship instead of
+  passing in silence. A ship that silently lost a third of her speed would just send
+  her captain hunting for damage that is not there; the answer to "why are we
+  slowing" has to name a ship, because the remedy is to steer away from her. The tick
+  asks once and uses the answer twice rather than querying the register again to
+  narrate what it has just worked out.
+- Size the broad-phase search on the longest hull afloat rather than on her own,
+  because the shadow a ship is looking for belongs to whoever is casting it. A
+  cutter searching one cutter's length downwind would never find the three-decker
+  two cables to windward taking her wind, which is the case the gage is most worth
+  having.
+
+- Add fighting sail, and make every part of it derived rather than granted. The
+  other plans answer how hard it is blowing; this one answers what is about to
+  happen. She carries less than working sail and more than reefed - enough to
+  manoeuvre, because a ship that cannot manoeuvre is a target - and what that buys
+  falls out of the canvas: less aloft for chain to cut, and fewer hands needed to
+  work it, so they are back at the guns. Slower, harder to dismast, and firing
+  faster, and a captain has to judge whether he still wants the speed.
+- Keep her off the sailing master's ladder. Fighting sail is rated to stand more
+  wind than working sail, so a mate choosing the largest plan the weather allows
+  reached for her in a fresh breeze - clearing the ship for action on a quiet passage
+  with nothing in sight. The weather plans are now their own list: what a plan is
+  *for* is not written in its sail area, and a captain still orders her whenever he
+  likes. He simply never gets her by accident.
+- Two things that keep it from being a free upgrade: a furled ship still has masts,
+  yards and standing rigging and so cannot be made immune by handing her sails, and
+  shortening down does nothing at all for her hull - a ball goes through the same
+  planking however much canvas is set.
+
 - Add raking, which turns out to cost nothing. A shot that strikes end-on runs the
   length of a ship instead of stopping at a plank, and the angle on her bow *is* the
   point of impact - a quantity the system has computed since observation was built.

@@ -30,6 +30,13 @@ from .spatial import ContactIndex
 # real test is done per target, against that target's own height.
 MAX_TARGET_HEIGHT = 60.0
 
+# Length in metres of the longest hull worth widening a search for - roughly a
+# first-rate. Used only to pick a broad-phase radius, on the same terms as the
+# height above: a ship's blanket reaches downwind in proportion to HER length, not
+# the length of whoever is lying in it, so a cutter has to look further than her own
+# shadow to find the three-decker taking her wind. The real test is done per target.
+MAX_HULL_LENGTH = 80.0
+
 
 class VesselTraffic:
     """

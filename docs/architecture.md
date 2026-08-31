@@ -893,6 +893,100 @@ Services coordinate the simulation. They do not bypass it.
 
 ## 12. Damage, loss and the water column
 
+**Fighting sail is a three-way trade, and nothing about it is granted.** The other sail
+plans answer how hard it is blowing; this one answers what is about to happen. It carries
+less than working sail and more than reefed — enough to manoeuvre, because a ship that cannot
+manoeuvre is a target — and everything it buys is *derived from that canvas area* rather than
+attached to the plan:
+
+```text
+                 speed      chain tells     the battery
+full sail        fastest      x1.00           slowest
+fighting sail    slower       x0.62           faster
+```
+
+She is deliberately absent from the ladder the sailing master climbs. She stands more wind
+than working sail, so a mate picking the largest plan the weather allows reached for her in a
+fresh breeze and cleared the ship for action on a quiet passage with nothing in sight — a
+tactical plan set for a meteorological reason. Sail area does not say what a plan is *for*,
+so the weather plans are their own list; a captain orders fighting sail whenever he likes and
+never gets it by accident.
+
+Less aloft is less for chain to cut, and fewer hands are needed to work it, so they are back
+at the guns. Two things keep it honest: a furled ship still has masts, yards and standing
+rigging, so she cannot make herself immune by handing her sails; and shortening down does
+nothing whatever for her hull, because a ball goes through the same planking however much
+canvas is set.
+
+**A ship steals the wind of anyone in her lee, and that is the fourth side of the trade.**
+A cone reaches downwind of every hull. Its length is scaled by the canvas she has aloft, so
+the same hull throws a very different shadow depending on what she has set:
+
+```text
+a 46 m frigate      her blanket reaches
+full sail                368 m
+fighting sail            212 m
+bare poles                55 m
+```
+
+A bare hull still spoils a little air, because she is still something standing up out of the
+water; but she cannot spoil much, and a ship that has shortened down for action has given up
+an advantage she may not have known she had. That is what makes fighting sail a judgement
+rather than a checkbox: it costs speed, buys rigging and gunnery — and quietly hands your
+enemy back his wind.
+
+Inside the cone the loss tapers twice, because the edge of a blanket is a gradient rather
+than a wall. It tapers **along** the cone with distance, and **across** it with how fine you
+lie to dead downwind of her:
+
+```text
+astern of a frigate under full sail       lying 150 m astern of her
+   50 m      47.5% of her drive gone         dead in line   32.6% gone
+  150 m      32.6%                           10° off        21.3%
+  300 m      10.2%                           20° off         3.1%
+  400 m       none — outside her reach       26° off         none
+```
+
+Two consequences follow from the second column and are the point of the whole feature.
+Luffing up a few degrees to get out of somebody's lee is a *manoeuvre* rather than a wait,
+and a ship that has worked her way into the cone has done something worth doing.
+
+Nobody is becalmed outright. The air is disturbed rather than absent, and a ship that stopped
+dead would make the weather gage an execution rather than an advantage. For the same reason
+the worst single shadow counts rather than the sum of them: lying behind two ships is not
+twice as calm as lying behind one, and adding shadows would let a squadron becalm a ship
+entirely, which is not a thing that happens.
+
+One detail in the lookup is worth naming because getting it wrong is silent. The broad-phase
+search is sized on the **longest hull afloat**, not on the searching ship's own length,
+because the shadow she is looking for belongs to whoever is casting it. A cutter searching
+one cutter's length downwind would never find the three-decker two cables to windward taking
+her wind — which is precisely the case the weather gage is most worth having. The real test
+is still done per target, against that target's own reach, on the same terms as
+`MAX_TARGET_HEIGHT` in the register.
+
+**And the ship responsible is named out loud.** This is not decoration. A ship that
+silently lost a third of her speed would be an invisible penalty, and her captain would go
+looking for damage that is not there; the answer to "why are we slowing" has to be "because
+she is to windward of us", because the remedy is to alter course away from her. So
+`shadow()` returns the vessel alongside the number, and the mate says so:
+
+```text
+The sails slat and go slack. The mate says, "Weatherly has the wind of us, sir."
+...
+The mate says, "Our wind again, sir." The sails fill and stiffen.
+```
+
+Said once on the way in and once on the way out, on the same `.ndb` machinery as the berth
+warning — and keyed by *who* has the wind of her rather than by whether anyone does, so that
+passing out of one ship's lee straight into another's is reported as the new ship instead of
+being passed over in silence. There is a threshold below which nobody remarks on it, because
+the edge of a cone is a gradient and a ship sailing along one would otherwise report entering
+and leaving it every few seconds.
+
+The tick asks once and uses the answer twice — for her speed and for the narration — rather
+than querying the register a second time to say what it has just computed.
+
 **Raking is not a rule.** A shot that strikes a ship end-on runs her whole length instead of
 stopping at a plank, and goes through everything between: guns, gun crews, and the company of
 a deck. It was the manoeuvre of the age, and here it costs nothing to model, because the

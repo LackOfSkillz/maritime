@@ -118,7 +118,80 @@ REEFED = SailPlan("reefed", "reefed sail", 0.45, 18.0)
 WORKING = SailPlan("working", "working sail", 0.75, 12.0)
 FULL = SailPlan("full", "full sail", 1.0, 8.0)
 
-SAIL_PLANS = (FURLED, STORM, REEFED, WORKING, FULL)
+#: Fighting sail: topsails, courses handed. Not a weather plan at all - the others are
+#: answers to how hard it is blowing, and this is an answer to what is about to happen.
+#:
+#: It sits between reefed and working on area, and what makes it a *decision* is that
+#: everything it buys is derived from that area rather than granted. Less canvas aloft is
+#: less canvas to be shot away, and fewer hands are needed to work it, so they are free to
+#: serve the guns. She is slower, harder to dismast, and fires faster - and a captain has to
+#: judge whether he still needs the speed.
+BATTLE = SailPlan("battle", "fighting sail", 0.5, 20.0)
+
+SAIL_PLANS = (FURLED, STORM, REEFED, BATTLE, WORKING, FULL)
+
+#: The ladder the sailing master climbs, which is *not* every plan she can set.
+#:
+#: Fighting sail is deliberately absent. It is rated to stand more wind than working
+#: sail, so a mate choosing the largest plan the weather allows would reach for it in a
+#: fresh breeze and shorten down for action on a quiet passage with nobody in sight -
+#: setting a tactical plan for a meteorological reason. Sail area is the wrong axis to
+#: sort it on because carrying capacity is not what it is for.
+#:
+#: A captain can still order it whenever he likes; that is the point of it. He simply
+#: never gets it by accident.
+WEATHER_PLANS = (FURLED, STORM, REEFED, WORKING, FULL)
+
+#: How much of her rigging is exposed even with every sail handed. Masts, yards and
+#: standing rigging are still up there - she cannot make herself immune by furling.
+BARE_POLE_EXPOSURE = 0.25
+
+#: What share of her company is aloft under a full press of sail. A third: working a
+#: ship hard takes most of the watch on deck, and the rest of the company is below,
+#: asleep, or at the guns.
+FULL_PRESS_HANDS = 0.35
+
+
+def rigging_exposed(plan):
+    """
+    How much of her rigging is there to be shot away.
+
+    Args:
+        plan (SailPlan): How much canvas is set.
+
+    Returns:
+        exposure (float): Multiplier on rigging damage she takes, 0 to 1.
+
+    Notes:
+        Derived from the canvas rather than granted to a plan, which is what stops
+        fighting sail being a free upgrade. A ship under bare poles has almost
+        nothing aloft for chain to cut; a ship under a full press has everything.
+
+        Never quite nothing, even furled: masts, yards and standing rigging are
+        still up there, and a ship cannot make herself immune by handing her sails.
+
+    """
+    return BARE_POLE_EXPOSURE + (1.0 - BARE_POLE_EXPOSURE) * max(0.0, min(1.0, plan.area))
+
+
+def hands_aloft(plan):
+    """
+    What share of her people are working the canvas.
+
+    Args:
+        plan (SailPlan): How much is set.
+
+    Returns:
+        share (float): Fraction of the company tied up aloft, 0 to 1.
+
+    Notes:
+        The other half of the fighting-sail trade. Hands on sheets and halyards are
+        hands that are not at the guns, so shortening down frees a battery - and it
+        is why a ship cleared for action carries less canvas than one making a
+        passage, quite apart from what a chain shot would do to it.
+
+    """
+    return max(0.0, min(1.0, plan.area)) * FULL_PRESS_HANDS
 
 
 def sail_plan(key):
@@ -395,9 +468,80 @@ class Rigged:
         """
         self.db.polar_curve = curve
 
-    def sailing_speed(self):
+    def blanketed(self):
+        """
+        How much of her wind is being taken by ships to windward.
+
+        Returns:
+            lost (float): The fraction of her drive spoiled, 0 to 1.
+
+        Notes:
+            The number alone, for callers who only want to know how slow she is.
+            `shadow` answers the same question and names the ship responsible.
+
+        """
+        return self.shadow().lost
+
+    def shadow(self):
+        """
+        Whose lee she is lying in, and how deep in it she is.
+
+        Returns:
+            blanket (Blanket): The worst shadow on her, and who casts it.
+
+        Notes:
+            Gathered from the traffic register within the furthest any hull could
+            possibly reach downwind, so a fleet action does not become a comparison
+            of every ship against every other. Most of the time the answer is that
+            nobody is anywhere near her lee and the whole thing costs one query.
+
+            The vessel comes back beside the number because a captain has to be told
+            *who* has the wind of him. A ship that quietly lost a third of her speed
+            with nothing said would be an invisible penalty; a ship whose mate
+            reports the sails slatting because there is a frigate to windward is a
+            situation, and that difference is the whole point of the feature.
+
+        """
+        from .traffic import MAX_HULL_LENGTH, traffic
+
+        position = self.maritime_position
+        if position is None or self.sail_plan.area <= 0.0:
+            return NO_SHADOW
+
+        wind = self.wind_here()
+        if wind.speed <= 0.0:
+            return NO_SHADOW
+
+        # The broad phase is sized on the longest hull afloat rather than on her own,
+        # because the shadow she is looking for belongs to the ship casting it. A
+        # cutter searching one cutter's length downwind would never find the
+        # three-decker two cables to windward that is taking her wind - which is the
+        # case the weather gage is most worth having.
+        reach = blanket_reach(max(self.length, MAX_HULL_LENGTH), FULL)
+
+        # The worst single shadow rather than the sum of them, on the same grounds as
+        # `blanketing` - this is that rule again, over hulls instead of bare data, and
+        # kept here rather than delegated so the ship responsible survives the search.
+        worst = NO_SHADOW
+        for other in traffic().near(position, reach):
+            if other is self or other.maritime_position is None:
+                continue
+            lost = blanketed_by(
+                position, other.maritime_position, other.length, other.sail_plan, wind
+            )
+            if lost > worst.lost:
+                worst = Blanket(vessel=other, lost=lost)
+        return worst
+
+    def sailing_speed(self, shadow=None):
         """
         The best speed she can make as she is currently set.
+
+        Args:
+            shadow (Blanket, optional): Whose lee she is in, if the caller has
+                already asked. Passed in on the simulation tick so a ship does not
+                query the register twice in one step - once to find out how fast she
+                is going, and again to say why.
 
         Returns:
             speed (float): Metres per second.
@@ -417,6 +561,14 @@ class Rigged:
         drawing = canvas_drawing(self.damage)
         if drawing < 1.0:
             plan = replace(plan, area=plan.area * drawing)
+
+        # And a ship to windward takes the wind out of what is left. Applied to the
+        # canvas for the same reason - being blanketed is having less air in your
+        # sails, not having your speed docked afterwards.
+        if shadow is None:
+            shadow = self.shadow()
+        if shadow.lost > 0.0:
+            plan = replace(plan, area=plan.area * (1.0 - shadow.lost))
 
         return achievable_speed(
             self.heading,
@@ -454,3 +606,150 @@ def beaufort_force(speed):
         if speed < limit:
             return force
     return len(BEAUFORT_LIMITS)
+
+
+# --- blanketing -------------------------------------------------------------
+#
+# A ship under sail takes the wind out of the air behind her. Anybody in that
+# shadow - her "blanket" - is sailing in disturbed, slower air, and the closer and
+# more directly astern they are the worse it is.
+#
+# This is why the weather gage was worth dying for, and it is the one thing that
+# makes position relative to *other ships* matter rather than only position
+# relative to the wind. It also completes the fighting-sail trade: shortening down
+# means you blanket your enemy less, so a captain gives something up by clearing
+# for action even before a shot is fired.
+
+#: How far downwind a ship's blanket reaches, as a multiple of her own length,
+#: under a full press. Eight: a few ship-lengths of genuinely disturbed air, which
+#: is close enough to the real thing to sail by and small enough that it is a
+#: manoeuvring problem rather than a map-wide one.
+BLANKET_REACH = 8.0
+
+#: How wide the shadow is, in degrees either side of dead downwind of her.
+BLANKET_ARC = 25.0
+
+#: How much drive is lost by a ship directly in another's lee, close under her
+#: stern. Not all of it - the air is disturbed rather than absent, and a ship that
+#: stopped dead would make the weather gage an execution rather than an advantage.
+BLANKET_WORST = 0.55
+
+#: What a hull blankets with every sail handed. Small but not nothing: a bare hull
+#: is still something standing up out of the water.
+BARE_HULL_BLANKET = 0.15
+
+
+@dataclass(frozen=True)
+class Blanket:
+    """
+    A shadow on her sails, and the ship casting it.
+
+    Attributes:
+        vessel (Vessel or None): Who has the wind of her, or None if nobody has.
+        lost (float): The fraction of her drive taken out, 0 to 1.
+
+    """
+
+    vessel: object = None
+    lost: float = 0.0
+
+
+#: Clear air. A shared instance because the overwhelmingly common answer to "is
+#: anybody stealing my wind" is no, and it is worth not allocating to say so.
+NO_SHADOW = Blanket()
+
+
+def blanket_reach(length, plan):
+    """
+    How far downwind this ship spoils the air.
+
+    Args:
+        length (float): Her length overall, in metres.
+        plan (SailPlan): How much canvas she has set.
+
+    Returns:
+        metres (float): How far her blanket extends.
+
+    Notes:
+        Scaled by canvas, which is what ties this to fighting sail. A ship that has
+        shortened down for action stops spoiling her enemy's wind, and gives up an
+        advantage she may not have known she had.
+
+    """
+    canvas = BARE_HULL_BLANKET + (1.0 - BARE_HULL_BLANKET) * max(0.0, min(1.0, plan.area))
+    return max(0.0, length) * BLANKET_REACH * canvas
+
+
+def blanketed_by(position, other_position, other_length, other_plan, wind, arc=BLANKET_ARC):
+    """
+    How much wind one ship takes out of another's sails.
+
+    Args:
+        position (WorldPosition): Where the sheltered vessel is.
+        other_position (WorldPosition): Where the vessel to windward is.
+        other_length (float): Her length overall, in metres.
+        other_plan (SailPlan): What she has set.
+        wind (WindVector): The true wind.
+        arc (float, optional): Half-width of the shadow, in degrees.
+
+    Returns:
+        lost (float): The fraction of drive taken out, 0 to 1.
+
+    Notes:
+        Two things have to be true: you are downwind of her, and you are close
+        enough. Both taper, so the edge of a blanket is a gradient rather than a
+        wall - a ship does not fall out of another's lee like stepping through a
+        doorway.
+
+    """
+    if wind.speed <= 0.0:
+        return 0.0
+
+    reach = blanket_reach(other_length, other_plan)
+    if reach <= 0.0:
+        return 0.0
+
+    range_to = other_position.horizontal_distance_to(position)
+    if range_to <= 0.0 or range_to > reach:
+        return 0.0
+
+    # Where she lies from the ship to windward, against where the wind is going.
+    # Dead in line with the wind is the deepest part of her shadow.
+    off = abs(bearing_difference(wind.blowing_towards, other_position.bearing_to(position)))
+    if off >= arc:
+        return 0.0
+
+    across = math.cos(math.radians(off * 90.0 / arc)) ** 2
+    along = 1.0 - (range_to / reach)
+    return BLANKET_WORST * across * along
+
+
+def blanketing(position, plan, wind, others, arc=BLANKET_ARC):
+    """
+    How much of the wind is being taken out of her by everybody to windward.
+
+    Args:
+        position (WorldPosition): Where she is.
+        plan (SailPlan): What she has set. A ship with nothing set has nothing
+            to steal from.
+        wind (WindVector): The true wind.
+        others (iterable): `(position, length, plan)` for every other vessel that
+            could be shadowing her.
+        arc (float, optional): Half-width of a shadow, in degrees.
+
+    Returns:
+        lost (float): The fraction of her drive taken out, 0 to 1.
+
+    Notes:
+        The worst single shadow rather than the sum of them. Lying behind two ships
+        is not twice as calm as lying behind one - the air is already spoiled, and
+        adding shadows would let a squadron becalm a ship entirely, which is not a
+        thing that happens.
+
+    """
+    if plan.area <= 0.0 or wind.speed <= 0.0:
+        return 0.0
+    return max(
+        (blanketed_by(position, where, length, hers, wind, arc) for where, length, hers in others),
+        default=0.0,
+    )

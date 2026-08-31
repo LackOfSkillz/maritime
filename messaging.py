@@ -67,6 +67,12 @@ CONTACT_CLOSER = "contact_closer"
 HULL_HOLED = "hull_holed"
 SHOALING = "shoaling"
 
+#: How much drive has to be gone before anybody aboard remarks on it. The edge of a
+#: wind shadow is a gradient, so without a threshold a ship sailing along one would
+#: report entering and leaving it every few seconds - the wallpaper this module
+#: exists to prevent. A twentieth of her drive is about where sails begin to slat.
+NOTICEABLE_BLANKET = 0.05
+
 
 # --- orders, and the answers to them ---------------------------------------
 #
@@ -1363,6 +1369,49 @@ class VesselNarrator:
             f'The mate says, "Giving the {mark.key} a berth, sir." '
             f"She comes round {altered:.0f} degrees.",
             f"She comes round. Word is they are keeping clear of the {mark.key}.",
+        )
+
+    def in_the_lee(self, blanket):
+        """
+        Somebody to windward has taken her wind, or given it back.
+
+        Args:
+            blanket (Blanket): The worst shadow on her, and who is casting it.
+
+        Notes:
+            Said out loud for the same reason the mate calls a course alteration: a
+            ship that silently lost a third of her speed would be an invisible
+            penalty, and the captain would go looking for damage that is not there.
+            Naming the ship responsible is the whole of it - the answer to "why are
+            we slowing" is "because she is to windward of us", and the answer to
+            that is to alter course, which is a decision rather than a wait.
+
+            Announced on the way in and on the way out, once each. The state rides
+            on `.ndb` beside the berth warning, keyed by *who* has the wind of her,
+            so that passing from one ship's lee straight into another's is reported
+            as the new ship rather than passed over in silence.
+
+        """
+        vessel = self.vessel
+        held = blanket.lost >= NOTICEABLE_BLANKET
+        was = vessel.ndb.blanketed_by
+
+        if not held:
+            if was is not None:
+                vessel.ndb.blanketed_by = None
+                self.deliver(
+                    'The mate says, "Our wind again, sir." The sails fill and stiffen.',
+                    "Her sails fill and stiffen as she comes out into clear air.",
+                )
+            return
+
+        who = blanket.vessel.key if blanket.vessel is not None else None
+        if was == who:
+            return
+        vessel.ndb.blanketed_by = who
+        self.deliver(
+            f'The sails slat and go slack. The mate says, "{who} has the wind of us, sir."',
+            f"Her sails slat and go slack in {who}'s lee.",
         )
 
     def crew_report(self, vessel):

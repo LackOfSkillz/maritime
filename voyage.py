@@ -26,7 +26,7 @@ so rather than cheating.
 from .currents import course_to_steer
 from .buoyage import Clearance, keep_clear
 from .motion import HelmOrders
-from .sailing import FURLED, SAIL_PLANS
+from .sailing import FURLED, WEATHER_PLANS
 
 # How far off the last mark she starts taking the way off her, in metres. Far
 # enough that a hull with real inertia is down to a walk by the time she gets
@@ -70,7 +70,7 @@ def course_for_mark(position, mark, speed, current):
     return track if steered is None else steered
 
 
-def sail_for_wind(wind, plans=SAIL_PLANS):
+def sail_for_wind(wind, plans=WEATHER_PLANS):
     """
     The most canvas the wind will let her carry.
 
@@ -89,6 +89,12 @@ def sail_for_wind(wind, plans=SAIL_PLANS):
 
         Falls back to bare poles when it is blowing harder than anything is rated
         for, which is the correct answer and not a failure to find one.
+
+        Chooses from the *weather* plans rather than from everything she can set.
+        Fighting sail stands more wind than working sail, so a mate picking the
+        largest plan the weather allows would set it in a fresh breeze and clear her
+        for action on a quiet passage with nothing in sight. What a plan is for is
+        not written in its sail area.
 
     """
     carriable = [plan for plan in plans if plan.area > 0.0 and wind.speed <= plan.safe_wind]

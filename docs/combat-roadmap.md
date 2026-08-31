@@ -339,12 +339,12 @@ your consort is a genuine mistake you can make.
 
 ## Revised order
 
-    B   damage tracks                foundation
-    R   complement composition       marines/seamen/oarsmen + the fighting axis; needed by H
-    C   ammunition as intent         the tactical core
-    D   point of impact and raking   free from geometry once C exists
-    K1  battle sails                 small; makes C and M three-way trades
-    M   blocked wind / wind shadow   high value, independent, needs only sail area
+    B   damage tracks                DONE
+    R   complement composition       DONE
+    C   ammunition as intent         DONE
+    D   point of impact and raking   DONE
+    K1  battle sails                 DONE
+    M   blocked wind / wind shadow   DONE
     P   how fast a crew answers      small, consumes `hesitation`, pays off everywhere
     N   opportunity fire             needs C
     Q   defensive fire               falls out of N and E

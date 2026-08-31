@@ -294,6 +294,21 @@ second ship and leaves with the loss of one. Whether a given person may give a g
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
 
+**Fighting sail is a trade, not an upgrade.** Shortening down for action costs speed, and
+buys less rigging for chain to cut and more hands at the guns — all of it derived from canvas
+area rather than granted to the plan. She still has masts to lose, and her hull is no thicker
+for it.
+
+**A ship steals the wind of anyone in her lee.** A cone reaches downwind of every hull,
+its length scaled by the canvas she has aloft, and anyone inside it loses drive in
+proportion to how deep in it they are. It is the first thing here that makes position
+relative to *other ships* matter rather than only position relative to the wind — which is
+what the weather gage was actually worth — and it is the fourth side of the fighting-sail
+trade, because shortening down shortens your shadow too. Luffing a few degrees to get out
+of somebody's lee is a manoeuvre, not a wait. The mate names the ship doing it — a silent
+loss of a third of her speed would just send her captain hunting for damage that is not
+there.
+
 **Raking falls out of the geometry.** A shot that strikes end-on runs the length of a ship,
 and the angle on her bow *is* the point of impact — so crossing an enemy's stern is worth
 three times an ordinary broadside without a table anywhere. A hex game needs impact modifiers
@@ -459,7 +474,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | Command | Effect |
 | --- | --- |
 | `helm <bearing>` | Steer a course. Spoken and answered as at sea |
-| `sail <plan>` | `furled`, `storm`, `reefed`, `working`, `full` |
+| `sail <plan>` | `furled`, `storm`, `reefed`, `battle`, `working`, `full` |
 | `wind` | Where the wind is from and how she lies to it |
 | `current` | Set and drift, and the course she is making good |
 | `weather` | Wind by its force, the sea, and how far you can see |
