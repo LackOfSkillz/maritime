@@ -31,6 +31,7 @@ from evennia.objects.objects import DefaultObject
 from .boarding import Boarded
 from .charts import Charted
 from .crew import Crewed
+from .damage import Damaged
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
 from .oars import Oared, braking_limits
@@ -64,6 +65,7 @@ class Vessel(
     Owned,
     Boarded,
     Crewed,
+    Damaged,
     Oared,
     Armed,
     Laden,

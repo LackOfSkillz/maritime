@@ -874,49 +874,56 @@ Services coordinate the simulation. They do not bypass it.
 
 ## 12. Damage, loss and the water column
 
-Vessels are not one hit-point total. Hull sections, rigging, steering, pumps, weapons and
-crew stations are damaged separately, and damage feeds back into performance.
+**Five tracks, not one pool.** Hull, rigging, oars, weapons and crew are damaged
+separately, because a ship that is fast and toothless, one that is intact and cannot steer,
+and one that is whole and unwilling are three different ships — and a single hit-point
+number cannot say which of them you are looking at. Every naval system that models a vessel
+as "hull points plus sail points" gives that distinction up, and it is the most interesting
+thing about being shot at.
 
-Hull sections have an above- and below-waterline aspect, because a breach below the
-waterline floods and one above it does not. Since deck level maps to real Z, water fills
-from the lowest compartment upward, and a deepening draught submerges breaches that were
-previously dry — which is how a manageable leak becomes a sinking.
-
-**Sinking should be hard to reach rather than rare by intervention.** A hidden "you do not
-sink" roll would violate Law 12 and hollow out every system beneath it. Instead the ladder is
-long and every rung is answerable: breach, ingress against pumping, list, stability loss,
-founder. Running deliberately for shallow water is a legitimate escape — it costs the voyage
-rather than the vessel, and it exists only because grounding and sinking share one model.
-
-**The water column is a place.** Divers, sinking objects and settled wrecks hold real
-positions. Without this the wreck lifecycle dead-ends at a seafloor nothing can reach, and
-salvage becomes content that cannot be played.
-
-**Depth harms by rate, not only by value.** Decompression sickness is caused by ascending
-faster than dissolved gas can leave the blood, so a diver who panics and swims straight up
-from a survivable depth is injured by the ascent and not by the depth. That makes vertical
-*velocity* a quantity the water column has to track, alongside position — the one place in
-this design where a derivative of position is itself physical state. Worth recording now
-because it is cheap to carry from the start and expensive to retrofit into a model that
-only ever stored where things are.
+**Each track feeds the simulation that already exists**, rather than an invented combat
+statistic:
 
 ```text
-Vessel -> Disabled -> Sinking -> Wreck (afloat / aground / settled at depth)
+rigging   less canvas draws, and her polar curve does the rest
+oars      fewer looms manned, and rowed_speed already counts them
+weapons   fewer guns serviceable, and the arcs already know which bear
+crew      routed through the company, so morale and mutiny answer for free
+hull      the only one that sinks her
 ```
 
-**Vessel destruction is two-phase.** Enumerate occupants and contents, resolve each one's
-destination, *persist that resolution*, and only then retire rooms. Interleaved, a crash
-mid-loop leaves some occupants moved and others sitting in rooms already marked for deletion.
+That last join is why the crew work was done before this: a shot that kills people calls
+`take_casualties`, and morale, exhaustion, striking and mutiny all respond without a line of
+new wiring.
 
-> **Invariant:** ship rooms are never deleted while occupants or contents remain unresolved.
+**Damage is a fraction, not a count of hits.** Hulls here have continuous sizes rather than
+five size classes, so "five points" means nothing until you ask how big the target is.
+`share_of` decides that once — the same broadside is a bad afternoon for a first-rate and
+the end of a cutter, and nothing downstream has to know it.
 
-That invariant cannot be enforced by reading `room.contents`, which is the obvious way to
-try. Evennia takes an unpuppeted character off the grid entirely, so an offline passenger is
-in no room's contents at all — measured in `docs/logout.md`. `Vessel.ships_company()` is the
-list that has to be resolved; walking the compartments finds only whoever happened to be
-logged in.
+**How lethal it is, is one number.** `RESILIENCE_PER_METRE` sets the scale of the whole
+system, and it is calibrated against the guns rather than guessed: `WeaponType.damage` has
+always defaulted to ten with a docstring saying it is meaningless until the damage phase
+gives it a scale. The default works out at roughly sixteen hits to reduce a sloop's hull and
+fifty-odd for a first-rate, which is the right shape for the age — ships were reduced over
+an hour of firing, and the ones that went quickly went by fire or by the magazine rather
+than by being whittled down. A game wanting a bloodier sea lowers one constant and
+everything follows. Recorded in `DECISIONS.md`.
 
----
+**The interesting results are qualitative.** A number going down is bookkeeping; a mast over
+the side and a hole below the waterline are events, and they are what a report leads with and
+what a player remembers. They are derived from the tracks rather than stored, so they cannot
+disagree with them, and they are announced *once* — a mast already over the side does not
+come down twice.
+
+**Only being holed is about sinking.** A ship with her masts gone and every gun dismounted is
+a wreck to look at and will still float home.
+
+**Morale finally costs something here.** `hesitation` had been computed since the crew work
+and read by nothing, which made it a claim rather than a rule. A frightened crew serve their
+guns slower — and never stop, because a battery that fell silent would make morale a kill
+switch rather than a cost.
+
 
 ## 13. Boarding
 

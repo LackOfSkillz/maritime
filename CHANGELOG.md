@@ -13,6 +13,41 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add damage tracks. Hull, rigging, oars, weapons and crew break separately rather
+  than draining one pool, because a ship that is fast and toothless, one that is
+  intact and cannot steer, and one that is whole and unwilling are three different
+  ships and a single number cannot say which you are looking at.
+- Feed each track into the simulation that already exists rather than into an
+  invented combat statistic: cut rigging means less canvas draws and her polar curve
+  does the rest; shot-away sweeps cannot be pulled by anybody, however many hands she
+  has; a wrecked battery bears fewer guns, and the arcs already knew which. Hull
+  damage is the only one that sinks her - a ship with her masts gone and every gun
+  dismounted is a wreck to look at and will still float home.
+- Route crew damage through the ship's company, so morale, exhaustion, striking and
+  mutiny all answer without a line of new wiring. That join is why the crew work was
+  done before this one.
+- Make damage a fraction rather than a count of hits, because hulls here have
+  continuous sizes and "five points" means nothing until you ask how big the target
+  is. `share_of` decides it once: the same broadside is a bad afternoon for a
+  first-rate and the end of a cutter.
+- Set the scale of the whole system against the guns rather than guessing it.
+  `WeaponType.damage` has defaulted to ten since it was written, with a docstring
+  saying it was meaningless until the damage phase gave it a scale; this is that
+  scale, and it works out at about sixteen hits to reduce a sloop and fifty-odd for
+  a first-rate. Ships of the age were reduced over an hour of firing rather than in
+  a broadside, and it keeps capture worth attempting - if gunnery killed quickly
+  there would be nothing left to take. One constant, in `DECISIONS.md`, and every
+  other number derives from it.
+- Report what broke rather than that something did. A mast over the side and a hole
+  below the waterline are events; they are derived from the tracks so they cannot
+  disagree with them, and each is announced once rather than on every later hit.
+- Consume `hesitation` at last. It has been computed since the crew went in and read
+  by nothing, which made it a claim rather than a rule - a frightened crew now serve
+  their guns slower, and never stop, because a battery that fell silent would make
+  morale a kill switch rather than a cost.
+- Consume `ShotResult.damage` at last, for the same reason. Gunfire now tells on the
+  ship that takes it.
+
 - Add buoyage. A mark now carries a *meaning* rather than only a name and a
   position - safe water, lateral port and starboard hand, the four cardinals, an
   isolated danger mark - because the meaning is the entire reason a helmsman knows
@@ -121,6 +156,19 @@ weather, crew, combat and damage are not.
   navigation where correct behaviour looks like a bug.
 
 ### Fix
+
+- Casualties did not weigh on morale. They gated whether striking could be *asked
+  about*, so a company could be cut to pieces and feel exactly the same watch to
+  watch. Losses are now a factor in the standing condition, and deliberately a
+  proportional one rather than a threshold: a crew do not feel nothing at
+  forty-nine per cent and everything at fifty. The gate that decides whether
+  surrender is a question is the separate mechanism, and that one does have a
+  threshold. Found by writing the test that asserts casualties reach morale with no
+  new wiring, which was the whole argument for building the crew before the damage.
+- A shot heavy enough for two hulls killed more people than were aboard. `share_of`
+  is unclamped by design, because a track clamps on the way in - but multiplying
+  that raw fraction by the complement let five hundred points of damage kill a
+  hundred and eighty-five of a sixty-hand crew.
 
 - A report could not compare its own ranges. Seen live: "The horizon, all round -
   2.9 miles off", then contacts at "2.7 miles" and "1.5 leagues" in the same list.

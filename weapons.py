@@ -28,6 +28,7 @@ not mine to make - so `ShotResult` is deliberately something nothing consumes ye
 import math
 from dataclasses import dataclass, replace
 
+from .damage import guns_serviceable
 from .results import Result
 from .tactical import aspect, bears
 from .weather import SEA_STATES
@@ -317,19 +318,29 @@ def can_fire(mount, relative_bearing, distance, now):
     return ShotResult.ok(mount=mount.key, distance=distance)
 
 
-def serve(mount, now):
+def serve(mount, now, seconds=None):
     """
     Load her, and start the clock on the next round.
 
     Args:
         mount (Mount): The gun.
         now (float): Game time in seconds.
+        seconds (float, optional): How long this crew will take over it. Defaults
+            to the weapon's own rate, which is what it takes when nothing is
+            wrong - see `damage.serving_time` for what makes it longer.
 
     Returns:
         mount (Mount): The gun, loaded and ready when her time comes.
 
+    Notes:
+        Takes the time rather than working it out. What slows a gun crew is a fact
+        about the *ship* - how frightened they are, how much of the battery is
+        wreckage - and a weapon that reached out for that would have to know what
+        it was bolted to.
+
     """
-    return replace(mount, loaded=True, ready_at=now + mount.weapon.reload_time)
+    delay = mount.weapon.reload_time if seconds is None else seconds
+    return replace(mount, loaded=True, ready_at=now + delay)
 
 
 def discharge(mount):
@@ -440,6 +451,23 @@ class Armed:
         """
         return tuple(self.db.mounts or ())
 
+    @property
+    def serviceable_mounts(self):
+        """
+        Returns:
+            mounts (tuple): The guns that can still be fought.
+
+        Notes:
+            Damage to the battery takes guns out of it. Which guns is not modelled -
+            they come off the end of the list rather than being chosen - because
+            *which* gun was dismounted matters far less than how many she can still
+            bring to bear, and pretending otherwise would be precision this has not
+            earned.
+
+        """
+        mounts = self.mounts
+        return mounts[: guns_serviceable(len(mounts), self.damage)]
+
     def mount_named(self, key):
         """
         Args:
@@ -507,8 +535,15 @@ class Armed:
             mounts (tuple): The guns whose arcs cover it.
 
         Notes:
-            Bearing only. Whether each is loaded, served or in one piece is
-            `can_fire`'s question - this is the part that manoeuvring changes.
+            Bearing and serviceable. Whether each is loaded or served is
+            `can_fire`'s question - this is the part that manoeuvring changes,
+            and the part that being shot about takes away.
+
+            A dismounted gun does not bear on anything. Reading the whole battery
+            here would let a wrecked ship keep firing a full broadside, which is
+            the exact failure the weapons track exists to prevent.
 
         """
-        return tuple(mount for mount in self.mounts if bears(relative_bearing, mount.arc))
+        return tuple(
+            mount for mount in self.serviceable_mounts if bears(relative_bearing, mount.arc)
+        )

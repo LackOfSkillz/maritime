@@ -867,3 +867,54 @@ class TestGivingABerth(ScenarioTestCase):
                 break
         self.assertIsNotNone(abeam)
         self.assertGreater(abeam.y, 50.0)
+
+
+class TestGunfireTellsOnHer(ScenarioTestCase):
+    """
+    `broadside-damage`: a hit is not a number, it is something breaking.
+
+    `ShotResult.damage` was built with a docstring saying it was meaningless until
+    the damage phase gave it a scale, and nothing consumed it for the whole life of
+    the weapons work. This is the voyage that proves it now does.
+
+    """
+
+    weather = BREEZE
+
+    def test_a_hit_tells_on_the_ship_that_took_it(self):
+        from ..damage import HULL, share_of
+
+        target = self.a_sloop(key="Marigold", position=WorldPosition(400.0, 0.0))
+        self.assertTrue(target.damage.sound)
+
+        target.take_damage(HULL, 100.0)
+        self.assertAlmostEqual(target.damage.hull, share_of(100.0, target.length))
+
+    def test_enough_of_them_and_something_carries_away(self):
+        from ..damage import HOLED, HULL
+
+        target = self.a_sloop(key="Marigold", position=WorldPosition(400.0, 0.0))
+        heard = []
+        target.ship_rooms[0].msg_contents = lambda text, **kwargs: heard.append(text)
+
+        broken = ()
+        for _ in range(40):
+            broken = target.take_damage(HULL, 100.0)
+            if broken:
+                target.narrator.carried_away(broken)
+                break
+
+        self.assertIn(HOLED, broken)
+        self.assertFalse(target.seaworthy)
+        self.assertTrue(any("sea coming in" in line for line in heard), heard)
+
+    def test_a_wreck_cannot_fight_her_whole_battery(self):
+        from ..damage import WEAPONS
+
+        target = self.a_sloop(key="Marigold", position=WorldPosition(400.0, 0.0))
+        gun = WeaponType(key="nine", name="nine-pounder", arc=STARBOARD_BROADSIDE)
+        target.db.mounts = [Mount(key=f"starboard {n}", weapon=gun) for n in range(1, 5)]
+
+        sound = len(target.guns_bearing(90.0))
+        target.take_damage(WEAPONS, 400.0)
+        self.assertLess(len(target.guns_bearing(90.0)), sound)

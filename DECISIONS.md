@@ -177,6 +177,38 @@ logging out at sea is allowed at all, which is the same question from the other 
 
 ---
 
+
+---
+
+## How lethal damage should be
+
+**Raised by:** damage tracks.
+**Blocks:** nothing - there is a working default. It decides how a fight *feels*.
+
+Damage is a fraction of a track, and what a shot takes out of that track is decided by one
+number: `RESILIENCE_PER_METRE`, how much punishment a hull absorbs per metre of her length.
+Everything else follows from it, which is deliberate - a game that wants a different kind of
+sea has one dial to turn rather than a table to rebalance.
+
+**What I set it to, and why.** Nine per metre, chosen against the guns rather than guessed:
+`WeaponType.damage` has always defaulted to ten with a docstring saying it is meaningless
+until the damage phase gives it a scale, and this is that scale. It works out at about
+sixteen hits to reduce a sloop's hull and fifty-odd for a first-rate.
+
+That shape is a claim about the period. Ships of the age were reduced over an hour of firing
+rather than in a broadside, and the ones that went quickly went by fire or by the magazine
+rather than by being whittled down - so a long grind with a sudden ending is the honest
+curve. It also keeps capture worth attempting: if gunnery killed quickly there would be
+nothing left to take.
+
+**What it needs from you:** a direction, if you want a different sea. Lower it for a
+bloodier, faster fight where a broadside decides things; raise it for a longer grind. It is
+one constant and every other number in the system is derived from it, so moving it is safe.
+
+**Not this, though:** the *tracks* should stay as they are however lethal you want it. The
+point of five of them is that a ship can be fast and toothless or intact and unable to
+steer, and that survives any setting of this dial.
+
 ---
 
 # Answered

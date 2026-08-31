@@ -139,6 +139,34 @@ STANDARD_FACTORS = (
     QUARTER_OFFERED,
 )
 
+#: What losses do to a company's nerve, at the point of losing everybody. Casualties
+#: gate whether striking can be *asked about*; this is the separate matter of how it
+#: feels to watch your shipmates go, watch by watch, and it belongs in the standing
+#: condition rather than in the gate.
+CASUALTIES = "casualties"
+CASUALTIES_AT_WORST = -0.6
+
+
+def casualty_factor(fraction):
+    """
+    How much a company's losses weigh on them.
+
+    Args:
+        fraction (float): How much of themselves they have lost, 0 to 1.
+
+    Returns:
+        factor (Factor): What that does to their standing morale.
+
+    Notes:
+        Proportional, and deliberately not a threshold. A crew do not feel nothing
+        at forty-nine per cent and everything at fifty - they feel each loss, and the
+        gate that decides whether surrender can be *asked about* is a separate
+        mechanism that does have a threshold.
+
+    """
+    return Factor(CASUALTIES, CASUALTIES_AT_WORST * max(0.0, min(1.0, fraction)))
+
+
 #: What a grievance is: something command did, or failed to do. Kept apart from the
 #: factors above because these do not merely lower morale, they aim it at somebody.
 DRIVEN = "driven"

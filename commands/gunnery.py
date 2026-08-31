@@ -8,6 +8,7 @@ from ..formatting import format_range
 from ..observation import DEFAULT_HEIGHT_OF_EYE, IDENTIFIED
 from ..rng import COMBAT
 from ..vessel import WEATHER_DECKS
+from ..damage import HULL, serving_time
 from ..weapons import discharge, fire, serve
 from .base import MaritimeCommand
 
@@ -35,9 +36,14 @@ class CmdGuns(MaritimeCommand):
             return
 
         now = time_provider().now()
+        serviceable = set(vessel.serviceable_mounts)
         self.caller.msg("The battery:")
         for mount in vessel.mounts:
-            if not mount.loaded:
+            # A dismounted gun is still listed. She had it, and the gap where it
+            # used to be is exactly what her captain needs to see.
+            if mount not in serviceable:
+                state = "|rdismounted|n"
+            elif not mount.loaded:
                 state = "empty"
             elif now < mount.ready_at:
                 state = f"being served, {mount.ready_at - now:.0f}s"
@@ -69,13 +75,20 @@ class CmdLoad(MaritimeCommand):
 
         """
         now = time_provider().now()
+        # How long this crew take over it: their own fear, and how much of the
+        # battery they are working round. A frightened crew still load - they load
+        # slowly, which is a cost rather than a kill switch.
         served = 0
-        for mount in vessel.mounts:
+        for mount in vessel.serviceable_mounts:
             if not mount.loaded:
-                vessel.replace_mount(serve(mount, now))
+                seconds = serving_time(mount.weapon.reload_time, vessel.damage, vessel.hesitation)
+                vessel.replace_mount(serve(mount, now, seconds))
                 served += 1
 
         if not served:
+            if vessel.mounts and not vessel.serviceable_mounts:
+                self.caller.msg("There is not a gun aboard fit to be served.")
+                return
             self.caller.msg("Every gun aboard is already served.")
             return
         self.caller.msg('You call out, "Load!"')
@@ -162,6 +175,17 @@ class CmdFire(MaritimeCommand):
             vessel.replace_mount(discharge(mount))
             if shot:
                 hits += 1
+                # What the shot did to her, rather than that it connected. A hit is
+                # a number; a mast coming down is the thing anybody will remember.
+                #
+                # Every shot goes into the hull for now. Which track a shot takes is
+                # the gunner's *intent* - ball to sink her, chain to bring her masts
+                # down, grape to clear her decks - and that is the next item. Until
+                # then this is deliberately the sinking one, so the placeholder is at
+                # least the honest default rather than a lucky guess.
+                carried_away = her.take_damage(HULL, shot.damage)
+                if carried_away:
+                    her.narrator.carried_away(carried_away)
 
         if not fired:
             self.aboard(vessel, "Not a gun is ready. The crews are still at it.")

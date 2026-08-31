@@ -17,8 +17,8 @@ seabed, vessels and their interiors, the simulation service, sailing, currents, 
 dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
 tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
 boarding, who owns and commands a ship, her company - quality, morale, exhaustion and
-mutiny - and buoyage with safe-water steering. Not built: damage, the strategic layer,
-and the service economy.
+mutiny - buoyage with safe-water steering, and damage tracks. Not built: the rest of
+ship combat, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
@@ -190,7 +190,7 @@ across her beam, and from the west she makes 1.5 and the chain becomes a slog.
 
 ## Design
 
-Nineteen ideas do most of the work. `docs/architecture.md` has the rest.
+Twenty ideas do most of the work. `docs/architecture.md` has the rest.
 
 **Ships are simulation entities, not moving rooms.** A vessel holds a position; her
 cabins and holds are ordinary rooms that name her as their position source. Nobody aboard
@@ -292,6 +292,13 @@ on every call from how many decks answer to you rather than stored, so it arrive
 second ship and leaves with the loss of one. Whether a given person may give a given hull an
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
+
+**Five damage tracks, not one pool.** Hull, rigging, oars, weapons and crew break
+separately, because a ship that is fast and toothless, one that is intact and cannot steer,
+and one that is whole and unwilling are three different ships. Each feeds the simulation that
+already exists — cut rigging means less canvas draws and the polar curve does the rest; crew
+losses route through the company, so morale and mutiny answer for free. How lethal all of it
+is, is one constant.
 
 **A mark carries a meaning, and the meaning decides which way round.** A buoy with a name
 and a position tells a navigator nothing. Cardinals say which side the safe water is on,
@@ -605,8 +612,10 @@ would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
-- No crew or damage yet. Guns fire and hit; what a hit *does* to a hull is the damage
-  phase, and `ShotResult` is deliberately something nothing consumes.
+- Gunfire damages the hull and nothing else yet. Which track a shot takes is the gunner's
+  intent — ball to sink her, chain to bring her masts down, grape to clear her decks — and
+  that is the next item. Until then every shot goes into the hull, which is at least the
+  honest default rather than a lucky guess.
 - A ship has no price either, and ownership carries no money. `transfer_ownership` moves
   the property and publishes why — sold, granted, captured, inherited — and a game wires its
   own purchase to that event. What a ship is worth is the host game's economy.

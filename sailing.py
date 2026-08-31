@@ -26,8 +26,9 @@ game sail like the same boat.
 """
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from .damage import canvas_drawing
 from .position import bearing_difference, normalize_bearing
 
 # Angle off the wind, in degrees, at which most rigs stop driving entirely. Inside
@@ -407,10 +408,20 @@ class Rigged:
             allows, which on some headings is not at all.
 
         """
+        # Rigging shot away means less of the canvas she has set is actually
+        # pulling. Applied to the plan rather than to the answer, so a damaged ship
+        # is slower at *every* sail plan rather than having her speed quietly
+        # rewritten afterwards - and so shooting for the rigging is how you catch a
+        # ship rather than how you sink her.
+        plan = self.sail_plan
+        drawing = canvas_drawing(self.damage)
+        if drawing < 1.0:
+            plan = replace(plan, area=plan.area * drawing)
+
         return achievable_speed(
             self.heading,
             self.wind_here(),
-            self.sail_plan,
+            plan,
             self.polar_curve,
             self.working_limits,
         )

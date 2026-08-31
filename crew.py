@@ -32,6 +32,7 @@ from .morale import (
     CAPTAIN_LOST,
     ENEMY_STRUCK,
     band_of,
+    casualty_factor,
     grievances,
     hesitation,
     mutinies,
@@ -500,6 +501,11 @@ class Crewed:
 
         """
         found = []
+        company = self.company
+        if company is not None and company.casualties:
+            # Losses weigh on them watch by watch, quite apart from whether they
+            # are heavy enough for surrender to be a question.
+            found.append(casualty_factor(company.casualty_fraction))
         if self.captain is None:
             found.append(CAPTAIN_LOST)
         if self.aground:

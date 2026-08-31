@@ -40,6 +40,8 @@ telling a lone kayaker to give way together.
 import math
 from dataclasses import dataclass, replace
 
+from .damage import looms_manned
+
 # How a crew is spoken to, which is the only thing that separates a paddle from an oar.
 ROWED = "rowed"
 PADDLED = "paddled"
@@ -352,11 +354,14 @@ class Oared:
         plan = self.oar_plan
         if plan is None:
             return 0
+        # Sweeps that have been shot away cannot be pulled by anybody. This is what
+        # makes sheering worth the trouble: it takes the looms rather than the men.
+        positions = looms_manned(plan.positions, self.damage)
         company = self.company
         if company is not None:
-            return min(company.fit, plan.positions)
+            return min(company.fit, positions)
         aboard = sum(1 for room in self.ship_rooms for obj in room.contents if not obj.destination)
-        return min(aboard, plan.positions)
+        return min(aboard, positions)
 
     @property
     def windage(self):

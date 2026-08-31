@@ -1252,6 +1252,49 @@ class VesselNarrator:
         "leaderless": "there is nobody aft giving orders",
     }
 
+    #: What each structural failure looks like from the deck. These are the lines a
+    #: player will remember afterwards - not that a number went down, but that the
+    #: maintopmast came over the side and took the forestay with it.
+    CARRIED_AWAY = {
+        "mast down": (
+            "A mast goes over the side with a crack you feel through the deck, "
+            "and hangs alongside in a raffle of rigging.",
+            "Something enormous comes down on deck. She lurches, and stays lurched.",
+        ),
+        "holed": (
+            "She is holed below the waterline. You can hear the sea coming in.",
+            "The planking bursts inward and the sea comes in with it.",
+        ),
+        "disabled": (
+            "The last of her sweeps is shot away. She will not be pulled anywhere.",
+            "The rowing stops, and does not start again.",
+        ),
+        "disarmed": (
+            "The last gun is dismounted. She has nothing left to fight with.",
+            "The guns fall silent above you.",
+        ),
+    }
+
+    def carried_away(self, failures):
+        """
+        Tell the ship what has just broken.
+
+        Args:
+            failures (iterable): Keys from `damage.structural`, as returned by
+                `take_damage` - only what is *newly* wrong.
+
+        Notes:
+            Said once each, because that is what `take_damage` hands over. A mast
+            already over the side does not come down again, and the alternative -
+            announcing every failure on every hit - is how a battle becomes
+            unreadable at exactly the moment it gets interesting.
+
+        """
+        for failure in failures:
+            spoken = self.CARRIED_AWAY.get(failure)
+            if spoken:
+                self.deliver(*spoken)
+
     def giving_a_berth(self, mark, altered=0.0):
         """
         The mate alters course to clear a marked danger.
