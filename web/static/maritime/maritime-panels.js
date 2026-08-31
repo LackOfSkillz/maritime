@@ -371,12 +371,23 @@ window.MaritimePanels = (function () {
      * a file of its own. That is the whole of the feature on this side - which plan
      * she is under, said in an attribute, for CSS to answer or ignore.
      *
+     * It also says what class of hull she is, when the server published one, so a
+     * game with more than one kind of ship can draw a brig differently from a cutter.
+     * That value is the host's own template key and means nothing here; it is put in
+     * an attribute and left entirely to the host's stylesheet to recognise. A game
+     * that publishes no class, or has only one sort of ship, simply does not get the
+     * attribute and its unscoped variables apply to everything - which is why adding
+     * this changed nothing for anyone already using it.
+     *
      * Deliberately added *above* the row that names the plan rather than instead of
      * it. A picture is not a reading, and the words have to survive a player who has
      * no artwork, a slow connection, or a screen reader. */
-    function sailProfile(plan) {
+    function sailProfile(plan, template) {
         var figure = element("div", "maritime-artwork maritime-profile");
         figure.setAttribute("data-sail-plan", plan);
+        if (typeof template === "string" && template) {
+            figure.setAttribute("data-template", template);
+        }
         figure.setAttribute("aria-hidden", "true");
         return figure;
     }
@@ -384,7 +395,8 @@ window.MaritimePanels = (function () {
     function sailsBody(state, into) {
         var driving = (state.status && state.status.propulsion) || {};
         if (driving.sail_plan) {
-            into.appendChild(sailProfile(driving.sail_plan));
+            var who = (state.status && state.status.vessel) || {};
+            into.appendChild(sailProfile(driving.sail_plan, who.template));
             into.appendChild(row("Set", title(driving.sail_plan)));
         }
         if (driving.anchor) {

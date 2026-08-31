@@ -63,6 +63,68 @@ class TestWhatHerInstrumentsSay(StateTestCase):
     def test_she_names_herself(self):
         self.assertEqual(self.readings()["vessel"]["name"], "HMS Aetos Folly")
 
+    def test_she_says_what_class_of_hull_she_is(self):
+        """
+        Her `template_key`, which the host game chose. An interface may reasonably
+        want to draw a brig differently from a cutter, and there is no other honest
+        way for it to know - a rig here is a polar curve rather than a name.
+
+        """
+        self.hull.db.template_key = "brig"
+        self.assertEqual(self.readings()["vessel"]["template"], "brig")
+
+    def test_a_hull_of_no_length_says_nothing_about_her_length(self):
+        """
+        The same absence rule the class field follows, and until a mutation run went
+        looking, nothing here checked it: dropping the guard still passed every test,
+        and an interface reading `length: 0` would draw a ship of no length rather
+        than omit the reading.
+
+        A hull that was never given dimensions rather than one set to nothing - the
+        setter coerces to float and will not take None, so never-measured is the only
+        way this actually happens.
+
+        """
+        unmeasured = create.create_object(Vessel, key="Unnamed")
+        unmeasured.maritime_position = HERE
+        self.assertNotIn("length", status_for(unmeasured).as_message()["vessel"])
+
+    def test_and_a_hull_of_no_class_says_nothing(self):
+        """
+        Absent rather than empty. A game that never set one gets no field at all,
+        which is what lets the same interface serve a game with one sort of ship and
+        a game with twenty.
+
+        """
+        self.assertNotIn("template", self.readings()["vessel"])
+
+    def test_whatever_a_game_wrote_there_is_relayed_unchanged(self):
+        """
+        This contrib never interprets the value and must never grow a list of the
+        classes it knows about. A game inventing a hull nobody here thought of is the
+        normal case rather than an error.
+
+        """
+        for invented in ("xebec", "junk", "coracle-of-the-ninth-house"):
+            self.hull.db.template_key = invented
+            self.assertEqual(self.readings()["vessel"]["template"], invented)
+
+    def test_a_contact_never_says_what_class_she_is(self):
+        """
+        The rule the whole payload is built on. What may be told about another ship
+        is what the lookout has made out, governed by her sighting - never by what
+        would be convenient for an interface to draw.
+
+        """
+        stranger = create.create_object(Vessel, key="Stranger")
+        stranger.length, stranger.beam = 30.0, 8.0
+        stranger.maritime_position = WorldPosition(0.0, 400.0)
+        stranger.db.template_key = "frigate"
+        traffic().note(stranger, stranger.maritime_position)
+
+        for contact in contacts_for(self.hull).as_message()["contacts"]:
+            self.assertNotIn("template", contact)
+
     def test_heading_and_course_made_good_are_both_reported(self):
         """
         Two different quantities. One is where she points, the other where she is

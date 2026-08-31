@@ -99,13 +99,38 @@ def status_for(vessel, commanding=True):
 def _who_she_is(vessel):
     """
     Returns:
-        vessel (dict): Her name and how she is rigged.
+        vessel (dict): Her name, her length, and what class of hull she is.
+
+    Notes:
+        The class is her `template_key` - the identifier of the `VesselTemplate`
+        she was built from, which the host game chose and this contrib never
+        interprets. It is published because an interface may reasonably want to
+        draw a brig differently from a cutter, and there is no other honest way
+        for it to know: a rig here is a polar curve rather than a name, and
+        deliberately so.
+
+        Relayed rather than understood. Whatever a game writes in that field
+        arrives at its own stylesheet unchanged, so this contrib never acquires a
+        taxonomy of ships - which would be the host's to own and would be wrong
+        the moment somebody invented a hull nobody here had thought of.
+
+        Her own hull only. A *contact's* class is never published, because what
+        may be told about another ship is what the lookout has made out, and that
+        is governed by her sighting rather than by what would be convenient to
+        draw.
 
     """
     who = {"name": vessel.key}
     length = getattr(vessel, "length", None)
     if length:
         who["length"] = length
+
+    # Nested rather than guarded: a hull with no attribute store hands back None, and
+    # asking None for a template key hands back None again. The `is not None` check
+    # that was here first could not change the answer either way.
+    template = getattr(getattr(vessel, "db", None), "template_key", None)
+    if template:
+        who["template"] = template
     return who
 
 

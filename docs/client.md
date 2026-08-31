@@ -128,6 +128,27 @@ the backdrop - so an ordinary opaque PNG composites as though it had been cut ou
 alpha channel and no tooling in between. A host whose artwork *is* cut out sets
 `--maritime-artwork-blend: normal`.
 
+A game with more than one sort of ship keys its artwork by class. The payload carries her
+`template_key` - the identifier of the `VesselTemplate` she was built from, which the host
+game chose - and the drawing carries it as `data-template`, so a stylesheet can scope the
+same variables per class:
+
+    .maritime-profile[data-template="brig"] {
+        --maritime-profile-full: url("/static/art/brig/full.png");
+    }
+
+That value is relayed and never interpreted. This contrib does not know what a brig is and
+must never acquire a list of the classes it recognises, because a taxonomy of ships belongs
+to the host game and would be wrong the moment somebody invented a hull nobody here had
+thought of. It is also the only honest way an interface can know: a rig here is a polar
+curve rather than a name, deliberately, since baking one curve in would make every vessel
+in every game sail like the same boat.
+
+Her own hull only. A *contact's* class is never published, because what may be told about
+another ship is what the lookout has made out - governed by her sighting, never by what
+would be convenient to draw. A game that sets no class gets no attribute, and its unscoped
+variables apply to every ship it has.
+
 One rule constrains all of it: a picture is not a reading. The sail-plan drawing sits above
 the row that names the plan and never replaces it, because the words have to survive a
 player with no artwork, a slow connection, or a screen reader.

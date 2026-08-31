@@ -302,7 +302,10 @@ game wiring anything, because the rooms on both sides of a gangway belong to thi
 Two rules hold it together: the panel is a repeater rather than an oracle, and a graphical
 client must never make the navigator more knowledgeable than the character. It ships no
 artwork and is finished without any, offering variables a host game can point at pictures of
-its own; anything not supplied is simply not drawn. See `docs/client.md`.
+its own; anything not supplied is simply not drawn. A game with more than one sort of ship
+keys those by class, using the template key its own hulls were built from - relayed and
+never interpreted, because a taxonomy of ships belongs to the game rather than here. See
+`docs/client.md`.
 
 **Orders take time, and how much depends on who is aboard.** A change of canvas is work:
 hands aloft, laying out along yards, and only so many of them. A crack frigate's crew
@@ -562,6 +565,19 @@ SLOOP = VesselTemplate(
     crew_minimum=1, crew_ideal=4,
 )
 ```
+
+Nothing here builds hulls from a template - that is the game's own business, and the
+template is data it owns. When it does, it should record which class the hull came from:
+
+```python
+ship.db.template_key = SLOOP.key
+```
+
+Nothing in this contrib writes that field and only the optional client reads it, to say
+what sort of ship an interface is looking at. It is worth setting anyway. It is the one
+place a hull remembers what she was built as, and neither of the alternatives works: a rig
+here is a polar curve rather than a name, and two ships of a length can be quite different
+vessels.
 
 Every word the system speaks is replaceable, and replacing the words does not mean
 reimplementing when to say them:

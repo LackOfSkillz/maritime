@@ -13,6 +13,21 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Publish what class of hull she is, so a game with more than one sort of ship can
+  draw a brig differently from a cutter. It is her `template_key` - the identifier
+  of the template she was built from, which the host game chose - carried to the
+  drawing as `data-template` for a stylesheet to scope the same variables per class.
+  Relayed and never interpreted: this contrib does not know what a brig is, and a
+  taxonomy of ships would be the host's to own and wrong the moment somebody invented
+  a hull nobody here had thought of. It is also the only honest way an interface could
+  know, a rig here being a polar curve rather than a name. Her own hull only - a
+  contact's class is never published, because what may be told about another ship is
+  what the lookout has made out.
+- Document `template_key` in the readme, which nothing wrote and nothing explained.
+  Hulls are built by the game rather than here, so the field a hull records her class
+  in was discoverable only by reading source, and every host would have found it the
+  same slow way.
+
 - Provide a fitting for optional artwork without shipping any. A host game points
   `--maritime-profile-<plan>` at pictures of its own and changes nothing else, and
   the sail plan she is under is drawn rather than only named. Absence needs no guard:
