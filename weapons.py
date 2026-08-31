@@ -28,6 +28,7 @@ not mine to make - so `ShotResult` is deliberately something nothing consumes ye
 import math
 from dataclasses import dataclass, replace
 
+from .ammunition import DEFAULT_SHOT, in_range, told_by
 from .damage import guns_serviceable
 from .results import Result
 from .tactical import aspect, bears
@@ -51,6 +52,7 @@ END_ON_FRACTION = 0.35
 # Reasons a gun will not fire.
 NOT_LOADED = "not_loaded"
 STILL_RELOADING = "still_reloading"
+SHOT_FALLS_SHORT = "shot_falls_short"
 WILL_NOT_BEAR = "will_not_bear"
 OUT_OF_RANGE = "out_of_range"
 
@@ -98,6 +100,8 @@ class Mount:
         weapon (WeaponType): What it is.
         loaded (bool): Whether there is a charge in her.
         ready_at (float): Game time she can be fired again.
+        shot (Shot): What she is loaded with, and therefore what her captain means
+            to do with her.
 
     """
 
@@ -105,6 +109,7 @@ class Mount:
     weapon: object
     loaded: bool = False
     ready_at: float = 0.0
+    shot: object = DEFAULT_SHOT
 
     @property
     def arc(self):
@@ -128,6 +133,7 @@ class ShotResult(Result):
         flight_time (float): How long the shot was in the air, in game seconds.
         chance (float): The hit chance that was rolled against.
         damage (float): What connected, if anything.
+        shot (Shot): What was in the gun, which says what track this tells on.
         aim_point (WorldPosition or None): Where the gun was laid.
 
     Notes:
@@ -138,6 +144,7 @@ class ShotResult(Result):
 
     mount: str = ""
     target: object = None
+    shot: object = DEFAULT_SHOT
     distance: float = 0.0
     flight_time: float = 0.0
     chance: float = 0.0
@@ -318,7 +325,7 @@ def can_fire(mount, relative_bearing, distance, now):
     return ShotResult.ok(mount=mount.key, distance=distance)
 
 
-def serve(mount, now, seconds=None):
+def serve(mount, now, seconds=None, shot=None):
     """
     Load her, and start the clock on the next round.
 
@@ -328,6 +335,9 @@ def serve(mount, now, seconds=None):
         seconds (float, optional): How long this crew will take over it. Defaults
             to the weapon's own rate, which is what it takes when nothing is
             wrong - see `damage.serving_time` for what makes it longer.
+        shot (Shot, optional): What to load her with. Defaults to whatever she had
+            last, so a battery keeps firing the same thing until somebody says
+            otherwise.
 
     Returns:
         mount (Mount): The gun, loaded and ready when her time comes.
@@ -340,7 +350,8 @@ def serve(mount, now, seconds=None):
 
     """
     delay = mount.weapon.reload_time if seconds is None else seconds
-    return replace(mount, loaded=True, ready_at=now + delay)
+    charge = mount.shot if shot is None else shot
+    return replace(mount, loaded=True, ready_at=now + delay, shot=charge)
 
 
 def discharge(mount):
@@ -412,7 +423,7 @@ def fire(
     flight = time_of_flight(distance, mount.weapon.projectile_speed)
     laid = aim_point(target_position, target_heading, target_speed, flight)
     showing = aspect(position, target_position, target_heading)
-    chance = hit_chance(mount.weapon, distance, sea_state, showing)
+    chance = hit_chance(mount.weapon, distance, sea_state, showing) * mount.shot.accuracy
 
     common = {
         "mount": mount.key,
@@ -421,9 +432,18 @@ def fire(
         "flight_time": flight,
         "chance": chance,
         "aim_point": laid,
+        "shot": mount.shot,
     }
+
+    # What is in the gun decides how far she is any use. A captain who loaded grape
+    # has shortened his own reach for the afternoon, which is the price of having
+    # made his mind up early - and the refusal has to say so, or he will think the
+    # gun is broken.
+    if not in_range(mount.shot, mount.weapon, distance):
+        return ShotResult.failed("shot_falls_short", damage=0.0, **common)
+
     if roll() <= chance:
-        return ShotResult.ok(damage=mount.weapon.damage, **common)
+        return ShotResult.ok(damage=told_by(mount.shot, mount.weapon.damage), **common)
     return ShotResult.failed("missed", damage=0.0, **common)
 
 

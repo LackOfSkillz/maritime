@@ -893,6 +893,26 @@ Services coordinate the simulation. They do not bypass it.
 
 ## 12. Damage, loss and the water column
 
+**Ammunition is intent, and it is the best idea in naval gunnery.** Choosing shot is not
+choosing a damage number, it is declaring what you mean to do:
+
+```text
+ball     for the hull        I intend to sink you
+chain    for the rigging     I intend to catch you
+grape    for the people      I intend to board you
+```
+
+Three answers to one question and none strictly better, decided *before* you know how the
+fight will go. That is what makes the difference between a pirate and a privateer legible in
+what they load, and it is the reason the damage tracks were worth building — without them
+every shot would be the same shot.
+
+**Range is the constraint that makes it a choice rather than an optimisation.** Ball carries
+as far as the gun will throw it; chain tumbles and loses its way; grape is a knife-range
+weapon. So the shot a captain wants is often the shot he cannot yet use, and closing to grape
+range means taking his enemy's ball the whole way in. A captain who loaded early has
+shortened his own reach for the afternoon.
+
 **Five tracks, not one pool.** Hull, rigging, oars, weapons and crew are damaged
 separately, because a ship that is fast and toothless, one that is intact and cannot steer,
 and one that is whole and unwilling are three different ships — and a single hit-point

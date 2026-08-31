@@ -8,7 +8,8 @@ from ..formatting import format_range
 from ..observation import DEFAULT_HEIGHT_OF_EYE, IDENTIFIED
 from ..rng import COMBAT
 from ..vessel import WEATHER_DECKS
-from ..damage import HULL, serving_time
+from ..ammunition import CREW, DEFAULT_SHOT, SHOT_TYPES, shot_named
+from ..damage import serving_time
 from ..weapons import discharge, fire, serve
 from .base import MaritimeCommand
 
@@ -49,7 +50,10 @@ class CmdGuns(MaritimeCommand):
                 state = f"being served, {mount.ready_at - now:.0f}s"
             else:
                 state = "loaded and ready"
-            self.caller.msg(f"  {mount.key:<18}{mount.weapon.name:<16}{mount.arc:<20}{state}")
+            self.caller.msg(
+                f"  {mount.key:<18}{mount.weapon.name:<16}{mount.arc:<20}"
+                f"{mount.shot.name:<12}{state}"
+            )
 
 
 class CmdLoad(MaritimeCommand):
@@ -75,6 +79,19 @@ class CmdLoad(MaritimeCommand):
 
         """
         now = time_provider().now()
+
+        # What to load. Naming nothing keeps whatever she had, so a battery goes on
+        # firing the same thing until her captain changes his mind - which is how a
+        # gun crew actually behaves and saves saying it every time.
+        wanted = (self.args or "").strip()
+        charge = None
+        if wanted:
+            charge = shot_named(wanted)
+            if charge is None:
+                carried = ", ".join(kind.key for kind in SHOT_TYPES)
+                self.caller.msg(f"Nobody carries {wanted!r}. She has {carried}.")
+                return
+
         # How long this crew take over it: their own fear, and how much of the
         # battery they are working round. A frightened crew still load - they load
         # slowly, which is a cost rather than a kill switch.
@@ -82,7 +99,7 @@ class CmdLoad(MaritimeCommand):
         for mount in vessel.serviceable_mounts:
             if not mount.loaded:
                 seconds = serving_time(mount.weapon.reload_time, vessel.damage, vessel.hesitation)
-                vessel.replace_mount(serve(mount, now, seconds))
+                vessel.replace_mount(serve(mount, now, seconds, charge))
                 served += 1
 
         if not served:
@@ -91,8 +108,9 @@ class CmdLoad(MaritimeCommand):
                 return
             self.caller.msg("Every gun aboard is already served.")
             return
-        self.caller.msg('You call out, "Load!"')
-        self.announce(f'{self.caller.key} calls out, "Load!"')
+        named = charge or DEFAULT_SHOT
+        self.caller.msg(f'You call out, "Load with {named.name}!"')
+        self.announce(f'{self.caller.key} calls out, "Load with {named.name}!"')
         self.aboard(vessel, f"The gun crews go to work. {served} run out.")
 
 
@@ -183,9 +201,16 @@ class CmdFire(MaritimeCommand):
                 # down, grape to clear her decks - and that is the next item. Until
                 # then this is deliberately the sinking one, so the placeholder is at
                 # least the honest default rather than a lucky guess.
-                carried_away = her.take_damage(HULL, shot.damage)
-                if carried_away:
-                    her.narrator.carried_away(carried_away)
+                # Which track it tells on is what the gunner loaded, which is what
+                # he meant to do. Ball opens her, chain brings her spars down, grape
+                # clears her decks - and the crew are people rather than a track, so
+                # they go through the company and morale answers for free.
+                if shot.shot.aimed_at is CREW:
+                    her.take_crew_casualties(shot.damage)
+                else:
+                    carried_away = her.take_damage(shot.shot.aimed_at, shot.damage)
+                    if carried_away:
+                        her.narrator.carried_away(carried_away)
 
         if not fired:
             self.aboard(vessel, "Not a gun is ready. The crews are still at it.")

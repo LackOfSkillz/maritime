@@ -516,3 +516,34 @@ class TestPeopleAreDeadweight(CrewedTestCase):
 
     def test_a_ship_nobody_crewed_carries_everything(self):
         self.assertAlmostEqual(self.hull.deadweight, 100000.0)
+
+
+class TestNobodyAboardNobodyHesitates(CrewedTestCase):
+    """
+    A vessel with no ship's company carries no morale penalty.
+
+    She reported a morale of one half - the default a quality carries - which put
+    her in the shaken band and served her guns fifteen per cent slower for no reason
+    at all. Found by loading a gun on a live ship and noticing the reload was six
+    seconds long than the gun's own rate.
+
+    """
+
+    def test_an_uncrewed_ship_does_not_hesitate(self):
+        self.assertIsNone(self.hull.company)
+        self.assertAlmostEqual(self.hull.hesitation, 0.0)
+
+    def test_a_crewed_one_can(self):
+        self.hull.man(60, ABLE)
+        self.hull.morale = 0.0
+        self.assertGreater(self.hull.hesitation, 0.0)
+
+    def test_and_a_steady_crew_still_does_not(self):
+        self.hull.man(60, CRACK)
+        self.assertAlmostEqual(self.hull.hesitation, 0.0)
+
+    def test_her_guns_are_served_at_their_own_rate(self):
+        """The symptom that gave it away."""
+        from ..damage import serving_time
+
+        self.assertAlmostEqual(serving_time(90.0, self.hull.damage, self.hull.hesitation), 90.0)

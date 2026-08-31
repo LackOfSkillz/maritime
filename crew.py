@@ -668,7 +668,16 @@ class Crewed:
         Returns:
             fraction (float): How much of what her people could do is not being done.
 
+        Notes:
+            Nobody aboard, nobody to hesitate. A vessel with no ship's company was
+            reporting a morale of one half - the default a quality carries - which
+            put her in the shaken band and served her guns fifteen per cent slower
+            for no reason at all. A boat nobody crewed is worked by whoever climbed
+            into her, and they are the host game's people, not ours to frighten.
+
         """
+        if self.company is None:
+            return 0.0
         return hesitation(self.morale)
 
     def conditions(self):

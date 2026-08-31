@@ -294,6 +294,11 @@ second ship and leaves with the loss of one. Whether a given person may give a g
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
 
+**Ammunition is intent.** Ball for the hull is "I intend to sink you"; chain for the
+rigging is "I intend to catch you"; grape for the people is "I intend to board you". None is
+strictly better, and range decides what you may even attempt — ball carries, chain tumbles,
+grape is a knife-range weapon. Closing to grape range means taking his ball the whole way in.
+
 **Rating is not quality, and a company is made of divisions.** Seamen work her, oarsmen
 pull, marines fight and are close to useless at anything else. A crack marine and a crack
 seaman are both crack, and only one of them can hand a topsail. Carrying marines is a real
@@ -466,7 +471,7 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `lookout` | What is in sight from where you are standing |
 | `scan` | The whole horizon, quarter by quarter |
 | `target <name>` | Range, aspect, closure and which arcs bear |
-| `guns` / `load` / `fire <name>` | The battery, serving it, and firing what bears |
+| `guns` / `load [shot]` / `fire <name>` | The battery, serving it with ball, chain or grape, and firing what bears |
 | `look <direction>` | One quarter or compass point - `look se`, `look port` |
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
@@ -619,10 +624,9 @@ would take half an hour of wall time runs in milliseconds.
 
 ## Limitations
 
-- Gunfire damages the hull and nothing else yet. Which track a shot takes is the gunner's
-  intent — ball to sink her, chain to bring her masts down, grape to clear her decks — and
-  that is the next item. Until then every shot goes into the hull, which is at least the
-  honest default rather than a lucky guess.
+- Fire is not modelled, and nor is flooding. A ship is reduced by her tracks running down
+  rather than by burning or filling, which are both later items — and both are the ways ships
+  of the age actually went quickly.
 - A ship has no price either, and ownership carries no money. `transfer_ownership` moves
   the property and publishes why — sold, granted, captured, inherited — and a game wires its
   own purchase to that event. What a ship is worth is the host game's economy.

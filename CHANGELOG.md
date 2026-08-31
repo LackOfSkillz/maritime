@@ -13,6 +13,22 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add ammunition, and make it intent rather than a damage number. Ball for the hull
+  means "I intend to sink you"; chain for the rigging means "I intend to catch you";
+  grape for the people means "I intend to board you". Three answers to one question,
+  none strictly better, and the choice is made before anybody knows how the fight
+  will go - which is what makes the difference between a pirate and a privateer
+  legible in what they load.
+- Let range make it a decision instead of an optimisation. Ball carries as far as
+  the gun will throw it, chain tumbles and loses half of that, and grape is a
+  knife-range weapon - so the shot a captain wants is often the shot he cannot yet
+  use, and closing to grape range means taking his enemy's ball the whole way in. A
+  gun that cannot reach says so rather than missing quietly.
+- Send each hit to the track its shot was aimed at, and route grape through the
+  ship's company so morale, striking and mutiny answer for free. A gun remembers
+  what it was last loaded with, so a battery keeps firing the same thing until her
+  captain changes his mind.
+
 - Split fighting from seamanship, which fixes a gap that had already shipped.
   `ShipsCompany.strength` read `quality.skill` - how well they work the ship - so a
   crack crew of seamen came out the equal of a party of marines. Exactly backwards:
@@ -174,6 +190,15 @@ weather, crew, combat and damage are not.
   navigation where correct behaviour looks like a bug.
 
 ### Fix
+
+- A ship with no company at all was hesitating. She reported a morale of one half -
+  the default a quality carries - which put her in the shaken band and served her
+  guns fifteen per cent slower for no reason whatever. There is nobody aboard to be
+  frightened; a boat nobody crewed is worked by whoever climbed into her, and they
+  are the host game's people rather than ours to unnerve. Found by loading a gun on
+  a live ship and noticing the reload ran six seconds long.
+- `shot_named("")` handed back round shot, because an empty string is a prefix of
+  every name. Harmless where it was called from and wrong for anybody else.
 
 - The company setter dropped the divisions. A company could be composed with marines
   aboard, assigned to a hull, read back, and come out an undivided crew of seamen -
