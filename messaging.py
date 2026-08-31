@@ -1275,6 +1275,36 @@ class VesselNarrator:
         ),
     }
 
+    #: What it looks like to run a shot the length of somebody. Named because it is
+    #: the moment of the age - a captain works an hour for this and it is over in
+    #: seconds, and if it went past as an unusually large number nobody would know
+    #: what they had just done.
+    RAKED = {
+        "bow rake": "The shot goes in at her bow and runs the length of her.",
+        "stern rake": (
+            "The shot goes in through her stern windows and runs the whole length "
+            "of her gundeck. Nothing in the way of it is left standing."
+        ),
+    }
+
+    def raked(self, target, rake):
+        """
+        Tell the ship she has raked somebody.
+
+        Args:
+            target (Vessel): Who took it.
+            rake (str): `BOW_RAKE` or `STERN_RAKE`.
+
+        Notes:
+            Said to the ship that *fired*, because it is her achievement. What it
+            looked like from the receiving end is that ship's own business, and
+            worse.
+
+        """
+        spoken = self.RAKED.get(rake)
+        if spoken:
+            self.deliver(f"You rake the {target.key}. {spoken}")
+
     def carried_away(self, failures):
         """
         Tell the ship what has just broken.

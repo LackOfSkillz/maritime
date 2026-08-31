@@ -893,6 +893,28 @@ Services coordinate the simulation. They do not bypass it.
 
 ## 12. Damage, loss and the water column
 
+**Raking is not a rule.** A shot that strikes a ship end-on runs her whole length instead of
+stopping at a plank, and goes through everything between: guns, gun crews, and the company of
+a deck. It was the manoeuvre of the age, and here it costs nothing to model, because the
+angle on her bow *is* the point of impact and we were computing it already for lookouts and
+targeting.
+
+In a hex game raking needs a table of impact modifiers. Here it is a consequence of where you
+managed to get your ship — something you achieve by sailing well, and something you can be
+caught by if you let somebody across your stern.
+
+A **stern** rake is worth more than a bow rake, and for a structural reason rather than an
+arbitrary one: a bow is solid timber and knees built to meet the sea, and a stern is windows,
+cabin and the weakest framing in the ship. The weight tapers by squared cosine rather than
+stepping at the edge of an arc — a shot fine on her bow is nearly a rake and ought to be worth
+nearly as much, and a threshold would make two degrees the difference between a scratch and a
+catastrophe, which no gunner would recognise. It also falls away fast, so most of the benefit
+is in the last few degrees and the position has to be genuinely earned.
+
+The *hit chance* half was already there: `aspect_accuracy` has always made an end-on target
+harder to hit, because there is less of her to hit. Raking is therefore a real trade — the
+hardest shot to land and the worst one to take.
+
 **Ammunition is intent, and it is the best idea in naval gunnery.** Choosing shot is not
 choosing a damage number, it is declaring what you mean to do:
 

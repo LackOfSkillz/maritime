@@ -13,6 +13,24 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Add raking, which turns out to cost nothing. A shot that strikes end-on runs the
+  length of a ship instead of stopping at a plank, and the angle on her bow *is* the
+  point of impact - a quantity the system has computed since observation was built.
+  In a hex game this needs a table of impact modifiers; here it falls out of where
+  you managed to get your ship, so it is something a captain achieves by sailing
+  well and something he can be caught by if he lets somebody across his stern.
+- Make a stern rake worse than a bow rake, structurally rather than arbitrarily: a
+  bow is solid timber and knees built to meet the sea, and a stern is windows, cabin
+  and the weakest framing in the ship.
+- Taper it rather than stepping. A shot fine on her bow is nearly a rake and worth
+  nearly as much, and a threshold would make two degrees the difference between a
+  scratch and a catastrophe. It falls away quickly, so the position has to be
+  earned - and because `aspect_accuracy` already made an end-on target harder to
+  hit, raking is a real trade: the hardest shot to land and the worst one to take.
+- Name it when it happens. A captain works an hour for a rake and it is over in
+  seconds; if it went past as an unusually large number nobody would know what they
+  had just done.
+
 - Add ammunition, and make it intent rather than a damage number. Ball for the hull
   means "I intend to sink you"; chain for the rigging means "I intend to catch you";
   grape for the people means "I intend to board you". Three answers to one question,

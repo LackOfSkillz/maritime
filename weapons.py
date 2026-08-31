@@ -31,7 +31,7 @@ from dataclasses import dataclass, replace
 from .ammunition import DEFAULT_SHOT, in_range, told_by
 from .damage import guns_serviceable
 from .results import Result
-from .tactical import aspect, bears
+from .tactical import aspect, bears, raking, raking_weight
 from .weather import SEA_STATES
 
 # How much of its accuracy a weapon keeps at the far edge of its range. Guns do
@@ -134,6 +134,7 @@ class ShotResult(Result):
         chance (float): The hit chance that was rolled against.
         damage (float): What connected, if anything.
         shot (Shot): What was in the gun, which says what track this tells on.
+        rake (str or None): Whether the shot ran her length, and from which end.
         aim_point (WorldPosition or None): Where the gun was laid.
 
     Notes:
@@ -145,6 +146,7 @@ class ShotResult(Result):
     mount: str = ""
     target: object = None
     shot: object = DEFAULT_SHOT
+    rake: object = None
     distance: float = 0.0
     flight_time: float = 0.0
     chance: float = 0.0
@@ -433,6 +435,7 @@ def fire(
         "chance": chance,
         "aim_point": laid,
         "shot": mount.shot,
+        "rake": raking(showing),
     }
 
     # What is in the gun decides how far she is any use. A captain who loaded grape
@@ -443,7 +446,12 @@ def fire(
         return ShotResult.failed("shot_falls_short", damage=0.0, **common)
 
     if roll() <= chance:
-        return ShotResult.ok(damage=told_by(mount.shot, mount.weapon.damage), **common)
+        # A shot that strikes her end-on runs the length of her instead of stopping
+        # at a plank. No table decides that - the angle on her bow *is* the point of
+        # impact, so raking is something a captain achieves by sailing well and
+        # something he can be caught by if he lets somebody across his stern.
+        told = told_by(mount.shot, mount.weapon.damage) * raking_weight(showing)
+        return ShotResult.ok(damage=told, **common)
     return ShotResult.failed("missed", damage=0.0, **common)
 
 

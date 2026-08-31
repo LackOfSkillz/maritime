@@ -18,7 +18,7 @@ dead reckoning and fixes, charts, routes and the sailing master, weather and sea
 tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
 boarding, who owns and commands a ship, her company - quality, morale, exhaustion and
 mutiny with marines, seamen and oarsmen as distinct divisions - buoyage with safe-water
-steering, and damage tracks. Not built: the rest of
+steering, damage tracks, ammunition and raking. Not built: the rest of
 ship combat, the strategic layer, and the service economy.
 Nothing here is API-stable.
 
@@ -293,6 +293,11 @@ on every call from how many decks answer to you rather than stored, so it arrive
 second ship and leaves with the loss of one. Whether a given person may give a given hull an
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
+
+**Raking falls out of the geometry.** A shot that strikes end-on runs the length of a ship,
+and the angle on her bow *is* the point of impact — so crossing an enemy's stern is worth
+three times an ordinary broadside without a table anywhere. A hex game needs impact modifiers
+for this; here it is a consequence of where you got your ship.
 
 **Ammunition is intent.** Ball for the hull is "I intend to sink you"; chain for the
 rigging is "I intend to catch you"; grape for the people is "I intend to board you". None is

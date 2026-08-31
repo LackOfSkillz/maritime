@@ -290,3 +290,82 @@ def crossing_the_t(own_relative, target_aspect):
 
     """
     return abs(abs(own_relative) - 90.0) <= 45.0 and abs(target_aspect) <= 45.0
+
+
+# --- raking ----------------------------------------------------------------
+#
+# The most famous manoeuvre of the age, and here it is not a rule at all - it
+# falls out of geometry we were already computing. A shot that strikes her end-on
+# travels the length of the ship instead of stopping at a plank, and goes through
+# everything in between: guns, gun crews, and the whole company of a deck.
+#
+# In a hex system this needs a table of impact modifiers. With a continuous
+# bearing, the angle on her bow *is* the point of impact, so raking is something
+# you achieve by sailing well and something you can be caught by if you let
+# somebody across your stern.
+
+#: How far off dead-on still counts as running her length, in degrees.
+RAKE_ARC = 35.0
+
+BOW_RAKE = "bow rake"
+STERN_RAKE = "stern rake"
+
+#: What a raking hit is worth, dead-on. The stern is worse than the bow, and that
+#: is structural rather than arbitrary: a bow is solid timber and knees built to
+#: meet the sea, and a stern is windows, cabin and the weakest framing in the ship.
+STERN_RAKE_WEIGHT = 3.0
+BOW_RAKE_WEIGHT = 2.2
+
+
+def raking(target_aspect, arc=RAKE_ARC):
+    """
+    Whether a shot from here runs the length of her.
+
+    Args:
+        target_aspect (float): Her aspect, from `aspect` - where you are as seen
+            from her head.
+        arc (float, optional): How far off dead-on still counts.
+
+    Returns:
+        rake (str or None): `BOW_RAKE`, `STERN_RAKE`, or None if you are simply
+            shooting at her side.
+
+    """
+    off = abs(target_aspect)
+    if off <= arc:
+        return BOW_RAKE
+    if off >= 180.0 - arc:
+        return STERN_RAKE
+    return None
+
+
+def raking_weight(target_aspect, arc=RAKE_ARC):
+    """
+    What a hit from this angle is worth, as a multiple of an ordinary one.
+
+    Args:
+        target_aspect (float): Her aspect, in degrees.
+        arc (float, optional): How far off dead-on still counts as a rake.
+
+    Returns:
+        weight (float): 1.0 on the beam, rising towards the ends.
+
+    Notes:
+        Tapered rather than a step. A shot fine on her bow is nearly a rake and
+        ought to be worth nearly as much - and a threshold would make the
+        difference between thirty-four and thirty-six degrees the difference
+        between a scratch and a catastrophe, which no gunner would recognise.
+
+        Squared cosine, so it falls away quickly off the ends: raking is a
+        position you have to actually achieve, not one you drift into.
+
+    """
+    rake = raking(target_aspect, arc)
+    if rake is None:
+        return 1.0
+
+    worst = STERN_RAKE_WEIGHT if rake is STERN_RAKE else BOW_RAKE_WEIGHT
+    off = abs(target_aspect)
+    from_dead_on = off if rake is BOW_RAKE else 180.0 - off
+    closeness = math.cos(math.radians(from_dead_on * 90.0 / arc)) ** 2
+    return 1.0 + (worst - 1.0) * closeness

@@ -205,6 +205,8 @@ class CmdFire(MaritimeCommand):
                 # he meant to do. Ball opens her, chain brings her spars down, grape
                 # clears her decks - and the crew are people rather than a track, so
                 # they go through the company and morale answers for free.
+                if shot.rake:
+                    vessel.narrator.raked(her, shot.rake)
                 if shot.shot.aimed_at is CREW:
                     her.take_crew_casualties(shot.damage)
                 else:
