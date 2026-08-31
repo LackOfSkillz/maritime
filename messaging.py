@@ -28,7 +28,7 @@ hand differently, without reimplementing when to speak.
 from dataclasses import dataclass
 
 from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
-from .formatting import format_range, format_speed, pick_scale
+from .formatting import about_how_long, format_range, format_speed, pick_scale
 from .cargo import VOLUME, WEIGHT, stowed_volume
 from .oars import (
     EASY_OARS,
@@ -1647,6 +1647,40 @@ class VesselNarrator:
         self.deliver(
             f"Without being told, the watch shortens to {plan.name}.",
             f"You hear the watch working aloft; she is under {plan.name} now.",
+        )
+
+    def hands_aloft(self, plan, seconds):
+        """
+        The hands go up to make a change of canvas.
+
+        Args:
+            plan (SailPlan): What they have been sent to set.
+            seconds (float): How long they are expected to be at it.
+
+        Notes:
+            The estimate is the point of saying anything. An order that took an
+            unknown time would leave a captain guessing whether to wait or to order
+            something else, and guessing is not the decision this is meant to
+            create. The decision is whether he has time for it, and he can only make
+            that if he knows roughly what it costs.
+
+        """
+        self.deliver(
+            f"The hands go aloft to set {plan.name}. It will be {about_how_long(seconds)}.",
+            "You hear them working aloft.",
+        )
+
+    def sail_set(self, plan):
+        """
+        The change of canvas is finished.
+
+        Args:
+            plan (SailPlan): What she is carrying now.
+
+        """
+        self.deliver(
+            f'The mate reports, "{plan.name.capitalize()} set, sir." The hands come down.',
+            f"The working overhead stops, and she settles to {plan.name}.",
         )
 
     # --- transitions --------------------------------------------------------

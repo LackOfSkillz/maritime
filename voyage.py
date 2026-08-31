@@ -23,6 +23,7 @@ so rather than cheating.
 
 """
 
+from .config import time_provider
 from .currents import course_to_steer
 from .buoyage import Clearance, keep_clear
 from .motion import HelmOrders
@@ -200,9 +201,16 @@ class Conned:
 
         wind = self.wind_here()
         plan = sail_for_wind(wind)
-        if plan.key != self.sail_plan.key:
-            self.sail_plan = plan
-            self.narrator.trimmed(plan)
+        if plan.key != self.sail_plan.key and not self.working_aloft:
+            # Through the same seam a captain's order goes through, so the watch is
+            # no faster at it than the hands are. A mate who could re-rig the ship
+            # instantly while the captain waited four minutes would make ordering
+            # sail yourself strictly worse than saying nothing.
+            seconds = self.order_sail(plan, time_provider().now())
+            if seconds > 0.0:
+                self.narrator.hands_aloft(plan, seconds)
+            else:
+                self.narrator.trimmed(plan)
 
         position = self.maritime_position
         heading = course_for_mark(position, mark.position, self.speed, self.current_here())

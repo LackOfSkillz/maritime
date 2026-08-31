@@ -987,6 +987,42 @@ and leaving it every few seconds.
 The tick asks once and uses the answer twice — for her speed and for the narration — rather
 than querying the register a second time to say what it has just computed.
 
+**An order is not a state change.** Somebody has to go aloft, lay out along a yard, and cast
+off or make up a gasket, and there are only so many of them. So a change of canvas takes
+*time* — work proportional to how much canvas is being moved and to the size of the ship,
+divided by the hands available, and slowed by how frightened they are:
+
+```text
+a 46 m frigate, 200 hands            to fighting sail   to bare poles
+crack                                    2.3 min           4.6 min
+able                                     3.1 min           6.1 min
+landsmen                                 5.1 min          10.2 min
+pressed                                  6.6 min          13.1 min
+
+the same able crew, badly shaken          5.5 min
+```
+
+Until that work is done **she carries what she carried**, with the old risk. That is the
+whole feature: a captain who leaves shortening down until he can see the squall is still
+under a full press when it hits, and he chose that rather than losing a roll. The plan
+snaps rather than easing, because a sail plan here is a discrete thing and pretending
+otherwise would mean inventing intermediate plans nobody ordered.
+
+This is the second customer for `hesitation`. Morale computed it, the gun deck spends it on
+serving guns, and this spends it on the rigging — at a higher rate, since a gun crew work
+behind bulwarks and a topman does not. Casualties therefore cost her twice: fewer hands to do
+the work, and the ones left are frightened. The two compound rather than competing.
+
+Two consequences worth stating, because both were things the code got wrong first:
+
+- **The watch goes through the same seam a captain's order goes through.** A mate who could
+  re-rig the ship instantly while her captain waited four minutes for the same change would
+  make ordering sail yourself strictly worse than saying nothing.
+- **Whether she is moving has nothing to do with whether her people can work.** A ship hard
+  on the ground is a ship whose captain very much wants his canvas off her. The tick used to
+  give up on a held vessel before it reached the hands, which was found by running her
+  aground with an order outstanding and watching them stay aloft for good.
+
 **Raking is not a rule.** A shot that strikes a ship end-on runs her whole length instead of
 stopping at a plank, and goes through everything between: guns, gun crews, and the company of
 a deck. It was the manoeuvre of the age, and here it costs nothing to model, because the

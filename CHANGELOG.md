@@ -13,6 +13,30 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Make orders take time. An order at sea is not a state change: somebody has to go
+  aloft, lay out along a yard and cast off or make up a gasket, and there are only
+  so many of them. Until that work is done she carries what she carried - so a
+  captain who leaves shortening down until he can see the squall is still under a
+  full press when it arrives, and that is a decision he made rather than a die he
+  rolled. A crack frigate's crew shorten to fighting sail in a bit over two minutes;
+  a pressed crew take better than six, and the same crew badly frightened take
+  longer again.
+- Read `hesitation` for the second time. Morale computed it, the gun deck spends it
+  on serving guns, and this spends it on the rigging - and higher, because a gun
+  crew work behind bulwarks and a topman does not. Casualties now cost her twice
+  over: fewer hands to do the work, and the ones left are frightened.
+- Charge for changing your mind. Work half done is work partly wasted, so a captain
+  who orders three things in a minute gets a slower answer than one who orders the
+  right thing once.
+- Send the watch through the same seam. A mate who could re-rig the ship instantly
+  while her captain waited four minutes for the same change would make ordering sail
+  yourself strictly worse than saying nothing.
+- Tell the deck how long it will be, in the words a bosun would use rather than a
+  count of seconds. An order whose end a captain cannot see is not a decision - the
+  decision is whether he has time for it, and he can only make that if he knows
+  roughly what it costs. `sail` on its own also reports what the hands are still at,
+  so nobody re-orders a change already under way and makes it slower.
+
 - Add blanketing: a ship steals the wind of anyone in her lee. A cone reaches
   downwind of every hull, its length scaled by the canvas she has aloft, and anyone
   inside it loses drive in proportion to how deep in it they are - tapering both

@@ -294,6 +294,14 @@ second ship and leaves with the loss of one. Whether a given person may give a g
 order is *one function*, `MARITIME_COMMAND_POLICY`, replaceable whole: a game where the mate
 may steer but not fire replaces it and is obeyed everywhere without the vessel knowing.
 
+**Orders take time, and how much depends on who is aboard.** A change of canvas is work:
+hands aloft, laying out along yards, and only so many of them. A crack frigate's crew
+shorten to fighting sail in a bit over two minutes; a pressed crew take better than six,
+and a frightened crew longer again. Until it is done she carries what she carried — so a
+captain who leaves it until he can see the squall is still under a full press when it
+arrives, which is a decision rather than a die roll. It is also what makes a green crew
+*feel* green on an ordinary passage instead of merely scoring lower in a fight.
+
 **Fighting sail is a trade, not an upgrade.** Shortening down for action costs speed, and
 buys less rigging for chain to cut and more hands at the guns — all of it derived from canvas
 area rather than granted to the plan. She still has masts to lose, and her hull is no thicker

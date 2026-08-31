@@ -320,3 +320,40 @@ def format_depth(metres, units=None):
     if units == FATHOMS:
         return f"{metres / METRES_PER_FATHOM:.1f} fathoms"
     return f"{metres:.1f} m"
+
+
+def about_how_long(seconds):
+    """
+    Roughly how long a job will take, as somebody aboard would say it.
+
+    Args:
+        seconds (float): How long, in game seconds.
+
+    Returns:
+        phrase (str): Words for it, e.g. "a couple of minutes".
+
+    Notes:
+        Deliberately vague. A bosun asked how long says "a few minutes", not "two
+        hundred and forty seconds", and a precise figure would invite a captain to
+        plan against a number the simulation never promised him. The estimate is
+        meant to tell him whether he has time, not to be counted down.
+
+    """
+    if seconds <= 0.0:
+        return "no time at all"
+    minutes = seconds / 60.0
+    if minutes < 0.5:
+        return "a moment"
+    if minutes < 1.5:
+        return "about a minute"
+    if minutes < 3.0:
+        return "a couple of minutes"
+    if minutes < 6.0:
+        return "a few minutes"
+    if minutes < 12.0:
+        return "the better part of ten minutes"
+    if minutes < 25.0:
+        return "a good quarter of an hour"
+    if minutes < 50.0:
+        return "the best part of an hour"
+    return "hours yet"

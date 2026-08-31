@@ -31,6 +31,7 @@ from evennia.objects.objects import DefaultObject
 from .boarding import Boarded
 from .charts import Charted
 from .crew import Crewed
+from .handling import Handled
 from .damage import Damaged
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
@@ -59,12 +60,30 @@ from .rooms import Compartmented, ShipRoom  # noqa: F401
 from .routes import Routed
 
 
+def _now():
+    """
+    Returns:
+        now (float): The time on the simulation clock.
+
+    Notes:
+        Deferred behind a call rather than imported at module level, on the same
+        terms as the other `config` uses here: `config` reads settings that a game
+        overrides, and binding it at import time would freeze the choice before the
+        game had made it.
+
+    """
+    from . import config
+
+    return config.time_provider().now()
+
+
 class Vessel(
     Navigator,
     Conned,
     Owned,
     Boarded,
     Crewed,
+    Handled,
     Damaged,
     Oared,
     Armed,
@@ -403,6 +422,15 @@ class Vessel(
         if parted is not None and not parted:
             self.narrator.grapples_parted(parted)
 
+        # Hands who have finished aloft. Above the check below on purpose: whether
+        # she is moving has nothing to do with whether her people can work, and a
+        # ship hard on the ground is a ship whose captain very much wants his canvas
+        # off her. Found by running her aground with an order still outstanding, and
+        # watching the hands stay aloft for good.
+        set_now = self.finish_handling(_now())
+        if set_now is not None:
+            self.narrator.sail_set(set_now)
+
         if self.held_by():
             self.take_way_off()
             return False
@@ -461,10 +489,10 @@ class Vessel(
                     heading=after.heading,
                     speed=after.speed,
                 )
-        from . import config, environment
+        from . import environment
 
         world = self.map_here()
-        now = config.time_provider().now()
+        now = _now()
 
         # The water is moving too. She is carried in addition to whatever she is
         # making through it, which is why her speed is untouched here - a log

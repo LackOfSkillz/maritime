@@ -345,7 +345,7 @@ your consort is a genuine mistake you can make.
     D   point of impact and raking   DONE
     K1  battle sails                 DONE
     M   blocked wind / wind shadow   DONE
-    P   how fast a crew answers      small, consumes `hesitation`, pays off everywhere
+    P   how fast a crew answers      DONE
     N   opportunity fire             needs C
     Q   defensive fire               falls out of N and E
     E   ramming and sheering         needs B and D

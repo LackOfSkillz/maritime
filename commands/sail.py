@@ -8,6 +8,7 @@ from ..messaging import (
     SAIL_ORDER,
     spell_bearing,
 )
+from ..config import time_provider
 from ..sailing import SAIL_PLANS, relative_wind_angle, sail_plan
 from .base import MaritimeCommand, ms_to_knots
 
@@ -63,6 +64,12 @@ class CmdSail(MaritimeCommand):
                 f"{ms_to_knots(wind.speed):.0f} knots from {spell_bearing(wind.bearing)}. "
                 f"She could make {ms_to_knots(vessel.sailing_speed()):.1f} knots."
             )
+            # What she carries is not always what was last ordered. A captain
+            # looking at his canvas in the middle of a change wants to know the
+            # hands are still at it, or he will order it again and make it slower.
+            working = vessel.handling
+            if working is not None and working.plan is not None:
+                self.caller.msg(f"The hands are aloft, setting {working.plan.name}.")
             return
 
         plan = sail_plan(self.args.strip().lower())
@@ -71,8 +78,14 @@ class CmdSail(MaritimeCommand):
             self.caller.msg(f"No such sail plan. Try one of: {names}")
             return
 
-        vessel.sail_plan = plan
+        # The order is given at once and answered at once. What takes time is the
+        # work: hands have to go aloft and lay out along the yards, and until they
+        # are done she carries what she carried - which is why a captain who leaves
+        # shortening down until he can see the squall is already too late.
+        seconds = vessel.order_sail(plan, time_provider().now())
         self.order(vessel, SAIL_ORDER, plan=plan.name)
+        if seconds > 0.0:
+            vessel.narrator.hands_aloft(plan, seconds)
 
         if wind.speed > plan.safe_wind:
             self.order(vessel, SAIL_CARRIED_HARD)

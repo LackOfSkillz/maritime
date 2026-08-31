@@ -18,6 +18,8 @@ from ..motion import HelmOrders, MotionLimits
 from ..position import EAST, NORTH, WorldPosition
 from ..rooms import ShipRoom
 from ..routes import Route, Waypoint
+from ..clock import MaritimeTimeProvider
+from ..crew import ABLE
 from ..sailing import FULL, FURLED, REEFED, STORM, WindVector
 from ..typeclasses import Vessel
 from ..vessel import OPEN
@@ -161,6 +163,73 @@ class ConTestCase(EmptySeaMixin, BaseEvenniaTest):
         with override_settings(**base):
             for _ in range(ticks):
                 self.hull.at_maritime_tick(seconds)
+
+
+class WatchClock(MaritimeTimeProvider):
+    """
+    A clock the test drives, since `time_provider` builds a fresh provider per call.
+
+    Handling deadlines are kept on the simulation clock, the same one the gun deck
+    uses for reload times. A test that ticks a hull twelve times in a millisecond has
+    to move that clock itself, or no ordered sail would ever be set.
+
+    """
+
+    seconds = 0.0
+
+    def now(self):
+        """
+        Returns:
+            now (float): Whatever the test has wound it to.
+
+        """
+        return WatchClock.seconds
+
+
+class TestTheWatchIsNoFasterThanTheHands(ConTestCase):
+    """
+    The mate goes through the same seam a captain's order goes through.
+
+    A watch that could re-rig the ship instantly while the captain waited four
+    minutes for the same change would make ordering sail yourself strictly worse
+    than saying nothing, which is the wrong lesson to teach about being in command.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull.length = 46.0
+        self.hull.man(200, ABLE)
+        self.hull.under_con = True
+        self.hull.sail_plan = FULL
+        WatchClock.seconds = 0.0
+
+    def sail(self, ticks=1, seconds=60.0, **settings):
+        """Tick, winding the simulation clock on by the same amount."""
+        settings.setdefault("MARITIME_TIME_PROVIDER", f"{WatchClock.__module__}.WatchClock")
+        for _ in range(ticks):
+            super().sail(ticks=1, seconds=seconds, **settings)
+            WatchClock.seconds += seconds
+
+    def test_he_does_not_get_it_instantly(self):
+        self.sail(MARITIME_WIND_SPEED=15.0)
+        self.assertIs(self.hull.sail_plan, FULL)
+        self.assertTrue(self.hull.working_aloft)
+
+    def test_but_he_does_get_it(self):
+        self.sail(ticks=12, seconds=60.0, MARITIME_WIND_SPEED=15.0)
+        self.assertIs(self.hull.sail_plan, REEFED)
+
+    def test_he_does_not_start_over_every_tick(self):
+        """
+        Re-ordering while the hands are still aloft would push the finish out by a
+        changed-mind penalty on every tick, and the sail would never be set at all.
+
+        """
+        self.sail(MARITIME_WIND_SPEED=15.0)
+        due = self.hull.handling.finish_at
+        self.sail(ticks=3, seconds=1.0, MARITIME_WIND_SPEED=15.0)
+        self.assertAlmostEqual(self.hull.handling.finish_at, due)
 
 
 class TestTheSailingMaster(ConTestCase):
