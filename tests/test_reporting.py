@@ -19,7 +19,11 @@ from ..messaging import (
     compass_point,
     spell_bearing,
 )
+from ..formatting import format_range
 from ..motion import HelmOrders, MotionLimits
+from ..commands import CmdPlot
+from ..observation import IDENTIFIED, Sighting
+from ..routes import Route, Waypoint
 from ..position import WorldPosition
 from ..typeclasses import ShipRoom, Vessel
 from ..vessel import BELOW_WATERLINE, OPEN
@@ -367,3 +371,135 @@ class TestTheCrewSpeakThroughTheNarratorToo(EmptySeaMixin, BaseEvenniaCommandTes
         with override_settings(MARITIME_NARRATOR=f"{Laconic.__module__}.Laconic"):
             output = self.call(CmdAllStop(), "")
         self.assertIn("All stop", output)
+
+
+class TestOneUnitPerReport(EmptySeaMixin, BaseEvenniaTest):
+    """
+    A range column exists to be compared down. Mixing units gives that up.
+
+    Seen live before this was fixed: "The horizon, all round - 2.9 miles off",
+    then contacts at "2.7 miles" and "1.5 leagues" in the same list. Three ranges,
+    two units, and no way to tell at a glance which was nearest - which is the one
+    job the column has. `format_range` chooses per value, so a report has to choose
+    once and pass it down.
+
+    """
+
+    #: Ranges that `format_range` would render in different units left to itself.
+    #: Just over and just under the league boundary, which is where it changes its
+    #: mind.
+    MIXED = (4300.0, 9700.0, 16000.0)
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Sloop")
+        self.deck = create.create_object(ShipRoom, key="Main Deck")
+        self.deck.vessel = self.hull
+        self.deck.exposure = OPEN
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.narrator = self.hull.narrator
+
+    def sightings(self, distances):
+        """
+        Returns:
+            sightings (tuple): One contact at each range, all identified.
+
+        """
+        return tuple(
+            Sighting(
+                target=create.create_object(Vessel, key=f"Sail {n}"),
+                distance=metres,
+                bearing=45.0,
+                relative=45.0,
+                level=IDENTIFIED,
+            )
+            for n, metres in enumerate(distances)
+        )
+
+    def units_in(self, lines):
+        """
+        Returns:
+            units (set): Which distance units the report actually used.
+
+        """
+        text = " ".join(lines)
+        return {
+            word
+            for word in ("cable", "cables", "mile", "miles", "league", "leagues")
+            if word in text.split() or f"{word} " in text or text.endswith(word)
+        }
+
+    def test_a_sector_report_picks_one_unit(self):
+        lines = self.narrator.sector_report("fore", self.sightings(self.MIXED))
+        self.assertLessEqual(len(self.units_in(lines)), 1, lines)
+
+    def test_and_the_horizon_agrees_with_the_contacts(self):
+        lines = self.narrator.sector_report("fore", self.sightings(self.MIXED), horizon=20000.0)
+        self.assertLessEqual(len(self.units_in(lines)), 1, lines)
+
+    def test_the_sweep_scale_accounts_for_the_horizon_it_prints(self):
+        """
+        `all_round` prints the horizon on its first line, unlike `sector_report`,
+        so the horizon is one of the numbers the unit has to suit. Choosing from
+        the contacts alone gives one unit and the wrong one - a horizon rendered
+        as "32.4 miles" beside contacts that wanted leagues.
+
+        """
+        sweep = (("fore", self.sightings((4300.0,))),)
+        lines = self.narrator.all_round(sweep, horizon=60000.0)
+        self.assertIn("leagues", " ".join(lines))
+        self.assertNotIn("miles", " ".join(lines))
+
+    def test_an_all_round_sweep_picks_one_unit(self):
+        sweep = (
+            ("fore", self.sightings(self.MIXED[:1])),
+            ("starboard", self.sightings(self.MIXED[1:])),
+            ("aft", ()),
+        )
+        lines = self.narrator.all_round(sweep, horizon=20000.0)
+        self.assertLessEqual(len(self.units_in(lines)), 1, lines)
+
+    def test_an_empty_sector_still_reads_sensibly(self):
+        lines = self.narrator.sector_report("aft", (), horizon=20000.0)
+        self.assertTrue(any("Nothing in sight" in line for line in lines))
+
+    def test_the_mixture_is_real_without_a_scale(self):
+        """
+        Guards the test itself. If these ranges ever stopped straddling a unit
+        boundary, every assertion above would pass for the wrong reason.
+
+        """
+        loose = {format_range(metres).split()[-1] for metres in self.MIXED}
+        self.assertGreater(len(loose), 1)
+
+
+class TestThePassageReportPicksOneUnit(EmptySeaMixin, BaseEvenniaCommandTest):
+    """
+    "Two miles to the mark, one league to run in all" is two numbers a captain has
+    to convert before he can tell which is bigger - in the one sentence where the
+    comparison is the entire point.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull = create.create_object(Vessel, key="Test Sloop")
+        self.deck = create.create_object(ShipRoom, key="Main Deck")
+        self.deck.vessel = self.hull
+        self.deck.exposure = OPEN
+        self.hull.maritime_position = WorldPosition(0.0, 0.0)
+        self.hull.motion_limits = MotionLimits(max_speed=8.0, acceleration=1.0, turn_rate=6.0)
+        # Legs chosen so the near mark and the whole passage fall either side of a
+        # unit boundary, which is where the report used to change its mind halfway.
+        self.hull.route = Route(
+            (
+                Waypoint("fairway", WorldPosition(4300.0, 0.0)),
+                Waypoint("the bar", WorldPosition(16000.0, 0.0)),
+            )
+        )
+        self.char1.location = self.deck
+
+    def test_both_ranges_read_in_the_same_unit(self):
+        said = self.call(CmdPlot(), "")
+        units = {word for word in ("miles", "leagues", "cables") if word in said}
+        self.assertEqual(len(units), 1, said)

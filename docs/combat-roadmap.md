@@ -363,7 +363,7 @@ your consort is a genuine mistake you can make.
 
 # Smaller things noticed in play
 
-## Range units are mixed inside one report
+## Range units are mixed inside one report  *(DONE)*
 
 Seen live:
 

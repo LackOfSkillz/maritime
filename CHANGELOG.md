@@ -281,6 +281,19 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- Reports mixed their units. Seen live in one sweep: a horizon "2.9 miles off",
+  then contacts at "2.7 miles" and "1.5 leagues" in the same list - three ranges,
+  two units, and no way to tell at a glance which was nearest, which is the one job
+  a range column has. `format_range` chooses per value, so a report now chooses once
+  and passes it down: the all-round sweep, a sector report, what a swimmer can see,
+  and the passage report, whose two ranges sit in a single sentence precisely so
+  they can be compared. Cables for close work stay as they were; they are how the
+  distance is actually spoken at that range, not a second unit competing with the
+  first.
+- A ship whose name carried its own article was given a second one - "the the
+  Kittiwake", live, in that same sweep. A game is entitled to name a hull that way,
+  and it is not the narrator's business to say it twice.
+
 - A ship with no company at all was hesitating. She reported a morale of one half -
   the default a quality carries - which put her in the shaken band and served her
   guns fifteen per cent slower for no reason whatever. There is nobody aboard to be

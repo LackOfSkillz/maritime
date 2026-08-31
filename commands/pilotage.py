@@ -3,7 +3,7 @@ Where she is, what the water is doing, and what is under her.
 
 """
 
-from ..formatting import RAW, format_depth, format_position, format_range
+from ..formatting import RAW, format_depth, format_position, format_range, pick_scale
 from ..grounding import SHOAL_WARNING_CLEARANCE
 from ..messaging import (
     CAST_THE_LEAD,
@@ -529,8 +529,14 @@ class CmdPlot(MaritimeCommand):
             return
         position = vessel.maritime_position
         bearing = spell_bearing(position.bearing_to(mark.position))
+        # Both ranges in one unit. "Two miles to the mark, one league to run in
+        # all" is two numbers a captain has to convert before he can tell which is
+        # bigger, in the one sentence where the comparison is the whole point.
+        to_mark = position.horizontal_distance_to(mark.position)
+        remaining = vessel.passage_remaining()
+        scale = pick_scale([to_mark, remaining])
         self.caller.msg(
             f"Making for {mark.key}, {bearing}, "
-            f"{format_range(position.horizontal_distance_to(mark.position))}. "
-            f"{format_range(vessel.passage_remaining())} to run in all."
+            f"{format_range(to_mark, scale=scale)}. "
+            f"{format_range(remaining, scale=scale)} to run in all."
         )

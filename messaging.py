@@ -73,6 +73,10 @@ SHOALING = "shoaling"
 #: exists to prevent. A twentieth of her drive is about where sails begin to slat.
 NOTICEABLE_BLANKET = 0.05
 
+#: Words that already do the work of "the". A vessel whose name carries its own
+#: article should not be given a second one.
+ARTICLES = ("the", "a", "an")
+
 
 # --- orders, and the answers to them ---------------------------------------
 #
@@ -281,7 +285,12 @@ def describe_contact(sighting):
 
     """
     if sighting.level == IDENTIFIED:
-        return f"the {sighting.target.key}"
+        # Ships are spoken of with the article - "the Marigold" - but a game is
+        # free to have put one in the name itself, and "the the Kittiwake" is how
+        # that reads on a deck. Seen live in a sweep.
+        name = sighting.target.key
+        article = "" if name.split(" ", 1)[0].lower() in ARTICLES else "the "
+        return f"{article}{name}"
     if sighting.level == CLASSIFIED:
         plan = sighting.target.sail_plan
         return "a vessel under sail" if plan.area > 0.0 else "a vessel, sails furled"
@@ -994,14 +1003,22 @@ class VesselNarrator:
 
         """
         phrase = self.direction_phrase(where)
+
         if not sightings:
+            # One range on its own, so there is nothing for it to disagree with and
+            # no scale to choose. The horizon is only ever reported here, in the
+            # branch where nothing else is.
             empty = f"Nothing in sight {phrase}."
             if horizon:
                 empty += f" The horizon is {format_range(horizon)} off."
             return (empty,)
 
+        # One unit for the whole column, on the same grounds as `all_round`: it is
+        # there to be compared down, and a list reading "2.7 miles" against "1.5
+        # leagues" has given that up.
+        scale = pick_scale([sighting.distance for sighting in sightings])
         lines = [f"Looking {phrase}:"]
-        lines.extend(self.contact_line(sighting) for sighting in sightings)
+        lines.extend(self.contact_line(sighting, scale) for sighting in sightings)
         return tuple(lines)
 
     def all_round(self, sweep, horizon=None):
@@ -1957,9 +1974,13 @@ class WaterNarrator:
         )
         if not seen:
             return ("Nothing at all breaks the horizon.",)
+        # One unit here too. Someone in the water has worse problems than unit
+        # conversion, and this is the report they most need to read at a glance.
+        scale = pick_scale([sighting.distance for sighting in seen])
         return tuple(
             f"{open_sentence(self.describe_contact(sighting))} lies to the "
-            f"{compass_point(sighting.bearing)}, {format_range(sighting.distance)} off."
+            f"{compass_point(sighting.bearing)}, "
+            f"{format_range(sighting.distance, scale=scale)} off."
             for sighting in seen
         )
 

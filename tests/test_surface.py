@@ -177,3 +177,73 @@ class TestSomethingWithNoPositionOfItsOwn(SurfaceTestCase):
         """An ordinary character in the water resolves through the room to its centre."""
         self.char1.move_to(self.room, quiet=True, move_hooks=False)
         self.assertIn("open sea", self.room.return_appearance(self.char1))
+
+
+class TestOneUnitFromTheWaterToo(SurfaceTestCase):
+    """
+    A swimmer sees a very short way and a very long way at once - a boat within
+    hail, and a ship's masts hull-down beyond his own horizon. That spread is
+    exactly where a per-value unit reads worst, and he is the person least able to
+    spare the arithmetic.
+
+    """
+
+    def test_both_contacts_read_in_the_same_unit(self):
+        near = create.create_object(Vessel, key="Ship's Boat")
+        near.maritime_position = WorldPosition(HERE.x, HERE.y + 4300.0)
+        traffic().note(near, near.maritime_position)
+
+        far = create.create_object(Vessel, key="Kittiwake")
+        far.air_draft = 60.0
+        far.maritime_position = WorldPosition(HERE.x, HERE.y + 20000.0)
+        traffic().note(far, far.maritime_position)
+
+        text = self.surface()
+        units = {word for word in ("cables", "miles", "leagues") if word in text}
+        self.assertEqual(len(units), 1, text)
+
+    def test_and_both_are_actually_in_sight(self):
+        """Guards the test above: one contact could never mix units with itself."""
+        near = create.create_object(Vessel, key="Ship's Boat")
+        near.maritime_position = WorldPosition(HERE.x, HERE.y + 4300.0)
+        traffic().note(near, near.maritime_position)
+
+        far = create.create_object(Vessel, key="Kittiwake")
+        far.air_draft = 60.0
+        far.maritime_position = WorldPosition(HERE.x, HERE.y + 20000.0)
+        traffic().note(far, far.maritime_position)
+
+        text = self.surface()
+        self.assertEqual(text.count("lies to the north"), 2, text)
+
+
+class TestNamesThatCarryTheirOwnArticle(SurfaceTestCase):
+    """
+    "The the Kittiwake" - seen live in a sweep, because a builder had put the
+    article in the name and the narrator adds one of its own.
+
+    """
+
+    def named(self, key):
+        """
+        Returns:
+            text (str): What the swimmer says about a ship of that name.
+
+        """
+        hull = create.create_object(Vessel, key=key)
+        hull.maritime_position = WorldPosition(HERE.x, HERE.y + 500.0)
+        traffic().note(hull, hull.maritime_position)
+        return self.surface()
+
+    def test_a_name_with_the_in_it_is_not_given_another(self):
+        self.assertNotIn("the the", self.named("the Kittiwake").lower())
+
+    def test_and_is_still_named(self):
+        self.assertIn("Kittiwake", self.named("the Kittiwake"))
+
+    def test_an_ordinary_name_still_gets_one(self):
+        self.assertIn("The Marigold lies", self.named("Marigold"))
+
+    def test_a_name_beginning_with_an_indefinite_article_is_left_alone(self):
+        """A ship's boat may well be "a launch"; she is not "the a launch"."""
+        self.assertNotIn("the a ", self.named("a launch").lower())
