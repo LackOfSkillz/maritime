@@ -103,9 +103,7 @@ class BakedMapProvider(MaritimeMapProvider):
             with open(path, encoding="utf-8") as source:
                 self.manifest = json.load(source)
         self._dangers = tuple(_danger(record) for record in self.manifest.get("dangers", ()))
-        self._landmarks = tuple(
-            _landmark(record) for record in self.manifest.get("landmarks", ())
-        )
+        self._landmarks = tuple(_landmark(record) for record in self.manifest.get("landmarks", ()))
 
     # --- the ground ---------------------------------------------------------
 

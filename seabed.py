@@ -133,9 +133,7 @@ def baked_for(world, cell):
         worth being strict about.
 
     """
-    return tuple(
-        sheet for sheet in _BAKED.get(world, ()) if abs(sheet.cell - cell) < 1e-9
-    )
+    return tuple(sheet for sheet in _BAKED.get(world, ()) if abs(sheet.cell - cell) < 1e-9)
 
 
 def forget_baked(world=None):
@@ -272,9 +270,7 @@ def forget(world=None):
     if world is not None:
         levels = _REMEMBERED.pop(world, {})
         return sum(len(level) for level in levels.values())
-    dropped = sum(
-        len(level) for levels in _REMEMBERED.values() for level in levels.values()
-    )
+    dropped = sum(len(level) for levels in _REMEMBERED.values() for level in levels.values())
     _REMEMBERED.clear()
     _HITS[0] = 0
     _MISSES[0] = 0

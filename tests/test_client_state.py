@@ -627,9 +627,7 @@ class TestLookingSomewhereOtherThanAtHerself(StateTestCase):
         # A sheet large enough to drag about inside. Without one she is off every chart
         # aboard, and the honest answer to any request is an empty sheet - which is right,
         # and tests nothing about where the sheet is centred.
-        self.hull.add_chart(
-            Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4)
-        )
+        self.hull.add_chart(Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4))
 
     def sheet(self, centre=(0.0, 0.0), reach=4000.0):
         from ..client.state import chart_for

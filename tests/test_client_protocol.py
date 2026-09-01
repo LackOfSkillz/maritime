@@ -761,9 +761,7 @@ class TestDraggingAsksForSomewhereElse(ClientTestCase):
     def setUp(self):
         super().setUp()
         self.aboard()
-        self.hull.add_chart(
-            Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4)
-        )
+        self.hull.add_chart(Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4))
         self.browser = FakeSession(self.char1)
         hello(self.browser)
         self.browser.sent.clear()

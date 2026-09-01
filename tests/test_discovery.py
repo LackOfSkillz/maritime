@@ -289,9 +289,7 @@ class TestWhetherItCouldActuallyBeSeen(DiscoveryTestCase):
         lost = self.hull.dead_reckoning
         self.assertIsNotNone(lost, "she has no reckoning to be wrong about")
         self.hull.dead_reckoning = replace(lost, position=WorldPosition(4e5, 4e5))
-        self.assertNotEqual(
-            self.hull.reckoned_position.x, self.hull.maritime_position.x
-        )
+        self.assertNotEqual(self.hull.reckoned_position.x, self.hull.maritime_position.x)
 
         self.assertTrue(sight(self.hull, 100.0))
 

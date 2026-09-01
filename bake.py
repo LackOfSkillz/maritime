@@ -282,9 +282,7 @@ def write(path, baked):
     with open(partial, "wb") as out:
         out.write(MAGIC)
         out.write(
-            HEADER.pack(
-                baked.cell, baked.west, baked.south, baked.columns, baked.rows, baked.scale
-            )
+            HEADER.pack(baked.cell, baked.west, baked.south, baked.columns, baked.rows, baked.scale)
         )
         out.write(baked.fingerprint.ljust(FINGERPRINT_BYTES, b"\0")[:FINGERPRINT_BYTES])
         out.write(baked.values.tobytes())
@@ -464,9 +462,7 @@ def _write_manifest(path, world, directory):
             }
         )
 
-    widest = max(
-        (abs(edge) for sheet in present for edge in sheet["area"]), default=100_000.0
-    )
+    widest = max((abs(edge) for sheet in present for edge in sheet["area"]), default=100_000.0)
     centre = WorldPosition(0.0, 0.0)
 
     anchor = None
