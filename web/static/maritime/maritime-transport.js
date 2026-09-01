@@ -19,6 +19,7 @@ window.MaritimeTransport = (function () {
     var STATUS = "maritime_status";
     var CONTACTS = "maritime_contacts";
     var CHART = "maritime_chart";
+    var LAND = "maritime_land";
     var SYNC = "maritime_sync";
 
     /* What this build of the client can draw. Sent so the server does not have to
@@ -71,6 +72,9 @@ window.MaritimeTransport = (function () {
 
         Evennia.emitter.on(CHART, function (args, kwargs) {
             MaritimeState.applyChart(kwargs);
+        },
+        [LAND]: function (args, kwargs) {
+            MaritimeState.applyLand(kwargs);
         });
 
         /* A connection that has just come up is a connection that knows nothing.

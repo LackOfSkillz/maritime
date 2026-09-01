@@ -1194,3 +1194,82 @@ svg.maritime-chart {
     border-radius: 50%;
     opacity: 0.5;
 }
+
+/* --- the map ashore ---------------------------------------------------------
+ *
+ * A different instrument from the chart and drawn like one. No soundings, no
+ * projection, no scale: rooms where the walk puts them, and lines for the ways
+ * between. Four colours carry meaning and everything else is deliberately quiet,
+ * because a map where six things shout is a map where nothing does. */
+
+.maritime-landmap-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.maritime-landmap-way {
+    stroke: var(--maritime-border, #6b5c48);
+    stroke-width: 1.5;
+    opacity: 0.55;
+}
+
+.maritime-landmap-ring {
+    fill: none;
+    stroke: #e2725b;
+    stroke-width: 1.5;
+    opacity: 0.8;
+}
+
+/* A room is a target, so it has to look like one under a pointer. */
+.maritime-landmap-room {
+    cursor: pointer;
+}
+
+.maritime-landmap-room circle {
+    transition: r 90ms ease-out;
+}
+
+.maritime-landmap-room:hover circle,
+.maritime-landmap-room:focus circle {
+    r: 7;
+}
+
+.maritime-landmap-room:focus {
+    outline: none;
+}
+
+.maritime-landmap-room:focus .maritime-landmap-ring,
+.maritime-landmap-room:hover .maritime-landmap-ring {
+    opacity: 1;
+}
+
+/* You are here, and you cannot walk to where you already are. */
+.maritime-room-here {
+    cursor: default;
+}
+
+.maritime-landmap-legend {
+    display: flex;
+    gap: 0.9rem;
+    padding: 0.35rem 0.6rem 0.5rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--maritime-text-dim, #9aa8b5);
+}
+
+.maritime-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.maritime-legend-item i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}

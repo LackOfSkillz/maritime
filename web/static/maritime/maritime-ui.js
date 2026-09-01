@@ -76,6 +76,7 @@ window.MaritimeUI = (function () {
         return [
             state.mode,
             state.vesselId,
+            state.land ? JSON.stringify(state.land) : "",
             state.preferences.panel,
             state.status ? JSON.stringify(state.status) : "",
             state.contacts ? state.contacts.length : 0,
@@ -107,7 +108,15 @@ window.MaritimeUI = (function () {
 
         var pane = document.createElement("div");
         pane.className = "maritime-pane";
-        if (window.MaritimeChart) {
+        /* Ashore there is no chart to draw and no sense in drawing one: the panel shows
+         * the place instead. Aboard it goes back to the sea, and the two never share a
+         * pane because they are not two views of one thing. */
+        if (state.mode === "ashore" && window.MaritimeLandMap) {
+            pane.appendChild(MaritimeLandMap.render(state, function () {
+                lastDrawn = null;
+                render(MaritimeState.get());
+            }));
+        } else if (window.MaritimeChart) {
             pane.appendChild(MaritimeChart.render(state, function () {
                 /* A pan or a zoom changes nothing the server knows, so the redraw is
                  * forced rather than waiting for state to change. */

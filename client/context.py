@@ -28,6 +28,28 @@ COMMAND = "command"
 #: In the water. A very short horizon, no ship to command, and problems of their own.
 WATER = "water"
 
+#: Standing on land that belongs to the sea - a quay, a pier, the town behind it.
+#:
+#: There is no ship to give orders to and no chart to read, but there is somewhere to walk
+#: and a ship to walk back to, so the panel can stay up and show the place instead of the
+#: water.
+#:
+#: **Off unless a game turns it on**, and that is the important half. The default when
+#: somebody steps off a gangway is that maritime gets out of the way entirely and the host
+#: game's own interface comes back - which is what this module says at the top of the
+#: resolver and what it should have gone on doing. A contrib that decides to own the
+#: screen in a market square has overstepped, however good its map is.
+#:
+#: A game that *wants* the maritime panel ashore - because its whole world is a coast, or
+#: because it has no other interface to return to - sets `MARITIME_ASHORE_PANEL` and gets
+#: it. That is a decision about a game, so a game makes it.
+#:
+#: **The game also says which rooms these are; the contrib does not guess.** A `PortRoom` is
+#: obviously one, because it has berths. Everything else - the lanes, the market, the room
+#: at the top of the hill - is ashore because the game tagged it so, which is the same
+#: bargain every other part of this contrib makes about the world.
+ASHORE = "ashore"
+
 #: Every context this resolver can return.
 #:
 #: There is deliberately no CREW between passenger and command. Nothing in the contrib can
@@ -36,11 +58,71 @@ WATER = "water"
 #: stations arrive - a gunner, a leadsman, a lookout who is a person rather than a height of
 #: eye - there will be something real to resolve, and it belongs here. Publishing the value
 #: before then would be a promise the contrib cannot keep.
-CONTEXTS = (NONE, PASSENGER, COMMAND, WATER)
+CONTEXTS = (NONE, PASSENGER, COMMAND, WATER, ASHORE)
 
+
+#: The tag a game puts on land rooms it wants the maritime panel to stay up in, and the
+#: category it lives under.
+ASHORE_TAG = "ashore"
+ASHORE_CATEGORY = "maritime"
 
 #: Sentinel for "wherever they actually are", so that `None` can mean the void.
 _WHERE_THEY_ARE = object()
+
+
+def wants_ashore_panel():
+    """
+    Whether this game keeps the maritime panel up on land.
+
+    Returns:
+        wanted (bool): False unless the game asked for it.
+
+    Notes:
+        Off by default, deliberately. Stepping ashore should hand the screen back to the
+        host game, because that is where a player expects to find whatever else the game
+        does - its own map, its own combat, its own everything. A contrib that keeps the
+        display after the thing it displays has been left behind is a contrib that has
+        decided it is the game.
+
+        A game whose world *is* a coast turns it on and gets a land map instead of a blank
+        space. Both answers are right for somebody; only one of them is right by default.
+
+    """
+    from .. import config
+
+    return bool(config.get_setting("ASHORE_PANEL", False))
+
+
+def is_ashore(room):
+    """
+    Whether this room is maritime land.
+
+    Args:
+        room (Object or None): Where somebody is standing.
+
+    Returns:
+        ashore (bool): Whether the panel should stay up and show the place.
+
+    Notes:
+        A room with berths is ashore without being told - it is the quay, and a quay is the
+        seam. Everything else is ashore because the game said so, so a tavern forty miles
+        inland does not get a harbour interface merely for being a tavern.
+
+        Total, like the resolver it serves: anything unreadable is not ashore, because the
+        failure worth avoiding is the interface turning up where it does not belong.
+
+    """
+    if room is None:
+        return False
+    if getattr(room, "berths", None):
+        return True
+    tags = getattr(room, "tags", None)
+    if tags is None:
+        return False
+    try:
+        return bool(tags.has(ASHORE_TAG, category=ASHORE_CATEGORY))
+    except (TypeError, AttributeError):
+        return False
 
 
 def resolve_maritime_ui_context(character, room=_WHERE_THEY_ARE):
@@ -82,5 +164,8 @@ def resolve_maritime_ui_context(character, room=_WHERE_THEY_ARE):
 
     if bool(getattr(where, "is_open_water", False)):
         return WATER
+
+    if wants_ashore_panel() and is_ashore(where):
+        return ASHORE
 
     return NONE

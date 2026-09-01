@@ -31,6 +31,7 @@ window.MaritimeState = (function () {
 
         status: null,
         chart: null,
+        land: null,
         contacts: [],
 
         selectedContactId: null,
@@ -145,6 +146,17 @@ window.MaritimeState = (function () {
         changed();
     }
 
+    /* The map ashore. Kept beside the chart rather than replacing it, so walking back
+     * aboard shows the sea again without waiting for a fresh sheet to be drawn. */
+    function applyLand(payload) {
+        payload = usable(payload);
+        if (!payload) {
+            return;
+        }
+        state.land = payload;
+        changed();
+    }
+
     function applySync(payload) {
         if (!payload) {
             return;
@@ -212,6 +224,7 @@ window.MaritimeState = (function () {
         applyStatus: applyStatus,
         applyContacts: applyContacts,
         applyChart: applyChart,
+        applyLand: applyLand,
         applySync: applySync,
         loadPreferences: loadPreferences,
         select: select,

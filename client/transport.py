@@ -281,6 +281,72 @@ def broadcast_status(vessel):
     return told
 
 
+def send_land(session):
+    """
+    Send the map of where somebody is standing.
+
+    Args:
+        session (Session): The connection to tell.
+
+    Returns:
+        sent (bool): Whether anything went out.
+
+    Notes:
+        Drawn on the way out rather than kept, because a land map is cheap - a walk over a
+        few dozen exits - and because the thing it describes changes whenever anybody opens
+        a door. Caching it would mean invalidating it on every build command, every new
+        exit and every room somebody digs, which is a great deal of machinery to save a
+        millisecond.
+
+    """
+    from .context import ASHORE, resolve_maritime_ui_context
+    from .landmap import sheet_for
+    from .payloads import LAND, LandSheet
+
+    character = getattr(session, "puppet", None)
+    if character is None:
+        return False
+    if resolve_maritime_ui_context(character) != ASHORE:
+        return False
+
+    drawn = sheet_for(character)
+    return announce(
+        session,
+        LandSheet(
+            title=drawn["title"],
+            here=drawn["here"] or 0,
+            rooms=tuple(drawn["rooms"]),
+            edges=tuple(drawn["edges"]),
+        ),
+        LAND,
+    )
+
+
+def refresh_ashore(character):
+    """
+    Redraw the land map for everybody puppeting this character.
+
+    Args:
+        character (Object): Who moved.
+
+    Returns:
+        told (int): How many sessions were sent a map.
+
+    Notes:
+        Called when somebody walks, because ashore the map changes for exactly one reason:
+        they are standing somewhere else. There is no tick to hang it on and no need for
+        one - a room does not move.
+
+    """
+    told = 0
+    for session in (
+        getattr(character, "sessions", None).all() if getattr(character, "sessions", None) else ()
+    ):
+        if send_land(session):
+            told += 1
+    return told
+
+
 def redraw_chart(session):
     """
     Send a session the chart again, at whatever reach it is now showing.

@@ -13,6 +13,33 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **A whole coast ashore, as the worked example of putting 2D Evennia land in a maritime
+  world.** `example/aetos_world` builds Careenage - 55 hand-authored rooms at the head of
+  the harbour - and four rooms on each of the six islands, with piers, eighteen people
+  behind counters and 106 things between them. One builder command, safe to run twice.
+- The seam is one room type. Nine rooms are `PortRoom`s holding a position and a berth;
+  the other eighty are ordinary rooms that have never heard of the sea, and nothing else had
+  to be taught about anything.
+- **Piers, because the ground demanded them.** This shore shelves so gently that six metres
+  of water is most of a kilometre out, so a quay on the sand would have nothing alongside
+  it. Each pier's length is measured against the soundings rather than chosen, and a berth
+  advertises the water actually under it less half a metre - so it cannot promise a depth
+  it lacks however the world is later rebuilt.
+- **Stepping ashore where nobody has been is recorded.** An island pier notices the first
+  person off it and credits them, once and permanently, through the discovery ledger. A
+  crate landed on the same pier claims nothing.
+- **A map ashore, opt-in.** `MARITIME_ASHORE_PANEL` keeps the panel up on land and shows
+  rooms and the ways between them instead of a chart, with click-to-move: a breadth-first
+  route over the drawn edges, sent as ordinary movement commands one at a time, so a locked
+  gate stops the walk exactly where it would stop the player.
+- **Off by default, and that is the important half.** The contrib's own rule is that the
+  failure a player notices is a maritime interface appearing in a tavern, so stepping off a
+  gangway hands the screen back to the host game unless a game asks otherwise. The world
+  tags its own rooms as coastal land - a fact about the world - and whether an interface
+  does anything about it is the game's decision.
+- Four markers and no more, because ashore there are three questions worth answering in
+  colour: where am I, where is my ship, and where do I buy things.
+
 - **A real coast now ships with the contrib.** Point `MARITIME_MAP_PROVIDER` at
   `baked_world.AetosCoast` and a game is sailing a generated coast — harbour, moles, bar,
   dredged approach, tidal creek, an isolated pinnacle and six named islands — with nothing

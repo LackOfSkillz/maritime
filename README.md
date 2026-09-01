@@ -149,6 +149,33 @@ And the draught is not a number on a sheet. Over a shelf with 2.4 metres of wate
 loaded she is 1.5 metres into the ground and light she crosses with 40 centimetres to
 spare — the same water, and the cargo is the whole difference.
 
+## Land in a maritime world
+
+```
+build_aetos
+```
+
+That builds Careenage and the six islands: 76 rooms, 148 exits, eighteen people behind
+counters. It is the worked example of the question this contrib gets asked most - how does an
+ordinary Evennia area sit inside a world with coordinates in it?
+
+**The answer is one room type.** A `PortRoom` is an ordinary room that also holds a
+`WorldPosition` and a berth. Everything landward of it is rooms and exits like anywhere else;
+everything seaward is the maritime coordinate system. Nine rooms in the example are
+`PortRoom`s and the other eighty are not.
+
+By default, stepping ashore hands the screen back to your game — maritime gets out of the
+way, because a harbour interface in a market square is the failure a player actually notices.
+A game whose world *is* a coast can keep the panel up instead:
+
+```python
+MARITIME_ASHORE_PANEL = True
+```
+
+Then the chart is replaced on land by a map of rooms and the ways between them, with
+click-to-move. Routes are walked as ordinary movement commands, one at a time — nothing
+teleports, so a locked gate stops the walk exactly where it would stop the player.
+
 ## A real coast, shipped
 
 ```python
@@ -674,6 +701,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_TIDE_PROVIDER` | a motionless sea | Dotted path to the game's tide - `HarmonicTide` for a real one |
 | `MARITIME_SOUNDING_CACHE` | `300000` | How many soundings of the seabed to remember, about 50 MB |
 | `MARITIME_WORLD_BUNDLE` | unset | Directory of baked soundings for `BakedMapProvider` |
+| `MARITIME_ASHORE_PANEL` | `False` | Keep the panel up on land, showing a room map instead of a chart |
 | `MARITIME_BAKE_DIR` | unset | Where to write and read soundings baked at startup |
 | `MARITIME_BAKE_AREA` | unset | `(west, south, east, north)` in metres, to bake at startup |
 | `MARITIME_BAKE_SCALES` | unset | Which zoom reaches to pre-sound |

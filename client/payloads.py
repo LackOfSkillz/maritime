@@ -25,6 +25,7 @@ MODE = "maritime_mode"
 STATUS = "maritime_status"
 CONTACTS = "maritime_contacts"
 CHART = "maritime_chart"
+LAND = "maritime_land"
 SYNC = "maritime_sync"
 
 #: What a client may send back.
@@ -34,7 +35,7 @@ VIEW = "maritime_view"
 #: Everything a client is allowed to announce it understands. A capability the server does
 #: not recognise is ignored rather than refused - an older server meeting a newer client
 #: should degrade, not argue.
-CAPABILITIES = ("mode", "status", "chart", "contacts", "controls")
+CAPABILITIES = ("mode", "status", "chart", "land", "contacts", "controls")
 
 
 @dataclass(frozen=True)
@@ -195,6 +196,45 @@ class Contacts(Payload):
 
     def as_message(self):
         return {"version": self.version, "contacts": [dict(one) for one in self.contacts]}
+
+
+@dataclass(frozen=True)
+class LandSheet(Payload):
+    """
+    The place ashore, as rooms and the ways between them.
+
+    Attributes:
+        title (str): Where the player is standing, for the panel's heading.
+        here (int): The room they are in, so the client can mark it.
+        rooms (list): Each `{"id", "name", "x", "y", "marker"}`.
+        edges (list): Each `{"from", "to", "dir"}`, one per exit.
+
+    Notes:
+        A separate payload from the chart rather than a mode of it, because the two answer
+        different questions and share nothing: a chart is depths in metres over a projected
+        plane, and this is a graph of rooms with no distances in it at all. Folding them
+        together would have a client checking which kind of thing it had been handed before
+        it could read any field, which is the shape of a message that should have been two.
+
+    """
+
+    title: str = ""
+    here: int = 0
+    rooms: tuple = ()
+    edges: tuple = ()
+
+    def as_message(self):
+        """
+        Returns:
+            message (dict): What goes on the wire.
+
+        """
+        return {
+            "title": self.title,
+            "here": self.here,
+            "rooms": [dict(one) for one in self.rooms],
+            "edges": [dict(one) for one in self.edges],
+        }
 
 
 @dataclass(frozen=True)
