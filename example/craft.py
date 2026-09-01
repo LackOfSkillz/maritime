@@ -13,6 +13,32 @@ do nothing until she is becalmed - at which point they become the difference bet
 getting home and drifting. That is one line of configuration and the whole of the argument
 for modelling both.
 
+**What they carry was checked against real vessels rather than chosen.** The sloop is very
+nearly a ship that existed: eighteen metres by five point four is 59 ft by 17 ft 8 in, and
+the US revenue cutter *Massachusetts* of 1791 was 60 ft by 17 ft 8 in on a 7 ft 8 in draft
+and measured 70 tons burthen. Builder's Old Measurement - the rule England used from about
+1650 to 1849 - puts this hull at 81 tons by formula:
+
+    tons burthen = ((length - 3/5 beam) x beam x beam/2) / 94        length and beam in feet
+
+Burthen is a measure of *volume*, not weight: one ton burthen is the space a 252-gallon tun
+of wine takes, about a hundred cubic feet. So it says what she can hold and not what she can
+lift, and the two limits are different - which is exactly why `cargo.binding_limit` asks
+which of them a load has actually used up.
+
+For the weight, the ordinary naval architecture. A hull of these dimensions at a block
+coefficient of 0.45 - fine, as a cutter is - displaces about 99 tonnes loaded; a wooden
+vessel is something over half that light, leaving about 42 tonnes of deadweight for cargo,
+stores, water and people. The figure here is 40 tonnes, which is inside six per cent of that
+and on the right side of it.
+
+The hold follows the same check. Seventy tons burthen is 7,000 cubic feet or 198 cubic
+metres *measured*, of which a cutter's usable hold - below deck, clear of crew space, ballast
+and stores - is some forty to fifty per cent, or 79 to 99 cubic metres. The figure here is
+90. The paddling craft were checked the same way and want no argument: a sea kayak carries a
+paddler and gear, and a canoe of five and a half metres carries three or four hundred
+kilograms.
+
 Every craft here is an ordinary `Vessel` with one compartment. A kayak with a "Main Deck"
 would be silly, so hers is called what a kayak has; the architecture does not care, and
 that it does not care is the point. A hull holds a position and its compartments resolve

@@ -743,3 +743,77 @@ class TestThePaperIsDrawnOnlyWhenItChanges(ClientTestCase):
         self.drawn.clear()
         self.tick(5)
         self.assertEqual(self.drawn, [])
+
+
+class TestDraggingAsksForSomewhereElse(ClientTestCase):
+    """
+    The round trip a drag makes, driven through the input function the browser calls.
+
+    Dragging was broken twice over and the second one is the reason this exists. The first
+    time, the request carried no place, so the server always drew around the ship. That was
+    fixed - and dragging still did nothing, because nothing *sent* a request when the drag
+    ended. The offset was plumbed the whole way through and never travelled.
+
+    So this test does not check that a sheet can be drawn somewhere else. It checks that
+    asking for one, the way the client asks, delivers one.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.aboard()
+        self.hull.add_chart(
+            Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4)
+        )
+        self.browser = FakeSession(self.char1)
+        hello(self.browser)
+        self.browser.sent.clear()
+
+    def ask(self, **kwargs):
+        """
+        Returns:
+            sheet (dict or None): What the client would have received, or None if the
+                request produced no sheet at all.
+
+        """
+        from ..client.inputfuncs import maritime_view
+
+        self.browser.sent.clear()
+        maritime_view(self.browser, reach=4000.0, **kwargs)
+        return self.browser.last("maritime_chart")
+
+    def test_asking_without_an_offset_puts_her_in_the_middle(self):
+        drawn = self.ask()
+        self.assertIsNotNone(drawn, "no sheet was sent at all")
+        self.assertEqual([abs(part) for part in drawn["own"]], [0.0, 0.0])
+
+    def test_asking_with_one_moves_the_sheet_and_says_where_she_is(self):
+        drawn = self.ask(east=3000.0, north=-1500.0)
+        self.assertIsNotNone(drawn, "a drag produced no sheet")
+        self.assertEqual(drawn["own"], [-3000.0, 1500.0])
+
+    def test_and_the_ground_under_it_is_different_ground(self):
+        """
+        The bug in one assertion. If a drag still only slid the picture, these would be
+        the same sheet with the ship drawn somewhere else on it.
+
+        """
+        here = self.ask()
+        away = self.ask(east=70000.0, north=70000.0)
+        self.assertNotEqual(here["soundings"], away["soundings"])
+
+    def test_dragging_back_gives_the_first_sheet_again(self):
+        first = self.ask()
+        self.ask(east=70000.0, north=70000.0)
+        again = self.ask()
+        self.assertEqual(first["soundings"], again["soundings"])
+        self.assertEqual(first["coastline"], again["coastline"])
+
+    def test_a_drag_is_not_suppressed_as_an_unchanged_view(self):
+        """
+        The redraw stamp exists so a ship at anchor is not drawn thirty times a minute.
+        Blind to *where* the sheet is, it would swallow every drag: same reach, same
+        revision, same chart, therefore nothing to send.
+
+        """
+        self.assertIsNotNone(self.ask(east=5000.0), "the first drag was suppressed")
+        self.assertIsNotNone(self.ask(east=9000.0), "a second drag was suppressed")

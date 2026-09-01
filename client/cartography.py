@@ -28,6 +28,7 @@ polylines that an SVG path can take directly.
 
 import math
 
+from .. import seabed
 from ..charts import charted_terrain_z_at
 from ..position import METRES_PER_FATHOM, WorldPosition
 
@@ -267,6 +268,18 @@ def sample(chart, world, now, west, south, span, steps=GRID, coarse=COARSE, leve
         levels = traced_levels()
 
     cell = span / float(steps - 1)
+
+    # Asked through something that remembers what the ground was. The seabed does not
+    # change, does not depend on which chart is being read and is the same for everybody,
+    # so it is worth remembering - and it is very nearly the whole cost of a sheet.
+    #
+    # Hits need the points to coincide, which is the caller's business rather than this
+    # function's: `chart_for` puts the sheet's corner on the lattice. Quantising the cell
+    # *here* was the first attempt and was wrong - the grid then covered more ground than
+    # the span it was drawn against, and every contour point came out misplaced by up to
+    # a tenth of the sheet.
+    ground = seabed.reader(world, cell)
+
     coarse = _seed_factor(cell, coarse)
     grid = [[_UNREAD] * steps for _ in range(steps)]
 
@@ -278,6 +291,7 @@ def sample(chart, world, now, west, south, span, steps=GRID, coarse=COARSE, leve
                 WorldPosition(west + column * cell, south + row * cell),
                 now,
                 world,
+                seabed=ground,
             )
             grid[row][column] = value
         return value

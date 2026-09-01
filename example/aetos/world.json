@@ -1,0 +1,237 @@
+{
+  "anchor": [
+    -21.5841,
+    149.8703
+  ],
+  "bottom": "sand",
+  "dangers": [
+    {
+      "bottom": "sand",
+      "key": "Gannet Isle",
+      "radius": 430.0,
+      "top_z": 12.0,
+      "x": -1883.3,
+      "y": 3843.6
+    },
+    {
+      "bottom": "sand",
+      "key": "Kettle Rock",
+      "radius": 250.0,
+      "top_z": 12.0,
+      "x": -1862.8,
+      "y": 5230.0
+    },
+    {
+      "bottom": "sand",
+      "key": "Longhope",
+      "radius": 520.0,
+      "top_z": 12.0,
+      "x": -1842.2,
+      "y": 6616.4
+    },
+    {
+      "bottom": "sand",
+      "key": "The Brothers",
+      "radius": 300.0,
+      "top_z": 12.0,
+      "x": -1821.7,
+      "y": 8002.7
+    },
+    {
+      "bottom": "sand",
+      "key": "Sandhaven",
+      "radius": 470.0,
+      "top_z": 12.0,
+      "x": -1801.2,
+      "y": 9389.1
+    },
+    {
+      "bottom": "rock",
+      "key": "Outer Skerry",
+      "radius": 210.0,
+      "top_z": 12.0,
+      "x": -1780.6,
+      "y": 10775.5
+    },
+    {
+      "bottom": "rock",
+      "key": "north mole",
+      "radius": 170.0,
+      "top_z": 3.89,
+      "x": -1630.7,
+      "y": 120.0
+    },
+    {
+      "bottom": "rock",
+      "key": "south mole",
+      "radius": 170.0,
+      "top_z": 3.88,
+      "x": -1077.6,
+      "y": 1229.8
+    },
+    {
+      "bottom": "rock",
+      "key": "drying rock",
+      "radius": 45.0,
+      "top_z": 1.02,
+      "x": -1349.8,
+      "y": 6259.2
+    },
+    {
+      "bottom": "sand",
+      "key": "harbour bar",
+      "radius": 550.0,
+      "top_z": -3.2,
+      "x": -3043.0,
+      "y": 1516.5
+    },
+    {
+      "bottom": "rock",
+      "key": "pinnacle",
+      "radius": 70.0,
+      "top_z": -3.5,
+      "x": -10059.4,
+      "y": -2249.2
+    }
+  ],
+  "landmarks": [
+    {
+      "height": 1.0,
+      "key": "drying rock",
+      "kind": "rock",
+      "radius": 45.0,
+      "x": -1349.8,
+      "y": 6259.2
+    },
+    {
+      "height": 70.0,
+      "key": "headland",
+      "kind": "headland",
+      "radius": 4000.0,
+      "x": -5528.6,
+      "y": -12887.0
+    },
+    {
+      "height": 12.0,
+      "key": "Gannet Isle",
+      "kind": "island",
+      "radius": 430.0,
+      "x": -1883.3,
+      "y": 3843.6
+    },
+    {
+      "height": 12.0,
+      "key": "Kettle Rock",
+      "kind": "island",
+      "radius": 250.0,
+      "x": -1862.8,
+      "y": 5230.0
+    },
+    {
+      "height": 12.0,
+      "key": "Longhope",
+      "kind": "island",
+      "radius": 520.0,
+      "x": -1842.2,
+      "y": 6616.4
+    },
+    {
+      "height": 12.0,
+      "key": "The Brothers",
+      "kind": "island",
+      "radius": 300.0,
+      "x": -1821.7,
+      "y": 8002.7
+    },
+    {
+      "height": 12.0,
+      "key": "Sandhaven",
+      "kind": "island",
+      "radius": 470.0,
+      "x": -1801.2,
+      "y": 9389.1
+    },
+    {
+      "height": 12.0,
+      "key": "Outer Skerry",
+      "kind": "island",
+      "radius": 210.0,
+      "x": -1780.6,
+      "y": 10775.5
+    }
+  ],
+  "sheets": [
+    {
+      "area": [
+        -61052.6,
+        -61052.6,
+        58947.4,
+        58947.4
+      ],
+      "cell": 1052.6316,
+      "file": "1053m-coast.seabed",
+      "scale": 0.01,
+      "soundings": 13225
+    },
+    {
+      "area": [
+        -22000.0,
+        -24105.3,
+        16000.0,
+        16842.1
+      ],
+      "cell": 105.2632,
+      "file": "105m-harbour.seabed",
+      "scale": 0.01,
+      "soundings": 141180
+    },
+    {
+      "area": [
+        -12000.0,
+        -12000.0,
+        7989.5,
+        14000.0
+      ],
+      "cell": 10.5263,
+      "file": "11m-inshore.seabed",
+      "scale": 0.01,
+      "soundings": 4694900
+    },
+    {
+      "area": [
+        -60000.0,
+        -60000.0,
+        60000.0,
+        60000.0
+      ],
+      "cell": 210.5263,
+      "file": "211m-coast.seabed",
+      "scale": 0.01,
+      "soundings": 326041
+    },
+    {
+      "area": [
+        -60210.5,
+        -60210.5,
+        59789.5,
+        59789.5
+      ],
+      "cell": 421.0526,
+      "file": "421m-coast.seabed",
+      "scale": 0.01,
+      "soundings": 81796
+    },
+    {
+      "area": [
+        -22021.1,
+        -24000.0,
+        15957.9,
+        16968.4
+      ],
+      "cell": 42.1053,
+      "file": "42m-harbour.seabed",
+      "scale": 0.01,
+      "soundings": 879522
+    }
+  ]
+}

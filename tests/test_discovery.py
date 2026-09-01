@@ -42,14 +42,16 @@ from ..typeclasses import ShipRoom, Vessel
 #: A headland that stands well up, and a low bank that does not.
 HORN = Landmark(
     key="The Greater Horn",
-    position=WorldPosition(0.0, 20_000.0),
+    x=0.0,
+    y=20_000.0,
     radius=3_000.0,
     height=140.0,
     kind=HEADLAND,
 )
 SHALLOWS = Landmark(
     key="Muddy Ground",
-    position=WorldPosition(0.0, 20_000.0),
+    x=0.0,
+    y=20_000.0,
     radius=800.0,
     height=0.0,
     kind=BANK,
@@ -123,9 +125,7 @@ class DiscoveryTestCase(BaseEvenniaTest):
     def close_enough(self, landmark, spare=0.5):
         """Put her within sight of it, by the same arithmetic the sighting uses."""
         reach = geographic_range(3.0, landmark.height) * spare
-        self.hull.maritime_position = WorldPosition(
-            landmark.position.x, landmark.position.y - reach
-        )
+        self.hull.maritime_position = WorldPosition(landmark.x, landmark.y - reach)
 
 
 class TestWhoGetsTheCredit(DiscoveryTestCase):

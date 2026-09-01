@@ -31,13 +31,13 @@ free; one that does not has nothing to discover, which is the correct answer for
 whose sea is a featureless shelf.
 """
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
 from evennia.scripts.scripts import DefaultScript
 
 from .observation import geographic_range
-from .position import WorldPosition
 
 #: What a landmark is, roughly, for the wording of a report and for how far off it shows.
 ISLAND = "island"
@@ -71,13 +71,19 @@ class Landmark:
     Attributes:
         key (str): Its name, and its identity in the ledger. Two landmarks with one name
             are one landmark, which is why a world must not name two islands alike.
-        position (WorldPosition): Where it is.
+        x (float): Easting of its middle, in metres.
+        y (float): Northing of its middle, in metres.
         radius (float): How far it extends, in metres.
         height (float): How high it stands above the water, in metres. Decides how far off
             it can be raised - a headland is seen from a long way and a sandbank is not.
         kind (str): One of the kinds above.
 
     Notes:
+        Plain coordinates rather than a `WorldPosition`, and shaped exactly like a
+        `Hazard` for the same reason: a world generator supplying these should not have to
+        import maritime to describe its own islands. Anything with these five attributes
+        will do.
+
         Deliberately not a `Danger`. A danger is a thing that will hole a hull and belongs
         on the chart as a warning; a landmark is a thing worth having a name and belongs in
         the ledger as an achievement. Many places are both, and some are only one: an
@@ -87,7 +93,8 @@ class Landmark:
     """
 
     key: str
-    position: WorldPosition
+    x: float
+    y: float
     radius: float = 0.0
     height: float = 0.0
     kind: str = ISLAND
@@ -285,9 +292,8 @@ def sight(vessel, game_time, landmarks=None):
     for landmark in landmarks:
         if book.sighted(landmark.key):
             continue
-        if here.horizontal_distance_to(landmark.position) > geographic_range(
-            eye, max(landmark.height, 0.0)
-        ):
+        away = math.hypot(landmark.x - here.x, landmark.y - here.y)
+        if away > geographic_range(eye, max(landmark.height, 0.0)):
             continue
         made.append(
             book.record_sighting(landmark.key, company, game_time, getattr(vessel, "key", ""))

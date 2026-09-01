@@ -14,6 +14,7 @@ step to forget.
 
 """
 
+from .. import seabed
 from ..position import WorldPosition
 from ..vessel import vessel_in
 from .context import COMMAND, PASSENGER, resolve_maritime_ui_context
@@ -283,7 +284,20 @@ def chart_for(vessel, reach=10000.0, centre=(0.0, 0.0)):
     middle = WorldPosition(here.x + east, here.y + north, here.z, here.region)
 
     span = reach * 2.0
-    west, south = middle.x - reach, middle.y - reach
+
+    # The sheet's corner goes on a lattice of the world, not on the ship.
+    #
+    # Sounding the seabed is nine tenths of what a chart costs, and the seabed is the same
+    # for everybody - but two sheets centred on two ships sample points that are near each
+    # other and equal nowhere, so nothing can be shared. Snapping the corner costs a shift
+    # of under one cell, invisible at the scale a cell is drawn at, and is the difference
+    # between two hundred captains paying two hundred times and paying once.
+    #
+    # Only the corner. The cell stays exactly what the span and the grid make it, because
+    # the contours are traced against that same span - see `cartography.sample`.
+    cell = span / float(cartography.GRID - 1)
+    west = seabed.snap(middle.x - reach, cell)
+    south = seabed.snap(middle.y - reach, cell)
 
     grid = cartography.sample(chart, world, now, west, south, span)
 

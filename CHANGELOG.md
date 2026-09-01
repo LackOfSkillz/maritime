@@ -13,6 +13,45 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **A real coast now ships with the contrib.** Point `MARITIME_MAP_PROVIDER` at
+  `baked_world.AetosCoast` and a game is sailing a generated coast — harbour, moles, bar,
+  dredged approach, tidal creek, an isolated pinnacle and six named islands — with nothing
+  installed, no seed and nothing to build. About three megabytes of soundings in five
+  sheets, from a kilometre-spaced coastal one down to a ten-metre inshore one over the
+  harbour and the island chain.
+- It works because the seabed is deterministic and therefore worth writing down once. The
+  shipped bundle matches the world it came from to 0.01 m inshore and 0.11 m at coastal
+  scale, against a survey error the chart itself carries of metres.
+- **Soundings are not a world**, which is the mistake the format exists to avoid. Depth and
+  a coastline come from the grid; the bottom, the marked rocks, the named islands and the
+  latitude come from a manifest in plain text beside it — so the interesting half stays
+  readable and reviewable, and only the bulk is binary.
+- `bake.bundle` writes one from any provider, asking it the same questions maritime asks, so
+  a game can ship its own world the same way.
+- Two limits, stated rather than hidden: past the finest sheet the ground is interpolated
+  rather than detailed, and past the bundle's edge there is open ocean and an unsurveyed
+  chart. The survey stops where the surveyor stopped.
+
+- **The seabed is remembered, and a chart got twenty times cheaper.** Measured first: of the
+  902 ms a ten-kilometre sheet took, 825 was asking the world for ground and 45 was every
+  other thing a chart does put together — contours, relief and graticule between them.
+  Sounding the *identical* patch twice cost 811 ms and then 816, so nothing was being kept.
+- The seabed does not change, does not depend on which chart is read, and is the same for
+  every player, so there is nothing to invalidate. A cold sheet still costs about 1.3 s; the
+  next one costs **60 ms**, and a second ship a few hundred metres away costs 86.
+- **Hits need a lattice.** A sheet used to be sounded around its own ship, so two vessels a
+  hundred metres apart sampled points that were near each other and equal nowhere. The
+  sheet's corner now lands on a lattice of the world — a shift of under one cell, invisible
+  at the scale a cell is drawn at, and the difference between two hundred captains in a
+  harbour paying two hundred times and paying once.
+- Only the corner is snapped. Quantising the *cell* was the first attempt and was wrong: the
+  grid then covered more ground than the span it was drawn against, and every contour point
+  came out misplaced by up to a tenth of the sheet.
+- What is not cached is the chart's own error, which is 1.4 µs against 82 and differs from
+  chart to chart. The ground is shared; the lie told about it is not.
+- Bounded, and it can say whether it is working. A cache that never hits is
+  indistinguishable from no cache except in a profile.
+
 - **Who found it first, and who first set foot on it.** A world nobody has been to is worth
   more than a world everybody has, and the difference is entirely bookkeeping. `discovery`
   keeps a permanent, global record: a place carries the name of the ship that raised it and

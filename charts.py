@@ -228,7 +228,7 @@ def _sounding_error(chart, position, quality):
     return signed * MAX_CHART_ERROR * (1.0 - quality)
 
 
-def charted_terrain_z_at(chart, position, game_time, world):
+def charted_terrain_z_at(chart, position, game_time, world, seabed=None):
     """
     What the chart says the bottom is, here.
 
@@ -237,6 +237,8 @@ def charted_terrain_z_at(chart, position, game_time, world):
         position (WorldPosition): Where to ask.
         game_time (float): Game time in seconds.
         world (MaritimeMapProvider): The real seabed.
+        seabed (callable, optional): Something else to ask for the true ground, taking a
+            position. Defaults to asking the world directly.
 
     Returns:
         terrain_z (float or None): Charted ground elevation against the datum, or
@@ -248,11 +250,19 @@ def charted_terrain_z_at(chart, position, game_time, world):
         fixed places, and can still author a provider of its own if it wants a
         specific lie in a specific bay.
 
+        `seabed` exists so a caller sounding thousands of points can hand in a
+        remembering reader - see `seabed`, where the measurement is - without
+        the rule for what a chart says being written down twice. Reading the
+        ground is ninety-eight per cent of the cost here and the lie on top is
+        two, so the thing worth caching is the ground, and the thing worth
+        keeping in one place is the lie.
+
     """
     if not chart.covers(position):
         return None
     quality = chart.quality_at(game_time)
-    return world.terrain_z_at(position) + _sounding_error(chart, position, quality)
+    ground = world.terrain_z_at(position) if seabed is None else seabed(position)
+    return ground + _sounding_error(chart, position, quality)
 
 
 def charted_depth_at(chart, position, game_time, world):

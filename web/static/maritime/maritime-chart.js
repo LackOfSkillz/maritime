@@ -241,11 +241,30 @@ window.MaritimeChart = (function () {
 
     /* Range rings, so a distance on the chart can be read rather than guessed. Two
      * rings and their labels: more than that is clutter on a small panel. */
-    function drawRings(into) {
+    /* Where she lies on the sheet, as an offset in metres from its middle.
+     *
+     * Zero until somebody drags the chart. Anything drawn *about her* rather than about
+     * the sea - her own mark, the range rings, the contacts the lookout reports by bearing
+     * and distance from her - has to be placed against this instead of against the middle
+     * of the paper, or it follows the paper when the paper is dragged.
+     *
+     * That is not a cosmetic slip. A range ring drawn round the centre of a dragged sheet
+     * says the ship can see a patch of sea she is nowhere near, and a contact drawn there
+     * puts another vessel in the wrong place - on the one instrument whose whole job is
+     * saying where things are relative to you. */
+    function shipOn(sheet) {
+        var own = sheet && sheet.own;
+        return own && own.length === 2
+            ? { east: own[0], north: own[1] }
+            : { east: 0, north: 0 };
+    }
+
+    function drawRings(into, sheet) {
         var span = reach();
+        var her = shipOn(sheet);
         [0.5, 1.0].forEach(function (fraction) {
             var radius = span * fraction * pixelsPerMetre();
-            var centre = toChart({ east: 0, north: 0 });
+            var centre = toChart(her);
             into.appendChild(
                 node("circle", {
                     cx: centre.x,
@@ -289,7 +308,8 @@ window.MaritimeChart = (function () {
     /* A contact, at the bearing and range the lookout gave. Anything not identified is
      * drawn hollow and named only by what it looks like - the payload never carried a
      * name, so there is none here to show. */
-    function drawContacts(into, contacts, onSelect, selectedId) {
+    function drawContacts(into, contacts, onSelect, selectedId, sheet) {
+        var her = shipOn(sheet);
         (Array.isArray(contacts) ? contacts : []).forEach(function (contact) {
             if (!contact || typeof contact.bearing !== "number" || typeof contact.range !== "number") {
                 return;
@@ -298,7 +318,9 @@ window.MaritimeChart = (function () {
             if (contact.range > span * 1.05) {
                 return;
             }
-            var at = toChart(offsetOf(contact.bearing, contact.range));
+            /* Reported as a bearing and a distance *from her*, so plotted from her. */
+            var away = offsetOf(contact.bearing, contact.range);
+            var at = toChart({ east: away.east + her.east, north: away.north + her.north });
             var group = node("g", {
                 class:
                     "maritime-chart-contact" +
@@ -903,6 +925,9 @@ window.MaritimeChart = (function () {
         var lastY = 0;
 
         svg.addEventListener("pointerdown", function (event) {
+            /* Or the browser starts a selection instead of a drag, and the captain gets
+             * the graticule labels highlighted in blue while the chart sits still. */
+            event.preventDefault();
             dragging = true;
             lastX = event.clientX;
             lastY = event.clientY;
@@ -932,9 +957,27 @@ window.MaritimeChart = (function () {
             lastY = event.clientY;
             svg.setAttribute("viewBox", viewBox());
         });
-        ["pointerup", "pointercancel", "pointerleave"].forEach(function (name) {
+        /* Not `pointerleave`. The pointer is captured, so the drag is meant to continue
+         * when the finger goes outside the chart - which is exactly what happens when
+         * somebody sweeps the sheet along a coast. Ending it there made a long drag stop
+         * dead at the edge of the panel. */
+        ["pointerup", "pointercancel"].forEach(function (name) {
             svg.addEventListener(name, function () {
+                if (!dragging) {
+                    return;
+                }
                 dragging = false;
+
+                /* ASK FOR THE SEA THAT WAS DRAGGED TO.
+                 *
+                 * Panning moves the window over a sheet that was already drawn. Until
+                 * somebody asks, the ground behind the corner is ground nobody has
+                 * sounded - so the chart slides and reveals nothing, which reads exactly
+                 * like dragging being broken.
+                 *
+                 * On release rather than on every move: a sheet is a second of the
+                 * server's time, and asking for one per pixel would ask for a hundred. */
+                askForSheet();
             });
         });
         svg.addEventListener(
@@ -1059,12 +1102,12 @@ window.MaritimeChart = (function () {
                 drawDangers(layers.dangers, state.chart.dangers);
                 drawMarks(layers.marks, state.chart.marks);
             }
-            drawRings(layers.rings);
+            drawRings(layers.rings, state.chart);
         }
         if (measured) {
             drawContacts(layers.contacts, state.contacts, function (id) {
                 MaritimeState.select(id);
-            }, state.selectedContactId);
+            }, state.selectedContactId, state.chart);
         }
 
         var motion = (state.status && state.status.motion) || {};

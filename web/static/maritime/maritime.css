@@ -621,6 +621,14 @@
     opacity: 0.9;
 }
 
+/* A chart is dragged, not selected, and on a touch screen it is dragged rather than
+ * scrolled. Without these the browser helpfully does the other thing in both cases. */
+svg.maritime-chart {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 .maritime-chart-graticule {
     fill: none;
     stroke: var(--maritime-border);

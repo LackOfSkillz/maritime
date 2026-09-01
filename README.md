@@ -149,6 +149,34 @@ And the draught is not a number on a sheet. Over a shelf with 2.4 metres of wate
 loaded she is 1.5 metres into the ground and light she crosses with 40 centimetres to
 spare — the same water, and the cargo is the whole difference.
 
+## A real coast, shipped
+
+```python
+MARITIME_MAP_PROVIDER = "evennia.contrib.full_systems.maritime.baked_world.AetosCoast"
+```
+
+That is a game sailing a generated coast — a harbour with moles and a bar, a dredged approach
+between two banks, a tidal creek, an isolated pinnacle and a chain of six named islands —
+with nothing installed, no seed, and nothing to build.
+
+It works because **the seabed is deterministic and therefore worth writing down**. The coast
+was generated once, elsewhere, and sounded into a bundle of about three megabytes: five
+sheets from a kilometre-spaced coastal one down to a ten-metre inshore one over the harbour
+and the islands. The same bargain a game engine makes when it ships baked terrain rather than
+generating it on every machine at every launch.
+
+**Soundings are not a world, though**, and that is the part worth knowing if you build your
+own. A grid of elevations gives depth and a coastline and nothing else — no bottom to hold an
+anchor or hole a hull, no rock the survey marked, no island with a name to be first to, no
+latitude to rule a chart by. Those live in `world.json` beside the soundings, in plain text,
+so the interesting half of a world stays readable and only the bulk is binary.
+
+Two honest limits. Zoom in past the finest sheet and the ground is interpolated — smooth
+rather than detailed, because there is no generator to ask. Sail past the bundle's edge and
+there is open ocean and an unsurveyed chart, because the survey stops where the surveyor
+stopped. A game that wants detail everywhere wants a generator, and can bake its own bundle
+from one with `bake.bundle`.
+
 ## The example world
 
 `example` builds it. One mainland, six islands, three boats:
@@ -644,6 +672,11 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_SEA_STATE` | follows the wind | Override the sea the wind would raise |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry - a `TiledMapProvider` subclass for an authored seabed |
 | `MARITIME_TIDE_PROVIDER` | a motionless sea | Dotted path to the game's tide - `HarmonicTide` for a real one |
+| `MARITIME_SOUNDING_CACHE` | `300000` | How many soundings of the seabed to remember, about 50 MB |
+| `MARITIME_WORLD_BUNDLE` | unset | Directory of baked soundings for `BakedMapProvider` |
+| `MARITIME_BAKE_DIR` | unset | Where to write and read soundings baked at startup |
+| `MARITIME_BAKE_AREA` | unset | `(west, south, east, north)` in metres, to bake at startup |
+| `MARITIME_BAKE_SCALES` | unset | Which zoom reaches to pre-sound |
 | `MARITIME_COMMAND_POLICY` | captain, else owner, else anybody aboard an unowned ship | Dotted path to `(character, vessel) -> bool` |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |
