@@ -1,0 +1,366 @@
+/*
+ * The maritime interface, taking the whole window - while there is a ship to take it
+ * for.
+ *
+ * OPT-IN BY EXISTING. Loading this file is the entire decision: link it and maritime
+ * arranges the client whenever a character is aboard, and do not link it and nothing
+ * here happens at all. `maritime.css` on its own stays purely additive, contributing a
+ * strip and a pane and moving nothing, which is what a game that already has a client
+ * it likes should install.
+ *
+ * That split is deliberate. A library that rearranges a host's window without being
+ * asked breaks every game that has its own layout, and there is no way to un-break it
+ * short of not installing. A separate file makes the question a one-line answer in a
+ * template rather than a setting to go and find.
+ *
+ * ASHORE, THIS FILE DOES NOTHING. Every rule below is conditioned on a character
+ * actually being aboard, so a player in a tavern gets the client their game shipped,
+ * unaltered and unresized, and the window rearranges as they step over the gangway. It
+ * hangs off `.maritime-on`, which the package already puts on its own root to show
+ * itself - so there is one piece of state saying whether there is a ship, and both the
+ * panel and the layout read it. Nothing is scripted here, and nothing can drift.
+ *
+ * A browser without `:has()` matches none of this and gets the additive interface,
+ * which is a working client rather than a broken one - the right way round for a
+ * progressive enhancement.
+ *
+ * What this file may touch is unusually wide: it reaches for Evennia's own ids, which
+ * nothing else in the package does. That is why it is kept apart, where it is obvious.
+ * It restyles rather than rebuilds - Evennia still owns those elements, still drives
+ * the log, and still handles input - and it changes Evennia's defaults for nobody who
+ * has not linked it.
+ */
+
+:root:has(#maritime-root.maritime-on),
+:root:has(#maritime-root.maritime-on) body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+/* Log to one side, ship to the other.
+ *
+ * Evennia lays #toolbar, #main and #input out as siblings and drives the last two with
+ * Split.js, which writes inline heights onto them. Each gets its own grid row rather
+ * than being wrapped or re-parented, so those inline heights still mean what Split.js
+ * intends: the panes stay resizable, and we have not fought a library over who owns
+ * the height of anything.
+ *
+ * The ship's column spans all three rows, because a chart cut off at the height of a
+ * message log would be a chart sized by an accident of somebody else's furniture. */
+:root:has(#maritime-root.maritime-on) #clientwrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--maritime-column, 1.2fr));
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+        "toolbar ship"
+        "log     ship"
+        "entry   ship"
+        "foot    foot";
+    gap: var(--maritime-gap, 10px);
+    padding: var(--maritime-gap, 10px);
+    box-sizing: border-box;
+    height: 100%;
+    background: var(--maritime-bg, #0b1318);
+}
+
+:root:has(#maritime-root.maritime-on) #toolbar {
+    grid-area: toolbar;
+}
+
+/* min-height zero, or the row refuses to shrink below the log's own content and the
+ * window grows a scrollbar instead of the log growing one. */
+:root:has(#maritime-root.maritime-on) #main {
+    grid-area: log;
+    min-height: 0;
+}
+
+:root:has(#maritime-root.maritime-on) #input {
+    grid-area: entry;
+}
+
+:root:has(#maritime-root.maritime-on) #maritime-root {
+    grid-area: ship;
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--maritime-gap, 10px);
+}
+
+/* NOTHING HERE SCROLLS THE COLUMN.
+ *
+ * Everything the interface has must be reachable without moving the page: a control
+ * board you have to scroll to reach is a board you do not use in a hurry, and an
+ * instrument strip that scrolls away is an instrument you stop trusting.
+ *
+ * So the furniture is fixed and the chart is elastic. The strip, the tabs, the panel
+ * and the board each take exactly the room they need, and the chart takes whatever is
+ * left - which is why it is the chart and not the board that gets smaller on a short
+ * window. A chart with less sea on it is still a chart. */
+:root:has(#maritime-root.maritime-on) #maritime-root {
+    overflow: hidden;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+    overflow: hidden;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-pane > * {
+    flex: 0 0 auto;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-chart-card {
+    flex: 1 1 auto;
+    min-height: 130px;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-chart-plot,
+:root:has(#maritime-root.maritime-on) .maritime-chart {
+    height: 100%;
+    min-height: 0;
+}
+
+/* The one place a scrollbar is allowed, and it is inside a box rather than on the page.
+ * A hold with forty kinds of cargo in it has to go somewhere, and the answer is that
+ * the manifest scrolls - not that the window does. */
+:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card:not(.maritime-chart-card) {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card > .maritime-card-body {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* The log, made to look like it belongs beside a chart rather than like a terminal
+ * somebody has parked next to one. */
+:root:has(#maritime-root.maritime-on) #main,
+:root:has(#maritime-root.maritime-on) #input {
+    border: 1px solid var(--maritime-border, rgba(211, 173, 98, 0.22));
+    border-radius: var(--maritime-radius, 6px);
+    background: var(--maritime-panel, #101b21);
+    box-sizing: border-box;
+}
+
+:root:has(#maritime-root.maritime-on) #input {
+    padding: 2px;
+}
+
+/* --- narrow windows ---------------------------------------------------------
+ *
+ * Below this the two columns become one, log first. A chart squeezed into half of a
+ * phone is not a chart, and the text game is the thing that always has to work. */
+@media (max-width: 900px) {
+    :root:has(#maritime-root.maritime-on) #clientwrapper {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "toolbar"
+            "log"
+            "entry"
+            "ship"
+            "foot";
+        grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+        overflow-y: auto;
+    }
+
+    :root:has(#maritime-root.maritime-on) .maritime-chart-card {
+        flex: 0 0 auto;
+    }
+}
+
+/* A strip along the bottom for whatever the game wants there.
+ *
+ * Left empty by this package, which has no business knowing a character's name, rank
+ * or money - those are the host's, and this only reserves somewhere to put them. A
+ * game that adds no footer gets a row of no height, so the slot costs nothing to
+ * anybody who does not use it. */
+:root:has(#maritime-root.maritime-on) .maritime-footer {
+    grid-area: foot;
+}
+
+/* --- the chart gets the room ---------------------------------------------------
+ *
+ * The panels and the board take what they need and the chart takes the rest, but "the
+ * rest" was leaving it barely taller than the button grid below it. It is the thing
+ * being looked at, so it is weighted to win the argument: a panel that has run out of
+ * room scrolls inside itself, and a chart that has run out of room is just small.
+ */
+:root:has(#maritime-root.maritime-on) .maritime-chart-card {
+    flex: 3 1 auto;
+    min-height: 240px;
+}
+
+/* May shrink, never grow. Given leave to grow it took the free space the chart was
+ * meant to get, and the chart came out smaller than before the change meant to
+ * enlarge it.
+ *
+ * The chart card is excluded by name, and has to be: it is a `.maritime-card` too, so
+ * this rule was capping the chart at the panel's height and pinning it to its own
+ * minimum. Measuring every child of the pane found it in one look; staring at the
+ * screenshot had not, because a smaller chart looks like a styling choice. */
+:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card:not(.maritime-chart-card) {
+    flex: 0 1 auto;
+    max-height: 27%;
+}
+
+/* --- half a screen ------------------------------------------------------------
+ *
+ * A window dragged to half a monitor is the commonest shape this will ever be in, and
+ * it is where a three-column deck stops being three panels and becomes one unreadable
+ * one. The deck folds to two columns, then to one, before the layout gives up and
+ * stacks entirely at the narrow breakpoint below.
+ */
+@media (max-width: 1500px) {
+    :root:has(#maritime-root.maritime-on) #clientwrapper {
+        --maritime-column: 1.05fr;
+    }
+
+    :root:has(#maritime-root.maritime-on) .maritime-deck {
+        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    }
+
+    /* Small enough that five still fit across half a monitor.
+     *
+     * At 96px only four fitted, so every row of five wrapped to two and the board
+     * doubled in height - which it took straight out of the chart. The number is
+     * measured against the column this actually gets, not chosen for looking round. */
+    :root:has(#maritime-root.maritime-on) .maritime-board-row {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    :root:has(#maritime-root.maritime-on) .maritime-order {
+        min-height: 40px;
+        padding: 5px 4px;
+        font-size: 0.6rem;
+        letter-spacing: 0.04em;
+    }
+
+    /* The panel gives up more of the column when there is less of it to go round. */
+    :root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card:not(.maritime-chart-card) {
+        max-height: 24%;
+    }
+}
+
+/* --- the log, in the same palette as everything else ---------------------------
+ *
+ * Evennia paints the message window black with a silver border, which is a perfectly
+ * good terminal and looks like a terminal somebody has parked beside a chart. These
+ * rules change its colours and nothing else - not its markup, not its behaviour, not
+ * the ANSI colours the game itself sends, which are the game speaking and are none of
+ * this file's business.
+ */
+:root:has(#maritime-root.maritime-on) #messagewindow {
+    background: var(--maritime-panel, #101b21);
+    border: 0;
+    color: var(--maritime-text, #ddd5c5);
+    padding: 10px 12px;
+}
+
+/* GoldenLayout's own furniture: the tab bar over the log. */
+:root:has(#maritime-root.maritime-on) .lm_header,
+:root:has(#maritime-root.maritime-on) .lm_header .lm_tabs {
+    background: var(--maritime-panel-raised, #16242c);
+}
+
+:root:has(#maritime-root.maritime-on) .lm_header .lm_tab {
+    background: var(--maritime-panel, #101b21);
+    color: var(--maritime-text-dim, #7d7768);
+    border: 1px solid transparent;
+    border-radius: calc(var(--maritime-radius, 6px) - 2px);
+    font-family: var(--maritime-font, Georgia, serif);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+}
+
+:root:has(#maritime-root.maritime-on) .lm_header .lm_tab.lm_active {
+    color: var(--maritime-accent, #d3ad62);
+    border-color: var(--maritime-border-strong, rgba(211, 173, 98, 0.45));
+}
+
+/* The command line. It stays a plain monospaced field - a captain types into it and
+ * needs to see exactly what he typed - but it stops being a white box. */
+:root:has(#maritime-root.maritime-on) #inputform,
+:root:has(#maritime-root.maritime-on) #inputfield,
+:root:has(#maritime-root.maritime-on) #input textarea {
+    background: var(--maritime-panel, #101b21);
+    color: var(--maritime-text, #ddd5c5);
+    border-color: var(--maritime-border, rgba(211, 173, 98, 0.22));
+}
+
+:root:has(#maritime-root.maritime-on) #input textarea::placeholder {
+    color: var(--maritime-text-dim, #7d7768);
+}
+
+:root:has(#maritime-root.maritime-on) #inputsend,
+:root:has(#maritime-root.maritime-on) #input button {
+    background: var(--maritime-panel-raised, #16242c);
+    color: var(--maritime-text-soft, #a9a291);
+    border: 1px solid var(--maritime-border, rgba(211, 173, 98, 0.22));
+    border-radius: calc(var(--maritime-radius, 6px) - 2px);
+}
+
+:root:has(#maritime-root.maritime-on) #inputsend:hover,
+:root:has(#maritime-root.maritime-on) #input button:hover {
+    color: var(--maritime-accent, #d3ad62);
+    border-color: var(--maritime-border-strong, rgba(211, 173, 98, 0.45));
+}
+
+/* GoldenLayout paints its own root black beneath everything Evennia puts in it, which
+ * is why recolouring the message window alone left the log sitting on a black slab. */
+:root:has(#maritime-root.maritime-on) .lm_goldenlayout,
+:root:has(#maritime-root.maritime-on) .lm_content,
+:root:has(#maritime-root.maritime-on) .lm_item,
+:root:has(#maritime-root.maritime-on) .lm_items {
+    background: var(--maritime-panel, #101b21);
+}
+
+:root:has(#maritime-root.maritime-on) #main-sub,
+:root:has(#maritime-root.maritime-on) #messagewindow,
+:root:has(#maritime-root.maritime-on) #messagewindow > * {
+    background: transparent;
+}
+
+/* --- scrollbars ---------------------------------------------------------------
+ *
+ * The default is a pale grey bar, which is the single most conspicuous thing left on
+ * a dark board. Both syntaxes: the standard properties for browsers that have them,
+ * the WebKit pseudo-elements for the ones that do not.
+ */
+:root:has(#maritime-root.maritime-on) * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--maritime-border-strong, rgba(211, 173, 98, 0.45))
+        var(--maritime-panel, #101b21);
+}
+
+:root:has(#maritime-root.maritime-on) ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+:root:has(#maritime-root.maritime-on) ::-webkit-scrollbar-track {
+    background: var(--maritime-panel, #101b21);
+}
+
+:root:has(#maritime-root.maritime-on) ::-webkit-scrollbar-thumb {
+    background: var(--maritime-border-strong, rgba(211, 173, 98, 0.45));
+    border: 2px solid var(--maritime-panel, #101b21);
+    border-radius: 6px;
+}
+
+:root:has(#maritime-root.maritime-on) ::-webkit-scrollbar-thumb:hover {
+    background: var(--maritime-accent, #d3ad62);
+}
+
+:root:has(#maritime-root.maritime-on) ::-webkit-scrollbar-corner {
+    background: var(--maritime-panel, #101b21);
+}

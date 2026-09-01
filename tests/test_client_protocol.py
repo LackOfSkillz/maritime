@@ -35,6 +35,10 @@ from ..client import (
     sync_for,
     understands,
 )
+from .. import config
+from ..charts import Chart
+from ..client import transport
+from ..client.state import CHART_REVISION_SECONDS
 from ..position import WorldPosition
 from ..projection import OceanProjection
 from ..rooms import ShipRoom
@@ -107,6 +111,16 @@ class Watching:
     def __init__(self, location, sessions=None):
         self.location = location
         self.sessions = sessions
+
+
+class _Clock:
+    """A time provider the tests wind by hand, so a revision turns when they say."""
+
+    def __init__(self, at=0.0):
+        self.at = at
+
+    def now(self):
+        return self.at
 
 
 class FakeSessionHandler:
@@ -590,3 +604,139 @@ class TestABrokenInterfaceNeverTrapsAnybody(ClientTestCase):
         self.ashore()
         self.char1.move_to(self.deck, quiet=True)
         self.assertIs(self.char1.location, self.deck)
+
+
+class TestThePaperIsDrawnOnlyWhenItChanges(ClientTestCase):
+    """
+    What it costs to say nothing, which is the expensive half of this layer.
+
+    A sheet goes out once a revision. It used to be *drawn* on every tick and then
+    compared, so twenty-nine drawings in thirty were thrown away - and the comment above
+    the code said it did the opposite, which is how it survived. Against a hand-written
+    seabed a sheet costs eighteen milliseconds and the waste was invisible; against a
+    generated world one costs the better part of a second, and it is a third of a core per
+    crewed vessel spent producing nothing.
+
+    The session finder is stubbed here because it has its own tests and walking real rooms
+    would only be testing those again. What these drive is the gate.
+
+    The connection is `self.browser` and not `self.session`, which is the base class's own
+    and which shadowing broke every teardown in this file - a name collision, on the day
+    a name collision was being fixed elsewhere.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.aboard()
+        self.browser = FakeSession(self.char1)
+        hello(self.browser)
+        self.browser.sent.clear()
+
+        self.clock = _Clock()
+        self.drawn = []
+
+        real_chart_for = transport.chart_for
+
+        def counted(vessel, reach):
+            self.drawn.append(reach)
+            return real_chart_for(vessel, reach)
+
+        for name, value in (
+            ("chart_for", counted),
+            ("_graphical_sessions_aboard", lambda vessel: [self.browser]),
+        ):
+            self.addCleanup(setattr, transport, name, getattr(transport, name))
+            setattr(transport, name, value)
+
+        real_time_provider = config.time_provider
+        self.addCleanup(setattr, config, "time_provider", real_time_provider)
+        config.time_provider = lambda: self.clock
+
+    def tick(self, times=1):
+        for _ in range(times):
+            transport.broadcast_status(self.hull)
+
+    def test_a_ship_at_anchor_is_drawn_once(self):
+        self.tick(30)
+        self.assertEqual(len(self.drawn), 1, f"drew {len(self.drawn)} sheets for one")
+
+    def test_and_drawn_again_when_the_revision_turns(self):
+        self.tick()
+        self.clock.at += CHART_REVISION_SECONDS
+        self.tick()
+        self.assertEqual(len(self.drawn), 2)
+
+    def test_thirty_ticks_of_a_two_second_simulation_is_one_drawing(self):
+        """
+        The arithmetic that makes this worth doing. A revision is a minute; the driver
+        ticks every two seconds.
+
+        """
+        for _ in range(30):
+            self.tick()
+            self.clock.at += 2.0
+        self.assertEqual(len(self.drawn), 1)
+
+    def test_a_chart_found_mid_minute_is_not_held_back(self):
+        """
+        The regression the revision gate would have introduced on its own. Gating on
+        time alone would leave a chart bought or unrolled halfway through a minute
+        invisible until the minute turned, and the code being replaced noticed at once
+        because it redrew everything every tick. Losing that would be paying for the
+        saving with a worse interface.
+
+        """
+        self.tick()
+        self.assertEqual(len(self.drawn), 1)
+
+        self.hull.add_chart(Chart(key="approaches", west=-9e4, east=9e4, south=-9e4, north=9e4))
+        self.tick()
+        self.assertEqual(len(self.drawn), 2, "a new chart waited for the clock")
+
+    def test_two_scales_are_two_drawings_and_no_more(self):
+        watcher = FakeSession(self.char1)
+        hello(watcher)
+        watcher.ndb.maritime_reach = 4000.0
+        self.browser.ndb.maritime_reach = 20000.0
+        transport._graphical_sessions_aboard = lambda vessel: [self.browser, watcher]
+
+        self.tick(10)
+        self.assertEqual(sorted(self.drawn), [4000.0, 20000.0])
+
+    def test_everybody_at_one_scale_contours_once(self):
+        watcher = FakeSession(self.char1)
+        hello(watcher)
+        for session in (self.browser, watcher):
+            session.ndb.maritime_reach = 8000.0
+        transport._graphical_sessions_aboard = lambda vessel: [self.browser, watcher]
+
+        self.tick(10)
+        self.assertEqual(self.drawn, [8000.0])
+
+    def test_both_of_them_are_still_sent_it(self):
+        watcher = FakeSession(self.char1)
+        hello(watcher)
+        for session in (self.browser, watcher):
+            session.ndb.maritime_reach = 8000.0
+            session.sent.clear()
+        transport._graphical_sessions_aboard = lambda vessel: [self.browser, watcher]
+
+        self.tick()
+        for session in (self.browser, watcher):
+            self.assertIn("maritime_chart", session.kinds())
+
+    def test_a_zoom_stamps_it_the_way_a_tick_would(self):
+        """
+        Two places write that stamp. If they disagreed the tick after a zoom would
+        redraw what the zoom had just sent, which is the waste this whole change is
+        about, arriving by a different door.
+
+        """
+        self.tick()
+        self.drawn.clear()
+        transport.redraw_chart(self.browser)
+        self.assertEqual(len(self.drawn), 1)
+
+        self.drawn.clear()
+        self.tick(5)
+        self.assertEqual(self.drawn, [])

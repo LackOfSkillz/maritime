@@ -209,6 +209,35 @@ def contacts_for(vessel, height_of_eye=None):
     return Contacts(contacts=tuple(seen))
 
 
+#: How long one drawing of the paper stands before it is worth drawing again.
+#:
+#: A chart is not an instrument. The coastline does not move, the soundings do not
+#: change, and a minute of a coasting vessel's progress is a hundred metres or so -
+#: comfortably inside the four hundred between printed depths. Her own position is
+#: drawn by the client from the status message, which does arrive every tick.
+CHART_REVISION_SECONDS = 60.0
+
+
+def chart_revision(now):
+    """
+    Which drawing of the paper a moment belongs to.
+
+    Args:
+        now (float): Game time in seconds.
+
+    Returns:
+        revision (int): The same number for every moment within one revision.
+
+    Notes:
+        Shared with the transport on purpose, because the two have to agree exactly.
+        The transport decides whether to *draw* a sheet by working out what revision it
+        would carry; if that formula ever drifted from the one the sheet is stamped
+        with, charts would either be sent on every tick or never sent again.
+
+    """
+    return int(now // CHART_REVISION_SECONDS)
+
+
 def chart_for(vessel, reach=10000.0):
     """
     The paper, drawn around where she reckons she is.
@@ -264,7 +293,7 @@ def chart_for(vessel, reach=10000.0):
         route=_route_of(vessel, here),
         soundings=cartography.soundings(grid, west, south, span, here),
         coverage=cartography.coverage(chart, here),
-        revision=int(now // 60),
+        revision=chart_revision(now),
     )
 
 

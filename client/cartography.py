@@ -31,11 +31,19 @@ import math
 from ..charts import charted_terrain_z_at
 from ..position import METRES_PER_FATHOM, WorldPosition
 
-#: How many samples across the visible square. Measured rather than guessed: a
-#: forty-eight by forty-eight grid of charted soundings costs about six milliseconds,
-#: which is affordable at the rate a chart actually changes. Finer than this buys
-#: detail nobody can see on a panel a few hundred pixels wide.
-GRID = 48
+#: How many samples across the visible square.
+#:
+#: Measured rather than guessed, and raised once the panel outgrew the assumption it
+#: was first chosen under. At forty-eight the note here read "finer than this buys
+#: detail nobody can see on a panel a few hundred pixels wide", which was true of the
+#: panel it was written for. A chart a thousand pixels wide showing forty kilometres
+#: put eight hundred and fifty metres between samples - about twenty-two pixels - and
+#: a coastline traced through points that far apart is a row of long straight walls.
+#:
+#: Timed on the same seabed at the same span: 48 costs 14ms, 96 costs 35ms, 128 costs
+#: 61ms. Ninety-six halves the distance between samples for twenty-one milliseconds on
+#: a redraw that is debounced and only happens when somebody zooms, drags or resizes.
+GRID = 96
 
 #: Contour levels, as elevation relative to chart datum. Zero is the waterline; the
 #: rest are the fathom lines a pilot actually cares about, because the difference
@@ -352,7 +360,18 @@ def as_offsets(polylines, origin, places=0):
     return out
 
 
-def soundings(grid, west, south, span, origin, every=6):
+#: Roughly how many depths to print across the sheet, each way.
+#:
+#: A count rather than a sampling interval, because legibility depends on how many
+#: figures land on the paper and not on how finely the seabed was sampled underneath
+#: them. Printing one grid point in six was the same thing only while the grid never
+#: changed size: raising it from forty-eight to ninety-six quietly took the printed
+#: scatter from sixty-four figures to two hundred and fifty-six, which arrives as an
+#: unreadable block of digits sitting over the ship.
+PRINTED = 8
+
+
+def soundings(grid, west, south, span, origin, every=None):
     """
     A scatter of charted depths, as a chart prints them.
 
@@ -362,7 +381,9 @@ def soundings(grid, west, south, span, origin, every=6):
         south (float): Bottom edge, in metres.
         span (float): Width and height, in metres.
         origin (WorldPosition): Where she reckons she is.
-        every (int, optional): Print one sample in this many, each way.
+        every (int, optional): Print one sample in this many, each way. Worked out
+            from the grid by default, so the scatter stays the same size however
+            finely the seabed was sampled underneath it.
 
     Returns:
         soundings (list): `[east, north, fathoms]` for each printed depth.
@@ -377,6 +398,8 @@ def soundings(grid, west, south, span, origin, every=6):
 
     """
     steps = len(grid)
+    if every is None:
+        every = max(1, int(round(steps / float(PRINTED))))
     cell = span / float(steps - 1)
     out = []
     for row in range(0, steps, every):

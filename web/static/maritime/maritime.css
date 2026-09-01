@@ -40,8 +40,12 @@
 
 /* --- the shell ------------------------------------------------------------
  *
- * Additive on purpose. The interface adds a strip and a pane; it never rearranges
- * what the host game had, because a player's own layout is not ours to move.
+ * Additive on purpose. The interface adds a strip and a pane; it never rearranges what
+ * the host game had, because a player's own layout is not ours to move *uninvited*.
+ *
+ * A game that would rather maritime took the window can have that - it is the whole of
+ * `maritime-layout.css`, which is opt-in by being a separate file to link. Everything
+ * in this one composes with a client that already exists.
  */
 
 /* Padded, because a host may mount this flush against a window edge and text
@@ -386,11 +390,16 @@
     flex-direction: column;
 }
 
+/* A definite box rather than one derived from the drawing.
+ *
+ * `height: auto` let the height follow the viewBox, which now follows the measured
+ * shape of the box - so the two would have chased each other. Something has to be
+ * fixed, and it should be the furniture rather than the chart: a pane is whatever size
+ * the player has made it, and the drawing fills it. */
 .maritime-chart {
     display: block;
     width: 100%;
-    height: auto;
-    max-height: 46vh;
+    height: var(--maritime-chart-height, 46vh);
     touch-action: none;
     cursor: grab;
 }
@@ -399,21 +408,78 @@
     cursor: grabbing;
 }
 
-.maritime-chart-sea {
-    fill: var(--maritime-sea-deep);
+/* The box the chart is drawn on, and the sea itself.
+ *
+ * The sea used to be a rectangle inside the drawing. It is the box's own background
+ * now, because anything a host hangs behind the plot - paper, a compass rose - has to
+ * sit between the sea and the chart, and layers inside an SVG pan with the chart while
+ * the paper must not. */
+.maritime-chart-plot {
+    position: relative;
+    overflow: hidden;
+    background: var(--maritime-sea-deep);
+    border-radius: calc(var(--maritime-radius) - 2px);
+}
+
+/* Above whatever is behind it, and never eclipsed by it. */
+.maritime-chart-plot .maritime-chart {
+    position: relative;
+    z-index: 1;
+}
+
+/* Optional, like every other picture here: unset variables draw nothing, and the chart
+ * is complete without either of them.
+ *
+ * Both are held well down on purpose. A texture that competes with a sounding has made
+ * the chart worse however good it looks in a screenshot, and the rose is a watermark
+ * rather than an instrument - the heading is read off the strip, not off this. */
+.maritime-paper {
+    position: absolute;
+    inset: 0;
+    background-image: var(--maritime-paper, none);
+    background-repeat: repeat;
+    background-size: var(--maritime-paper-tile, 256px);
+    opacity: var(--maritime-paper-opacity, 0.14);
+    mix-blend-mode: var(--maritime-artwork-blend, screen);
+    pointer-events: none;
+}
+
+/* In clear water, which is where a chart's rose actually goes.
+ *
+ * Centred and full height first, and it was hopeless: at that size no opacity was low
+ * enough, because the densest part of the rose sat exactly over the vessel and her
+ * contacts - the one part of the chart nothing may compete with. Small and in a corner
+ * it can be read as furniture rather than fought as clutter, which also means it can
+ * be less faint than a watermark over the plot would have to be.
+ *
+ * Top left, where a chart's rose goes and where a reader looks first for which way is
+ * up. The drawn compass indicator moves onto it rather than beside it - one compass,
+ * with the cardinals lettered over the engraving. */
+.maritime-rose {
+    position: absolute;
+    inset: var(--maritime-rose-inset, 2.5%) auto auto var(--maritime-rose-inset, 2.5%);
+    height: var(--maritime-rose-size, 17%);
+    aspect-ratio: 1 / 1;
+    background-image: var(--maritime-compass, none);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: var(--maritime-compass-opacity, 0.55);
+    mix-blend-mode: var(--maritime-artwork-blend, screen);
+    pointer-events: none;
 }
 
 .maritime-chart-ring {
     fill: none;
-    stroke: var(--maritime-border);
-    stroke-width: 1.5;
-    stroke-dasharray: 6 8;
+    stroke: var(--maritime-border-strong);
+    stroke-width: 1.25;
+    stroke-dasharray: 5 7;
 }
 
 .maritime-chart-ring-label {
-    fill: var(--maritime-text-dim);
+    fill: var(--maritime-text-soft);
     font-family: var(--maritime-font-instrument);
-    font-size: 20px;
+    font-size: 12px;
 }
 
 .maritime-chart-hull {
@@ -528,9 +594,9 @@
 }
 
 .maritime-chart-sounding {
-    fill: var(--maritime-text-dim);
+    fill: var(--maritime-text-soft);
     font-family: var(--maritime-font-instrument);
-    font-size: 16px;
+    font-size: 11px;
 }
 
 /* The edge of the survey. Drawn as an outline rather than a shaded area, because
@@ -726,3 +792,289 @@
  *
  * Nothing here animates either, so there is no reduced-motion case to answer. Noted
  * so that whoever adds artwork next knows both omissions were deliberate. */
+
+/* --- a deck of sections ------------------------------------------------------
+ *
+ * Several boxes side by side inside one panel, which is what a captain's board wants
+ * for the things he watches at once: how she is, what is in sight, and where she is
+ * going. Reading those in three glances at one screen beats three clicks through
+ * tabs, and they are exactly the readings that stop being useful the moment they are
+ * out of sight.
+ *
+ * It collapses to a single column early. Three columns of a hundred and fifty pixels
+ * is not three panels, it is one unreadable one.
+ */
+
+.maritime-deck {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--maritime-gap);
+    align-items: start;
+}
+
+.maritime-section {
+    border: 1px solid var(--maritime-border);
+    border-radius: calc(var(--maritime-radius) - 2px);
+    background: var(--maritime-panel-raised);
+    overflow: hidden;
+}
+
+.maritime-section-title {
+    padding: 5px 9px;
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--maritime-text-dim);
+    border-bottom: 1px solid var(--maritime-border);
+}
+
+.maritime-section-body {
+    padding: 8px 9px;
+    font-size: 0.84rem;
+}
+
+.maritime-section-subtitle {
+    margin: 8px 0 3px;
+    padding-top: 6px;
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--maritime-text-dim);
+    border-top: 1px solid var(--maritime-border);
+}
+
+/* Not wired to anything, and never quietly.
+ *
+ * The value is struck through as well as coloured, so that it reads as absent to
+ * somebody who cannot see the colour - and so that no screenshot of this interface
+ * can ever be mistaken for one showing real data. */
+.maritime-placeholder .maritime-row-value {
+    color: var(--maritime-caution);
+    text-decoration: line-through;
+    opacity: 0.75;
+    font-style: italic;
+}
+
+/* --- the captain's board ------------------------------------------------------
+ *
+ * Rows of orders under the chart. Wide targets with the label written out rather than
+ * icons alone, because an order given in a hurry is given by somebody reading at a
+ * glance, and a picture of a wheel does not distinguish "port" from "hard a-port".
+ */
+
+.maritime-board {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.maritime-board-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 6px;
+}
+
+.maritime-order {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 46px;
+    padding: 7px 8px;
+    font-family: inherit;
+    font-size: 0.68rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--maritime-text-soft);
+    background: var(--maritime-panel-raised);
+    border: 1px solid var(--maritime-border);
+    border-radius: calc(var(--maritime-radius) - 2px);
+    cursor: pointer;
+}
+
+.maritime-order:hover:not(:disabled) {
+    color: var(--maritime-accent);
+    border-color: var(--maritime-border-strong);
+}
+
+.maritime-order:active:not(:disabled) {
+    background: var(--maritime-panel);
+}
+
+.maritime-order:focus-visible {
+    outline: 2px solid var(--maritime-accent);
+    outline-offset: 1px;
+}
+
+.maritime-order-note {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    color: var(--maritime-text-dim);
+}
+
+/* Opening fire is not an order to give by accident, so it is the one button on the
+ * board that looks different before it is pressed rather than after. */
+.maritime-order-danger:not(:disabled) {
+    color: var(--maritime-critical);
+    border-color: color-mix(in srgb, var(--maritime-critical) 45%, transparent);
+}
+
+/* Drawn, dead, and saying so. */
+.maritime-order-unwired {
+    cursor: not-allowed;
+    opacity: 0.4;
+    border-style: dashed;
+}
+
+.maritime-order-unwired .maritime-order-label::after {
+    content: " · not wired";
+    letter-spacing: 0;
+    text-transform: none;
+    font-style: italic;
+}
+
+/* --- her emblem, if a game has one -------------------------------------------
+ *
+ * Same terms as every other picture here: an unset variable draws nothing, and the
+ * slot takes no width at all, so a game with no artwork gets the name exactly where
+ * the name has always been.
+ */
+
+.maritime-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.maritime-emblem {
+    flex: 0 0 auto;
+    width: var(--maritime-emblem-size, 0);
+    height: var(--maritime-emblem-size, 0);
+    background-image: var(--maritime-emblem, none);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    mix-blend-mode: var(--maritime-artwork-blend, screen);
+    opacity: var(--maritime-emblem-opacity, 0.95);
+    pointer-events: none;
+}
+
+.maritime-named {
+    min-width: 0;
+}
+
+/* An unwired instrument on the strip, struck through like every other placeholder so
+ * that no screenshot of this board can be mistaken for one showing real readings. */
+.maritime-reading.maritime-placeholder .maritime-row-value {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--maritime-font-instrument);
+    font-size: 0.9rem;
+    color: var(--maritime-caution);
+    text-decoration: line-through;
+    font-style: italic;
+    opacity: 0.75;
+    white-space: nowrap;
+}
+
+/* A track with nothing to report is drawn empty, never full. An empty bar reads as
+ * "no reading"; a full one would read as "in perfect order", which is a claim. */
+.maritime-bar-unwired .maritime-bar-track {
+    border-style: dashed;
+    opacity: 0.5;
+}
+
+.maritime-bar-unwired .maritime-row-value {
+    color: var(--maritime-caution);
+    font-style: italic;
+    text-decoration: line-through;
+    opacity: 0.75;
+}
+
+/* The chart's own controls, laid against the chart.
+ *
+ * A column down the right-hand edge rather than a bar beneath: they act on what is
+ * drawn, so they belong against it, and the chart keeps the strip of height the bar
+ * was costing it. Held clear of the bottom-right corner, where the rose sits.
+ */
+.maritime-chart-plot .maritime-chart-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0;
+    border-top: 0;
+}
+
+.maritime-chart-plot .maritime-chart-controls .maritime-control {
+    flex: 0 0 auto;
+    min-width: 34px;
+    padding: 5px 7px;
+    background: color-mix(in srgb, var(--maritime-panel) 82%, transparent);
+    backdrop-filter: blur(2px);
+}
+
+/* --- the cardinals -----------------------------------------------------------
+ *
+ * Lettered on the rose rather than drawn in the chart, so the compass is one thing
+ * that positions itself instead of two that have to agree about where the corner is.
+ *
+ * These are the one part of the compass that is not optional. A game with no engraving
+ * still gets N, E, S and W: which way is north is a reading, not an ornament, and a
+ * chart that only shows it when somebody installed artwork is a chart that lies to
+ * everybody else.
+ */
+
+.maritime-rose {
+    display: block;
+}
+
+.maritime-cardinal {
+    position: absolute;
+    font-family: var(--maritime-font);
+    font-size: var(--maritime-cardinal-size, 0.62rem);
+    letter-spacing: 0.06em;
+    color: var(--maritime-accent);
+    opacity: 0.85;
+    line-height: 1;
+}
+
+.maritime-cardinal-n {
+    top: -2%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.maritime-cardinal-s {
+    bottom: -2%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+}
+
+.maritime-cardinal-e {
+    top: 50%;
+    right: -2%;
+    transform: translate(50%, -50%);
+}
+
+.maritime-cardinal-w {
+    top: 50%;
+    left: -2%;
+    transform: translate(-50%, -50%);
+}
+
+/* Without an engraving behind them the letters need something to sit on, or they read
+ * as four stray characters floating on the sea. A faint ring is enough. */
+.maritime-rose::before {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border: 1px solid var(--maritime-border);
+    border-radius: 50%;
+    opacity: 0.5;
+}

@@ -52,7 +52,7 @@ Two rules the implementation had to get right:
 
 ---
 
-## Two bugs the measurement found
+## Three bugs the measurement found
 
 Neither would have been found by reading the code, which is the argument for measuring.
 
@@ -91,6 +91,50 @@ The map provider is now kept, keyed on the settings that made it, so changing a 
 still yields a new one and a test using `override_settings` is never handed the old one.
 `config.forget_map_provider()` drops it on purpose. Every other provider is still built per
 call, deliberately — they hold nothing.
+
+### The chart was contoured thirty times for every one that was sent
+
+`broadcast_status` drew a sheet on every tick and *then* decided whether to send it:
+
+```python
+drawn[reach] = chart_for(vessel, reach)     # every tick
+stamp = (reach, sheet.revision)
+if session.ndb.maritime_chart_stamp == stamp:
+    continue                                 # only skips the send
+```
+
+The driver ticks every two seconds; a chart's revision turns every sixty. So twenty-nine
+drawings in thirty were built and discarded. The comment above that code said it stopped
+exactly this from happening, which is a fair part of why it lasted.
+
+Against a hand-written seabed it was invisible — a sheet costs about eighteen milliseconds
+there, and forty ticks a minute of it is under one per cent of a core. It only became
+visible against a **generated** world, where one sheet is the better part of a second.
+Measured over five minutes of a voyage, at the default two-second tick:
+
+```text
+                        sheets drawn    contouring
+before                          150        113.1 s
+after                             5          3.8 s
+
+continuous load, per crewed vessel
+before                       37.7 % of a core
+after                         1.3 %
+```
+
+The revision is arithmetic on the clock and needs no sheet to compute, so the gate moved
+ahead of the drawing. What is sent is unchanged: the first tick of a new revision draws and
+sends exactly the sheet it always did.
+
+Gating on time alone would have introduced a regression — a chart bought or unrolled
+halfway through a minute would have stayed invisible until the minute turned, where the old
+code noticed at once because it redrew everything anyway. Which chart she is reading is part
+of the stamp now, so that stays immediate; asking is a scan of the few charts aboard, while
+drawing one is nine thousand soundings.
+
+This is the bug that matters most for a game supplying real bathymetry, and it is the reason
+a costly map provider is affordable at all: the expensive question is now asked once a
+minute rather than thirty times a minute.
 
 ---
 

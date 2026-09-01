@@ -29,9 +29,33 @@ window.MaritimeChart = (function () {
      * learn instead of whatever a scroll wheel landed on. */
     var SCALES = [500, 1000, 2000, 5000, 10000, 20000, 50000];
 
+    /* How much further out to fit than the furthest contact, so there is sea around
+     * her rather than a rim. */
+    var FIT_MARGIN = 1.6;
+
     /* Where the chart opens when there is nothing in sight to frame: a couple of
      * kilometres, which is the water a coasting vessel is about to be in. */
     var DEFAULT_SCALE = 2;
+
+    /* The chart's box, in screen pixels, with the ship at the origin.
+     *
+     * ONE USER UNIT IS ONE PIXEL, which is the whole point of measuring it. The drawing
+     * used to live in a square of a thousand units scaled to fit, and every stroke and
+     * label was therefore specified in units that were some unknown fraction of a
+     * pixel. Widening that square to fill a wide pane made the fraction smaller still:
+     * a 1.5-unit range ring came out at about six tenths of a pixel, which is not a
+     * faint ring but a ring the browser can barely draw. Fonts went the same way.
+     *
+     * Drawing in pixels means a 2-pixel stroke is two pixels and a 16-pixel sounding is
+     * sixteen, at any zoom, in any shaped box - and it removes the aspect arithmetic
+     * entirely, because a wider box simply has a wider viewBox.
+     *
+     * A square to start with, replaced the moment anything is measured. */
+    var box = { width: 1000, height: 1000 };
+
+    /* How much of the half-height the outer range ring takes, leaving margin for its
+     * own label. */
+    var RING_INSET = 0.92;
 
     var view = {
         scaleIndex: DEFAULT_SCALE,
@@ -61,20 +85,83 @@ window.MaritimeChart = (function () {
      * would ask the server to trace a coastline five times for one gesture. */
     var askTimer = null;
 
+    /* Whether the box has been measured yet.
+     *
+     * The first draw happens before any layout, so the aspect is still the opening
+     * guess and a sheet asked for now would be the wrong width. It arrived, drew, and
+     * was replaced moments later by the right one - which is the flash: two different
+     * charts, a beat apart, for one page load. Requests wait until the shape is known,
+     * and then there is only ever one. */
+    var measured = typeof window.ResizeObserver !== "function";
+
     function askForSheet() {
+        if (!measured) {
+            return;
+        }
         if (askTimer) {
             window.clearTimeout(askTimer);
         }
         askTimer = window.setTimeout(function () {
             askTimer = null;
             if (window.Evennia && typeof Evennia.msg === "function") {
-                Evennia.msg("maritime_view", [], { reach: reach() });
+                Evennia.msg("maritime_view", [], { reach: sheetReach() });
             }
         }, 250);
     }
 
     function reach() {
         return SCALES[Math.max(0, Math.min(SCALES.length - 1, view.scaleIndex))];
+    }
+
+    /* Pixels to the metre.
+     *
+     * Set by the captain's chosen scale against the *shorter* edge, so the reach ring
+     * fits whatever shape the box is and a wider pane shows more sea rather than a
+     * bigger ship. */
+    function pixelsPerMetre() {
+        return (Math.min(box.width, box.height) / 2) * RING_INSET / reach();
+    }
+
+    /* How much sea the server has to draw to fill this box, which is not the scale the
+     * captain chose. He picks how far the rings reach; the box then shows whatever else
+     * fits around them, and a sheet drawn only to his scale would leave that water
+     * blank - an unsurveyed-looking hole that is really just the edge of what we
+     * thought to ask for. Computed from the box rather than estimated from its shape. */
+    function sheetReach() {
+        return Math.round(Math.max(box.width, box.height) / 2 / pixelsPerMetre());
+    }
+
+    /* The window onto the drawing: the box itself, with the ship at the origin. */
+    function viewBox() {
+        return (-box.width / 2) + " " + (-box.height / 2) + " " + box.width + " " + box.height;
+    }
+
+    /* Watch the box rather than the window: a pane can change shape because the player
+     * dragged a splitter, opened a panel, or rotated a phone, and only one of those is
+     * a window resize. */
+    function watchShape(svg, redraw) {
+        if (typeof window.ResizeObserver !== "function") {
+            return;
+        }
+        var observer = new window.ResizeObserver(function (entries) {
+            var shape = entries[0] && entries[0].contentRect;
+            if (!shape || !shape.width || !shape.height) {
+                return;
+            }
+            // A hair of tolerance, or a sub-pixel reflow redraws the chart forever.
+            if (measured && Math.abs(box.width - shape.width) < 1
+                && Math.abs(box.height - shape.height) < 1) {
+                return;
+            }
+            box = { width: shape.width, height: shape.height };
+            measured = true;
+            svg.setAttribute("viewBox", viewBox());
+            askForSheet();
+            if (typeof redraw === "function") {
+                redraw();
+            }
+        });
+        observer.observe(svg);
     }
 
     /* Where a thing lies from the ship, in metres north and east, given what the
@@ -85,14 +172,13 @@ window.MaritimeChart = (function () {
         return { east: Math.sin(radians) * metres, north: Math.cos(radians) * metres };
     }
 
-    /* Metres to the drawing's own units. The viewBox is a square of side 1000 with the
-     * ship at its centre, so the chart scales to whatever box it is given without any
-     * of this arithmetic knowing how many pixels wide that is. */
+    /* Metres from the ship, to pixels from the centre of the box. North is up, so the
+     * y axis runs the other way from the chart's. */
     function toChart(offset) {
-        var span = reach();
+        var scale = pixelsPerMetre();
         return {
-            x: 500 + (offset.east / span) * 480 + view.panX,
-            y: 500 - (offset.north / span) * 480 + view.panY
+            x: offset.east * scale + view.panX,
+            y: -offset.north * scale + view.panY
         };
     }
 
@@ -111,7 +197,7 @@ window.MaritimeChart = (function () {
     function drawRings(into) {
         var span = reach();
         [0.5, 1.0].forEach(function (fraction) {
-            var radius = 480 * fraction;
+            var radius = span * fraction * pixelsPerMetre();
             var centre = toChart({ east: 0, north: 0 });
             into.appendChild(
                 node("circle", {
@@ -357,15 +443,6 @@ window.MaritimeChart = (function () {
         return points[Math.round((bearing % 360) / 45) % 8];
     }
 
-    function drawCompass(into) {
-        var mark = node("g", { class: "maritime-chart-compass" });
-        mark.appendChild(node("path", { d: "M 30 46 L 24 30 L 30 34 L 36 30 Z" }));
-        var north = node("text", { x: 30, y: 62, "text-anchor": "middle" });
-        north.textContent = "N";
-        mark.appendChild(north);
-        into.appendChild(mark);
-    }
-
     /* --- controls ----------------------------------------------------------- */
 
     function button(label, title, onClick) {
@@ -449,9 +526,14 @@ window.MaritimeChart = (function () {
             }
             return;
         }
+        /* Room around the furthest thing in sight rather than a scale that just
+         * contains it. Fitted exactly, the outermost contact sits on the rim with no
+         * sea beyond her, which reads as the edge of the world instead of the edge of
+         * the lookout's report - and leaves nowhere to see her stand into. */
+        var wanted = furthest * FIT_MARGIN;
         view.scaleIndex = SCALES.length - 1;
         for (var i = 0; i < SCALES.length; i++) {
-            if (SCALES[i] >= furthest) {
+            if (SCALES[i] >= wanted) {
                 view.scaleIndex = i;
                 break;
             }
@@ -478,12 +560,12 @@ window.MaritimeChart = (function () {
             if (!dragging) {
                 return;
             }
-            var box = svg.getBoundingClientRect();
-            /* Screen pixels into the drawing's own units, so a drag moves the chart by
-             * the distance the finger moved however large the panel is. */
+            /* The drawing is in screen pixels now, so a drag is the distance the
+             * finger moved and needs no conversion at all. The local measurement this
+             * used to take also shadowed the module's own box. */
             view.held = true;
-            view.panX += ((event.clientX - lastX) / box.width) * 1000;
-            view.panY += ((event.clientY - lastY) / box.height) * 1000;
+            view.panX += event.clientX - lastX;
+            view.panY += event.clientY - lastY;
             lastX = event.clientX;
             lastY = event.clientY;
             redraw();
@@ -524,13 +606,50 @@ window.MaritimeChart = (function () {
         card.appendChild(title);
 
         var svg = node("svg", {
-            viewBox: "0 0 1000 1000",
+            viewBox: viewBox(),
+            preserveAspectRatio: "xMidYMid slice",
             class: "maritime-chart",
             role: "img",
             "aria-label": "Chart showing own vessel and contacts in sight"
         });
 
-        svg.appendChild(node("rect", { x: 0, y: 0, width: 1000, height: 1000, class: "maritime-chart-sea" }));
+        /* The sea, and anything a host has hung behind the plot, live on a box under
+         * the drawing rather than inside it.
+         *
+         * Inside would have been fewer elements, but everything in there is in chart
+         * coordinates, and a compass rose that slides off the corner when a player
+         * drags the chart is a rose drawn on the sea instead of on the paper. These
+         * stay where the paper stays. It also buys a real opacity per layer, which
+         * matters when the whole point of a texture is that it is barely there. */
+        var plot = document.createElement("div");
+        plot.className = "maritime-chart-plot";
+
+        var paper = document.createElement("div");
+        paper.className = "maritime-paper";
+        plot.appendChild(paper);
+
+        /* One compass, and it carries its own lettering.
+         *
+         * The cardinals used to be drawn inside the SVG at a fixed corner of a square
+         * viewBox. Widening that viewBox left them floating somewhere near the middle,
+         * because the corner had moved and the drawing had not - and putting them back
+         * would have meant the letters and the engraving behind them agreeing about
+         * two coordinate systems, one of which a host can restyle.
+         *
+         * So the rose is one element that positions itself: the engraving is its
+         * background when a game supplies one, the letters are its children either
+         * way, and the whole thing sits where CSS puts it. A game with no artwork
+         * still gets a compass, which it must - which way is north is not decoration. */
+        var rose = document.createElement("div");
+        rose.className = "maritime-rose";
+        rose.setAttribute("aria-hidden", "true");
+        ["N", "E", "S", "W"].forEach(function (point) {
+            var letter = document.createElement("span");
+            letter.className = "maritime-cardinal maritime-cardinal-" + point.toLowerCase();
+            letter.textContent = point;
+            rose.appendChild(letter);
+        });
+        plot.appendChild(rose);
 
         var layers = {};
         ["depths", "land", "soundings", "rings", "marks", "contacts", "own", "overlay"].forEach(function (name) {
@@ -538,24 +657,41 @@ window.MaritimeChart = (function () {
             svg.appendChild(layers[name]);
         });
 
-        drawSheet(layers, state.chart);
-        if (state.chart) {
-            drawRoute(layers.marks, state.chart.route);
-            drawMarks(layers.marks, state.chart.marks);
+        /* Nothing is drawn until the box has been measured.
+         *
+         * The first paint happens before any layout, so every distance would be
+         * computed against a guessed box and every figure placed accordingly - which
+         * is what put a block of soundings in a hundred pixels and a coastline at the
+         * wrong scale, twice, on the way to the right one. One empty sea for a frame
+         * beats two wrong charts. */
+        if (measured) {
+            drawSheet(layers, state.chart);
+            if (state.chart) {
+                drawRoute(layers.marks, state.chart.route);
+                drawMarks(layers.marks, state.chart.marks);
+            }
+            drawRings(layers.rings);
         }
-        drawRings(layers.rings);
-        drawContacts(layers.contacts, state.contacts, function (id) {
-            MaritimeState.select(id);
-        }, state.selectedContactId);
+        if (measured) {
+            drawContacts(layers.contacts, state.contacts, function (id) {
+                MaritimeState.select(id);
+            }, state.selectedContactId);
+        }
 
         var motion = (state.status && state.status.motion) || {};
-        drawOwnVessel(layers.own, motion.heading);
-        drawCompass(layers.overlay);
+        if (measured) {
+            drawOwnVessel(layers.own, motion.heading);
+        }
 
         makeDraggable(svg, redraw);
+        watchShape(svg, redraw);
 
-        card.appendChild(svg);
-        card.appendChild(controls(redraw));
+        plot.appendChild(svg);
+        /* On the chart rather than under it. They act on what is drawn, and a control
+         * that acts on a picture belongs against the picture - which also gives the
+         * chart back the strip of height the bar was taking from it. */
+        plot.appendChild(controls(redraw));
+        card.appendChild(plot);
         return card;
     }
 

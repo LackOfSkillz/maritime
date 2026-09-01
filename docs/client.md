@@ -47,14 +47,19 @@ protocol changing.
 
 ### Integration needs no change to Evennia
 
-Three steps, all of them the host game's own configuration:
+Four steps, all of them the host game's own configuration:
 
 1. The game adds the contrib's static directory to `STATICFILES_DIRS`. The default is
    `[GAME_DIR/web/static]` only, and contribs are not Django applications, so their static
    files are not otherwise discovered.
 2. The game overrides `webclient/webclient.html`. That template is about twenty-five lines
-   and already exposes an empty `{% block scripts %}`, so the override adds script tags and
-   a mount point and inherits everything else from `webclient/base.html`.
+   and already exposes an empty `{% block scripts %}`, so the override adds a mount point,
+   five script tags and one or two stylesheets, and inherits everything else from
+   `webclient/base.html`. The second stylesheet, `maritime-layout.css`, is separable: it
+   turns the webclient into a full-window bridge while somebody is aboard, and every rule
+   in it is scoped to `:root:has(#maritime-root.maritime-on)`, so a game that leaves it out
+   keeps the webclient it has always had and one that includes it gets the screen back the
+   moment a player steps ashore. The exact markup is in the readme.
 3. The game adds `maritime.client.inputfuncs` to `INPUT_FUNC_MODULES`, so a browser can
    announce itself. A game that skips this still gets everything else; it simply never
    learns which of its sessions are graphical.

@@ -45,11 +45,11 @@ window.MaritimePanels = (function () {
     var PANELS = [
         { key: "helm", label: "Helm", needs: null },
         { key: "sails", label: "Sails", needs: "sail_plan" },
-        { key: "navigation", label: "Navigation", needs: null },
-        { key: "contacts", label: "Contacts", needs: null },
         { key: "crew", label: "Crew", needs: "company" },
         { key: "cargo", label: "Cargo", needs: "cargo" },
-        { key: "battery", label: "Battery", needs: "battery" }
+        { key: "battery", label: "Battery", needs: "battery" },
+        { key: "contacts", label: "Contacts", needs: null },
+        { key: "navigation", label: "Navigation", needs: null }
     ];
 
     /* Whatever the payload says the game calls its units. Never guessed: a game that
@@ -184,16 +184,31 @@ window.MaritimePanels = (function () {
     function renderIdentity(state) {
         var who = (state.status && state.status.vessel) || {};
         var block = element("div", "maritime-identity");
-        block.appendChild(element("div", "maritime-ship-name", who.name || "—"));
 
+        /* A slot for a host game's emblem, on the same terms as every other picture
+         * here: an unset variable draws nothing and takes no width, so a game with no
+         * artwork gets the name where the name has always been. */
+        var emblem = element("div", "maritime-artwork maritime-emblem");
+        emblem.setAttribute("aria-hidden", "true");
+        block.appendChild(emblem);
+
+        var named = element("div", "maritime-named");
+        named.appendChild(element("div", "maritime-ship-name", who.name || "—"));
+        block.appendChild(named);
+
+        /* Her class leads the description when the game published one, because "cutter"
+         * tells a captain more at a glance than "18 metres" does. */
         var described = [];
         if (state.mode && state.mode !== "command") {
             described.push(state.mode);
         }
+        if (who.template) {
+            described.push(title(who.template));
+        }
         if (typeof who.length === "number") {
             described.push(Math.round(who.length) + " metres");
         }
-        block.appendChild(
+        named.appendChild(
             element("div", "maritime-ship-class", described.join(" · ") || "under command")
         );
         return block;
@@ -232,6 +247,17 @@ window.MaritimePanels = (function () {
             );
             strip.appendChild(waiting);
         }
+
+        /* The target board ends with the time and the state of the tide. Neither is
+         * published - the simulation has a clock and tides, but the payload has never
+         * carried either - so the cell is drawn and plainly marked rather than filled
+         * with a browser's own idea of what time it is aboard a ship in another
+         * world. */
+        var clock = element("div", "maritime-reading maritime-placeholder");
+        clock.appendChild(element("span", "maritime-reading-label", "TIME & TIDE"));
+        clock.appendChild(element("span", "maritime-row-value", "not wired"));
+        strip.appendChild(clock);
+
         return strip;
     }
 
@@ -325,27 +351,110 @@ window.MaritimePanels = (function () {
 
     var TRACK_NAMES = { hull: "Hull", rigging: "Rigging", oars: "Oars", weapons: "Battery" };
 
+    /* A titled box inside a deck of them. */
+    function section(heading) {
+        var box = element("div", "maritime-section");
+        box.appendChild(element("div", "maritime-section-title", heading));
+        var body = element("div", "maritime-section-body");
+        box.appendChild(body);
+        return { box: box, body: body };
+    }
+
+    /* A reading nothing is wired to yet, saying so.
+     *
+     * Marked rather than merely blank, because a placeholder that looks like data is
+     * one somebody eventually believes - and a captain acting on an invented ETA is a
+     * worse outcome than one told the ETA does not exist yet. */
+    function placeholder(label) {
+        return row(label, "not wired", "maritime-placeholder");
+    }
+
+    /* A bar for a thing the simulation does not track.
+     *
+     * Drawn empty rather than full, and marked, so the shape of the board is visible
+     * without a number being invented for it. An empty bar reads as "no reading"; a
+     * full one would read as "in perfect order", which is a claim. */
+    function placeholderBar(label) {
+        var line = element("div", "maritime-bar maritime-bar-unwired");
+        line.appendChild(element("span", "maritime-row-label", label));
+        line.appendChild(element("div", "maritime-bar-track"));
+        line.appendChild(element("span", "maritime-row-value", "not wired"));
+        return line;
+    }
+
+    /* What the target board shows that this simulation does not model. Listed here so
+     * the difference is a line of data rather than a silence: a hull is damaged as a
+     * hull, and there is no separate rudder, sail or flooding track to report. */
+    var UNTRACKED = ["Rudder", "Sails", "Flooding"];
+
+    /* The helm deck: her condition, what is in sight, and where she is going, side by
+     * side rather than one at a time.
+     *
+     * The instruments are deliberately absent here. Heading, speed and course are on
+     * the strip along the top and reading the same number twice on one screen invites
+     * the two to disagree - which they will, the moment one of them is refreshed by a
+     * path the other is not. */
     function helmBody(state, into) {
+        var deck = element("div", "maritime-deck");
+
+        var condition = section("Vessel status");
+        conditionBody(state, condition.body);
+        UNTRACKED.forEach(function (name) {
+            condition.body.appendChild(placeholderBar(name));
+        });
+
+        /* Morale is a band and stays a band.
+         *
+         * The target board shows it as a percentage and this deliberately does not.
+         * The simulation bands it on purpose - a captain is told his people are
+         * wavering, which he can act on, rather than handed a number to manage - and
+         * the payload has never carried the figure. Drawing a bar here would mean
+         * inventing the width of it in a browser, which is worse than the words. */
+        var company = (state.status && state.status.company) || {};
+        if (company.morale) {
+            condition.body.appendChild(row("Crew morale", title(company.morale)));
+        }
+        // Stamina is the character's, and character systems are the host game's.
+        condition.body.appendChild(placeholderBar("Stamina"));
+
+        var driving = (state.status && state.status.propulsion) || {};
+        if (driving.sail_plan) {
+            condition.body.appendChild(row("Sail plan", title(driving.sail_plan)));
+            var who = (state.status && state.status.vessel) || {};
+            condition.body.appendChild(sailProfile(driving.sail_plan, who.template));
+        }
+        deck.appendChild(condition.box);
+
+        var near = section("Nearby contacts");
+        contactsBody(state, near.body);
+        deck.appendChild(near.box);
+
+        var voyage = section("Current voyage");
+        voyageBody(state, voyage.body);
+        deck.appendChild(voyage.box);
+
+        into.appendChild(deck);
+    }
+
+    /* Where she is going, as far as anything here knows.
+     *
+     * Her ordered course is real and comes off the helm. A destination, an arrival
+     * time and a distance to run are not published by the server at all, so they are
+     * shown as unwired rather than computed in a browser out of a heading and some
+     * optimism - which is exactly the sort of number that would be wrong in fog and
+     * believed anyway. */
+    function voyageBody(state, into) {
         var motion = (state.status && state.status.motion) || {};
-        if (typeof motion.heading === "number") {
-            into.appendChild(row("Heading", bearing(motion.heading)));
-        }
+        into.appendChild(placeholder("Destination"));
+        into.appendChild(placeholder("ETA"));
+        into.appendChild(placeholder("Distance"));
         if (typeof motion.ordered_heading === "number") {
-            into.appendChild(row("Ordered", bearing(motion.ordered_heading)));
+            into.appendChild(row("Course", bearing(motion.ordered_heading)));
+        } else if (typeof motion.heading === "number") {
+            into.appendChild(row("Course", bearing(motion.heading)));
         }
-        if (typeof motion.course_made_good === "number") {
-            into.appendChild(row("Made good", bearing(motion.course_made_good)));
-        }
-        if (typeof motion.speed_through_water === "number") {
-            into.appendChild(row("Through the water", knots(motion.speed_through_water)));
-        }
-        if (typeof motion.speed_over_ground === "number") {
-            into.appendChild(row("Over the ground", knots(motion.speed_over_ground)));
-        }
-        var wheel = helmControls(state);
-        if (wheel) {
-            into.appendChild(wheel);
-        }
+        into.appendChild(element("div", "maritime-section-subtitle", "Warnings"));
+        into.appendChild(placeholder("Hazards"));
     }
 
     /* Condition, worst first, and only the tracks the server reported. A ship with
@@ -556,7 +665,15 @@ window.MaritimePanels = (function () {
         return made;
     }
 
-    function has(state, key) {
+    /* Whether the server offered this control to whoever is looking.
+     *
+     * Named apart from the panel-side `has` on purpose. Both were called `has`, both
+     * took a state and a string, and the later declaration silently replaced the
+     * earlier one - so `offered()` spent its time asking whether "company" was in the
+     * list of controls, which it never is, and every panel tab vanished. The panel
+     * bodies went on rendering from the stored preference, which is exactly why an
+     * empty tab strip did not look like a bug. */
+    function hasControl(state, key) {
         var offered = (state.status && state.status.controls) || [];
         return offered.indexOf(key) !== -1;
     }
@@ -569,7 +686,7 @@ window.MaritimePanels = (function () {
         var bar = element("div", "maritime-controls");
         var drawn = 0;
         keys.forEach(function (spec) {
-            if (!has(state, spec.key)) {
+            if (!hasControl(state, spec.key)) {
                 return;
             }
             bar.appendChild(control(spec.label, spec.key, spec.detail, spec.title));
@@ -587,7 +704,7 @@ window.MaritimePanels = (function () {
     }
 
     function sailControls(state) {
-        if (!has(state, "sail")) {
+        if (!hasControl(state, "sail")) {
             return null;
         }
         var bar = element("div", "maritime-controls");
@@ -674,6 +791,91 @@ window.MaritimePanels = (function () {
         return card;
     }
 
+    /* The captain's board.
+     *
+     * Laid out in rows by the kind of order rather than by how often it is given: the
+     * wheel, then the canvas, then everything that is not steering. A hand looking for
+     * "hard a-port" in a hurry wants it beside "port", not beside "anchor".
+     *
+     * `unwired` marks a button whose command this contrib has but whose control has
+     * not been written yet. It is drawn and it is plainly dead, because the structure
+     * of the board is worth seeing before every square of it works - and a button that
+     * silently does nothing is worse than one that says it does nothing.
+     */
+    var GRID = [
+        [
+            { key: "port", detail: { degrees: 10 }, label: "Turn port", note: "10°" },
+            { key: "starboard", detail: { degrees: 10 }, label: "Turn starboard", note: "10°" },
+            { key: "port", detail: { degrees: 45 }, label: "Hard port", note: "45°" },
+            { key: "starboard", detail: { degrees: 45 }, label: "Hard starboard", note: "45°" },
+            { key: "steady", label: "Steady course" }
+        ],
+        [
+            { key: "sail", detail: { plan: "working" }, label: "Working sail" },
+            { key: "sail", detail: { plan: "reefed" }, label: "Reef sails" },
+            { key: "sail", detail: { plan: "furled" }, label: "Furl sails" },
+            { key: "sail", detail: { plan: "full" }, label: "Full sails" },
+            { key: "heading", label: "Shift course", unwired: true }
+        ],
+        [
+            { key: "anchor", label: "Anchor" },
+            { key: "dock", label: "Prepare to dock", unwired: true },
+            { key: "scan", label: "Scan horizon" },
+            { key: "board", label: "Board", unwired: true },
+            { key: "fire", label: "Fire weapons", unwired: true, danger: true }
+        ]
+    ];
+
+    function gridButton(order) {
+        var button = element("button", "maritime-order");
+        button.type = "button";
+        button.appendChild(element("span", "maritime-order-label", order.label));
+        if (order.note) {
+            button.appendChild(element("span", "maritime-order-note", order.note));
+        }
+        if (order.danger) {
+            button.className += " maritime-order-danger";
+        }
+        if (order.unwired) {
+            button.className += " maritime-order-unwired";
+            button.disabled = true;
+            button.title = "No control for this yet";
+            return button;
+        }
+        button.title = order.label;
+        button.addEventListener("click", function () {
+            act(order.key, order.detail);
+        });
+        return button;
+    }
+
+    /* Nothing at all for somebody who may not give orders.
+     *
+     * Not a greyed-out board: a passenger looking at fifteen disabled buttons is being
+     * told the interface thinks they might steer. The server decides who may, and says
+     * so by offering no controls, and the honest drawing of that is an absence. */
+    function renderControlGrid(state) {
+        var offeredHere = (state.status && state.status.controls) || [];
+        if (!offeredHere.length) {
+            return null;
+        }
+
+        var board = element("div", "maritime-board");
+        GRID.forEach(function (line) {
+            var strip = element("div", "maritime-board-row");
+            line.forEach(function (order) {
+                if (!order.unwired && !hasControl(state, order.key)) {
+                    return;
+                }
+                strip.appendChild(gridButton(order));
+            });
+            if (strip.childNodes.length) {
+                board.appendChild(strip);
+            }
+        });
+        return board.childNodes.length ? board : null;
+    }
+
     function renderChartPlaceholder() {
         var card = element("div", "maritime-card");
         card.appendChild(element("div", "maritime-card-title", "Chart"));
@@ -690,6 +892,7 @@ window.MaritimePanels = (function () {
         isReadable: isReadable,
         act: act,
         has: has,
+        hasControl: hasControl,
         pickScale: pickScale,
         reading: reading,
         offered: offered,
@@ -698,6 +901,7 @@ window.MaritimePanels = (function () {
         renderTabs: renderTabs,
         range: range,
         renderPanelBody: renderPanelBody,
+        renderControlGrid: renderControlGrid,
         renderChartPlaceholder: renderChartPlaceholder
     };
 })();

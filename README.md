@@ -431,6 +431,42 @@ and a harbour town, six islands strung eastward, and three craft. It is safe to 
 
 Then walk to the Pond Shore, board the kayak, and start paddling.
 
+### The graphical interface, which is optional
+
+Everything above works in a plain telnet client and always will. A browser can be given a
+chart, instruments and an order board as well, and nothing here is required to play.
+
+The assets live in `web/static/maritime/`. Evennia collects a contrib's static files for
+you; what a game supplies is the markup that loads them, in its own
+`web/templates/webclient/webclient.html`. Django resolves that file ahead of the one shipped
+with the webclient, so nothing inside an installed Evennia is edited:
+
+```html
+{# Where the interface mounts. Without it, it makes its own container at the top #}
+{# of the page, which works and looks like an afterthought. #}
+<div id="maritime-root"></div>
+
+<link rel="stylesheet" href="{% static 'maritime/maritime.css' %}">
+<link rel="stylesheet" href="{% static 'maritime/maritime-layout.css' %}">
+
+<script src="{% static 'maritime/maritime-state.js' %}"></script>
+<script src="{% static 'maritime/maritime-transport.js' %}"></script>
+<script src="{% static 'maritime/maritime-chart.js' %}"></script>
+<script src="{% static 'maritime/maritime-panels.js' %}"></script>
+<script src="{% static 'maritime/maritime-ui.js' %}"></script>
+```
+
+**`maritime-layout.css` is separable on purpose.** It turns the webclient into a full-window
+bridge while somebody is aboard a vessel, and every rule in it is scoped to
+`:root:has(#maritime-root.maritime-on)` — so a game that leaves it out keeps the webclient
+it has always had, and a game that includes it hands the screen back the moment a player
+steps ashore. There is no state in which your own layout has been edited and has to be put
+back. Take `maritime.css` and leave this one out if you would rather place the panels
+yourself.
+
+Nothing above is needed for a terminal player, and a session that never asks for the
+interface is never sent it.
+
 ### Putting the commands on your own ships
 
 The example does this for you. For a ship you build yourself, the helm command set goes on

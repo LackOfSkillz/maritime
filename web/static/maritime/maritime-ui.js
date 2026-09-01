@@ -5,7 +5,7 @@
  * and asks the panels to draw themselves. It holds no ship state and speaks to no
  * server.
  *
- * **Additive, never rearranging.** The interface adds a container; it does not move,
+ * **Additive unless asked.** The interface adds a container; it does not move,
  * resize or restyle anything the host game had. A player's own layout is not ours to
  * touch, and a client whose panes were shuffled by a contrib is a client whose author
  * will remove the contrib.
@@ -123,6 +123,14 @@ window.MaritimeUI = (function () {
             })
         );
         pane.appendChild(MaritimePanels.renderPanelBody(state));
+
+        /* The board sits under everything rather than inside a panel, because the
+         * orders on it are the ones a captain gives while looking at the chart - and
+         * an order that needs a tab found first is an order given late. */
+        var board = MaritimePanels.renderControlGrid(state);
+        if (board) {
+            pane.appendChild(board);
+        }
         root.appendChild(pane);
     }
 

@@ -13,6 +13,89 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- Give the interface a full-window layout, as an opt-in nobody else pays for. Every rule
+  in it is scoped to `:root:has(#maritime-root.maritime-on)`, so a game that never boards
+  a vessel sees the webclient it has always had, and a player who steps aboard gets a
+  bridge. Additive by construction rather than by discipline: there is no state in which
+  the host's own layout is edited and has to be put back.
+- **Nothing scrolls the page.** Interior boxes scroll; the page never does. A captain
+  looking for the anchor should not have to go and find it, and a bridge you have to
+  scroll is a bridge with instruments behind you.
+- Lay the deck out in three columns and give the orders a board rather than a row, so the
+  wheel, the canvas and everything that is not steering each have a place. A hand looking
+  for "hard a-port" in a hurry wants it beside "port", not beside "anchor".
+- Say what a reading is *not*. Anything the simulation does not publish - the time and the
+  state of the tide, a rudder track, flooding - is drawn in its place and plainly marked
+  `not wired`, with bars drawn empty rather than full. A placeholder that looks like data
+  is one somebody eventually believes, and a captain acting on an invented ETA is a worse
+  outcome than one told the ETA does not exist yet. An empty bar reads as "no reading"; a
+  full one would read as "in perfect order", which is a claim.
+- Lead her description with her class when the game published one, because "cutter" tells
+  a captain more at a glance than "18 metres" does, and give a host game an emblem slot on
+  the same terms as every other picture here - an unset variable draws nothing and takes no
+  width.
+
+### Fix
+
+- **The chart was contoured thirty times for every one that was sent.** `broadcast_status`
+  drew a sheet on every tick and *then* decided whether to send it, so with a two-second
+  driver and a revision that turns every sixty seconds, twenty-nine drawings in thirty were
+  built and thrown away. The comment above that code said it stopped exactly this from
+  happening, which is a fair part of why it lasted. The revision is arithmetic on the clock
+  and needs no sheet to compute, so the gate moved ahead of the drawing — and what goes out
+  is unchanged, because the first tick of a new revision draws and sends exactly the sheet
+  it always did. Invisible against a hand-written seabed at eighteen milliseconds a sheet;
+  against a game supplying real bathymetry, where a sheet is the better part of a second, it
+  is the difference between 37.7 % of a core per crewed vessel and 1.3 %. Which chart she is
+  reading is part of the stamp too, so one bought or unrolled halfway through a minute still
+  appears at once rather than waiting for the clock.
+- **Draw the chart in screen pixels.** It was drawn in a square of a thousand user units
+  scaled to fit, so every stroke and label was specified in units that were some unknown
+  fraction of a pixel; widening that square to fill a wide pane made the fraction smaller
+  still, and a 1.5-unit range ring came out at about six tenths of a pixel - not a faint
+  ring but one the browser can barely draw. Fonts went the same way. One user unit is one
+  pixel now, at any zoom, in any shaped box, and the aspect arithmetic is gone with it.
+- Stop the chart being letterboxed. A square `viewBox` under a `max-height` left the sheet
+  241 pixels tall in a pane with room for 560, and `.maritime-pane > .maritime-card` was
+  capping the chart card because it carries both classes.
+- Ask the server for the sea the box actually shows, not the sea the captain's scale
+  covers. He picks how far the rings reach; the box then shows whatever fits around them,
+  and a sheet drawn only to his scale left that water blank - an unsurveyed-looking hole
+  that was really the edge of what we thought to ask for.
+- Wait for the box to be measured before asking at all. The first draw happens before any
+  layout, so a sheet asked for then was the wrong width: it arrived, drew, and was replaced
+  moments later by the right one, which is the flash on every page load. There is only ever
+  one now, and a `ResizeObserver` watches the box rather than the window - a pane changes
+  shape when somebody drags a splitter or opens a panel, and neither is a window resize.
+- Replace the compass drawn at a fixed point in the `viewBox`, which stopped being the
+  top-left corner the moment the box was not square, with a rose that positions itself and
+  carries its own cardinals.
+- **The panel tabs had been dead since the interface shipped.** Two functions in
+  `maritime-panels.js` were both called `has`; both took a state and a string; the later
+  declaration silently replaced the earlier one, so `offered()` spent its life asking
+  whether `"company"` was in the list of *controls*, which it never is. Every tab vanished.
+  The bodies went on rendering from the stored preference, which is exactly why an empty
+  tab strip did not look like a bug. Renamed to `hasControl`.
+- Print a chart's worth of soundings rather than a grid's worth. `soundings(every=6)` was a
+  count only while the grid never changed size; raising it took the printed scatter from 64
+  figures to 256, which arrives as an unreadable block of digits sitting over the ship. It
+  is a target count now - about eight each way - worked out from the grid, so the scatter
+  stays the same size however finely the seabed was sampled underneath it.
+- Sample the seabed twice as finely. At 48 across, a chart a thousand pixels wide showing
+  forty kilometres put 850 metres between samples - about twenty-two pixels - and a
+  coastline traced through points that far apart is a row of long straight walls. Timed on
+  the same seabed at the same span: 48 costs 14 ms, 96 costs 35 ms, 128 costs 61 ms.
+
+### Chore
+
+- Test the browser scripts by reading them, because nothing else here can. This repository
+  has no JavaScript test runner and should not gain one - a Python contrib that needs node
+  installed to go green is a contrib with a second toolchain - but that left the interface
+  untested and one bug has already used the gap. A function redeclared at module scope is
+  always a bug here, whatever it is called, and now it fails a test instead of a player.
+
+### Feat
+
 - Publish what class of hull she is, so a game with more than one sort of ship can
   draw a brig differently from a cutter. It is her `template_key` - the identifier
   of the template she was built from, which the host game chose - carried to the

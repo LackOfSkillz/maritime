@@ -224,26 +224,49 @@ def broadcast_status(vessel):
         announce(session, seen, "contacts")
 
     # The paper changes far more slowly than the ship does, and drawing it is the
-    # expensive part of this whole layer. Sent only when the revision moves, which is
-    # what stops a contoured coastline being rebuilt every few seconds for a vessel
-    # sitting at anchor.
+    # expensive part of this whole layer by a wide margin.
+    #
+    # **The revision is worked out before anything is drawn, and that is the point.**
+    # This built a sheet on every tick and then decided whether to send it, so a chart
+    # that goes out once a minute was contoured thirty times for each one that reached
+    # a player, and twenty-nine of those drawings were thrown away. Against a
+    # hand-written seabed, where a sheet costs eighteen milliseconds, that was invisible
+    # waste; against a generated world, where one costs the better part of a second, it
+    # is a third of a core burned per crewed vessel to produce nothing.
+    #
+    # The stamp is the reach and the revision, and both are known without a sheet
+    # existing - so a session whose stamp already matches needs nothing drawn for it.
+    # What is sent is unchanged: the first tick of a new revision draws and sends
+    # exactly the sheet it always did.
+    #
     # A sheet per reach rather than one for the ship. Two players may be looking at
     # very different amounts of sea, and drawing one of them the other's scale is what
     # put a coastline into the middle fifth of a panel. Charts are cached by the reach
     # they were drawn to, so the common case - everybody at the same scale - still
     # contours once.
+    # Which sheet she is reading goes in the stamp beside the revision. Without it,
+    # gating on the revision alone would leave a chart bought, found or unrolled
+    # halfway through a minute invisible until the minute turned - the old code
+    # noticed at once, because it redrew everything every tick, and losing that would
+    # be paying for the saving with a worse interface. Asking which chart covers her
+    # is a scan of the few aboard; drawing one is nine thousand soundings.
+    from .. import config
+    from .state import chart_revision
+
+    revision = chart_revision(config.time_provider().now())
+    here = getattr(vessel.chart_here(), "key", None)
+
     drawn = {}
     for session in listening:
         reach = session.ndb.maritime_reach or DEFAULT_REACH
-        if reach not in drawn:
-            drawn[reach] = chart_for(vessel, reach)
-        sheet = drawn[reach]
-
-        stamp = (reach, sheet.revision)
+        stamp = (reach, revision, here)
         if session.ndb.maritime_chart_stamp == stamp:
             continue
+        if reach not in drawn:
+            drawn[reach] = chart_for(vessel, reach)
+
         session.ndb.maritime_chart_stamp = stamp
-        announce(session, sheet, "chart")
+        announce(session, drawn[reach], "chart")
     return told
 
 
@@ -275,7 +298,14 @@ def redraw_chart(session):
 
     reach = session.ndb.maritime_reach or DEFAULT_REACH
     sheet = chart_for(vessel, reach)
-    session.ndb.maritime_chart_stamp = (reach, sheet.revision)
+
+    # Stamped the same way the broadcast stamps it, or the two disagree for ever and
+    # the next tick redraws what this call has already sent.
+    session.ndb.maritime_chart_stamp = (
+        reach,
+        sheet.revision,
+        getattr(vessel.chart_here(), "key", None),
+    )
     return announce(session, sheet, "chart")
 
 
