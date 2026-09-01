@@ -13,7 +13,29 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
-- **A sea that moves.** `bathymetry` has always said depth is the surface less the terrain,
+- **Who found it first, and who first set foot on it.** A world nobody has been to is worth
+  more than a world everybody has, and the difference is entirely bookkeeping. `discovery`
+  keeps a permanent, global record: a place carries the name of the ship that raised it and
+  of whoever first got ashore, and anybody who later looks it up is told.
+- Two claims, not one, because they are different achievements and frequently different
+  people — sighting a headland through a glass at fifteen miles is not getting a boat
+  through the surf. A sighting credits the ship's company with the captain named first; a
+  landing credits one person, because a boat's crew arrive one at a time.
+- **Sighted, not merely near.** Whether a place can be seen is `geographic_range` — height
+  of eye against the landmark's own height — so a headland is raised from far further off
+  than a sandbank, using the same arithmetic the lookout reports already use. A discovery
+  happens exactly when somebody could have called it.
+- **From her true position, never her reckoning.** Discovery is a fact about the world and
+  not about the chart, so a ship that is hopelessly lost still finds the island she is
+  looking at. Where it gets *drawn* is the navigator's problem, and a good one to have.
+- A claim is made once and never again — not overwritten, not re-dated, not re-attributed,
+  however many ships raise the same headland on the same tick. The guard is in the ledger
+  itself rather than only in the caller, because two ships can both be told a place is
+  unclaimed before either has written.
+- Players only. An achievement shared with eleven hired hands who exist as a number in the
+  manifest is not one.
+- Nothing at all for a world that names nothing. `landmarks_near` answers empty by default,
+  and a featureless shelf has nothing to discover — which is correct rather than a gap. `bathymetry` has always said depth is the surface less the terrain,
   and that moving the surface changes every depth in the world without touching any ground
   — but the only surface the contrib shipped was `FlatTideProvider`, which does not move.
   Every feature authored to teach a tide had nothing to teach with. `tides.HarmonicTide`

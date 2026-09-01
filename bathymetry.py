@@ -188,6 +188,37 @@ class MaritimeMapProvider:
         """
         return ()
 
+    def landmarks_near(self, position, reach):
+        """
+        Named places round here that somebody could be the first to find.
+
+        Args:
+            position (WorldPosition): Where to look from.
+            reach (float): How far to look, in metres.
+
+        Returns:
+            landmarks (tuple): `discovery.Landmark` records. Empty by default.
+
+        Notes:
+            Nothing, unless a game names things. A featureless shelf has nothing to
+            discover, and that is the correct answer rather than a gap - there is no
+            achievement in being the first to reach an unremarkable patch of water.
+
+            Distinct from `charted_dangers`, and the distinction is worth keeping. A
+            danger is a thing that will hole a hull and belongs on the chart as a
+            warning; a landmark is a thing worth having a name and belongs in the
+            ledger as an achievement. Many places are both. Some are only one: an
+            uncharted pinnacle is a serious danger and nobody's proud discovery,
+            while a sheltered anchorage is a fine thing to find and hurts nothing.
+
+            Answer generously and cheaply. This is asked as a ship sails, so it
+            should be a lookup over authored places rather than a search of the
+            terrain - and it may safely return things out of sight, since whether
+            they can actually be seen is decided afterwards by `geographic_range`.
+
+        """
+        return ()
+
     def geographic_at(self, position):
         """
         Where in the world a position is, in degrees.
