@@ -440,8 +440,23 @@ These are not stylistic preferences. Treat violations as defects.
 
 ## 11. Dependencies
 
-Evennia **permits** third-party dependencies. This project **declines** them. Those are two
-different statements and it matters that they are not confused.
+Evennia **permits** third-party dependencies. This project **declines** them for anything a
+game needs, and **offers** three for one thing it does not. Those are three different
+statements and it matters that they are not confused.
+
+**The promise: maritime runs on Evennia and the standard library.** The simulation, the
+commands, the charts and the browser interface all work with nothing else installed. That
+is a design guarantee, and CI enforces it rather than trusting it.
+
+**The exception: the chart's shaded relief.** `numpy`, `scipy` and `Pillow` are optional -
+a game installs them and its chart draws the shape of the bottom; a game that does not gets
+the same interface it always had. The trade is offered to the developer instead of taken on
+their behalf, which is the only reason it is acceptable at all.
+
+Optional means optional, and the checker knows the difference: those three roots may be
+imported **only inside a `try` block with a working fallback**. A bare `import numpy`
+anywhere fails CI, because a hard dependency wearing an optional label is exactly the
+failure nobody notices - it works on the machine of whoever added it.
 
 ### What Evennia allows
 
@@ -475,7 +490,7 @@ mock  model_mommy  anything  parameterized     (test helpers)
 `yaml` and `simpleeval` in particular are worth remembering — data-driven vessel templates
 need no new dependency.
 
-### What this project uses: nothing beyond that
+### What this project uses: nothing beyond that, plus three it can live without
 
 Not out of purity. For three concrete reasons:
 
@@ -493,6 +508,12 @@ Not out of purity. For three concrete reasons:
 
 So: **study the libraries, hand-roll the small piece we actually need.** That is a
 performance and portability decision, not asceticism.
+
+The one place that reasoning did not hold is shaded relief. Lighting a grid of soundings is
+gradients, a Gaussian blur and a PNG encoder - bulk array work, which is precisely what
+`numpy` is good at and what hand-rolled Python is bad at, and the output is a picture rather
+than a number the simulation depends on. So it is offered rather than required, and every
+line of it is behind `relief.available()`.
 
 ### If that ever stops being true
 

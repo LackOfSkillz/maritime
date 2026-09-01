@@ -72,6 +72,23 @@ ALLOWED_IMPORT_ROOTS = {
     "parameterized",
 }
 
+#: Third-party modules the *optional* graphical enhancement may use, and nothing else may.
+#:
+#: The contrib itself has no dependencies and that is a promise, not a present state. What
+#: these buy is shaded relief on the chart, which a game opts into by installing them; a
+#: game that does not gets the same interface it always had.
+#:
+#: **Allowed only behind a guard.** An import of one of these outside a `try` block is a
+#: hard dependency wearing an optional label, and the promise would be broken by the next
+#: person who wrote `import numpy` at the top of a module without meaning anything by it.
+#: The check below enforces that rather than trusting it, because the failure is silent -
+#: everything works on the machine of whoever added it.
+OPTIONAL_IMPORT_ROOTS = {
+    "numpy",  # shaded relief: gradients and colour ramps over the sounded grid
+    "scipy",  # shaded relief: generalising the soundings before lighting them
+    "PIL",  # shaded relief: encoding the result as a PNG
+}
+
 # Packages permitted to talk to players directly. Everywhere else, emitting prose
 # is a layering violation: the domain returns structured results and a separate
 # renderer turns them into text.
@@ -185,6 +202,40 @@ def _import_roots(tree):
     return roots
 
 
+def _unguarded_roots(tree):
+    """
+    Args:
+        tree (ast.Module): A parsed source file.
+
+    Returns:
+        roots (set): Modules imported anywhere *except* inside a `try` body.
+
+    Notes:
+        Asked this way round on purpose. The first version collected what *was* guarded
+        and let a root pass if it appeared in a try anywhere in the file - so a module
+        that imported numpy properly at the top and then again, bare, further down was
+        reported clean. It was tested by adding exactly that and watching it pass.
+
+        What matters is that *no* unguarded import exists, so that is what is counted.
+
+    """
+    unguarded = set()
+
+    def walk(node):
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.Import, ast.ImportFrom)):
+                unguarded.update(_import_roots(ast.Module(body=[child], type_ignores=[])))
+            elif isinstance(child, ast.Try):
+                # The body is the guarded part; everything else in the statement is not.
+                for branch in child.handlers + child.orelse + child.finalbody:
+                    walk(ast.Module(body=[branch], type_ignores=[]))
+            else:
+                walk(child)
+
+    walk(tree)
+    return unguarded
+
+
 def check_dependencies(failures):
     """
     Only the standard library and core Evennia may be imported.
@@ -203,8 +254,18 @@ def check_dependencies(failures):
         except SyntaxError as err:
             failures.append(f"{relative(path)}: could not parse - {err}")
             continue
+        unguarded = _unguarded_roots(tree)
         for root in sorted(_import_roots(tree)):
             if root in stdlib or root in ALLOWED_IMPORT_ROOTS:
+                continue
+            if root in OPTIONAL_IMPORT_ROOTS:
+                if root not in unguarded or path.name.startswith("test_"):
+                    continue
+                failures.append(
+                    f"{relative(path)}: imports '{root}' without a guard. It is optional, "
+                    "so it has to be imported inside a try block with a working fallback - "
+                    "otherwise the contrib quietly requires it."
+                )
                 continue
             failures.append(
                 f"{relative(path)}: imports third-party module '{root}'. "

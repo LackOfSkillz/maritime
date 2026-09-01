@@ -13,6 +13,94 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **The chart is ruled with meridians and parallels.** A navigator reads a position off
+  them, and they are also the one honest way a flat sheet can show a round world: the
+  meridians converge, visibly, and converge further the wider the view. No projection was
+  bent and nothing was faked — the lines are contours of the latitude and longitude fields,
+  found with the same marching squares that draws the coastline, so they curve because the
+  world does. Costs 2–4 ms of a sheet that already takes hundreds.
+- A world with no geography is ruled with nothing. `geographic_at` answers None by default,
+  so a seabed defined by an arithmetic ramp draws no graticule rather than inventing a
+  latitude — the same shape of promise as the optional relief.
+- **An island, a drying rock and a sunken one are now three things rather than one.**
+  `dries` meant "above chart datum", so a twelve-metre island reached the client announcing
+  that it dried twelve metres. The tide is measured over a full tidal day and a danger is
+  classified by what the water actually does to it: `ashore` where the sea never covers it,
+  `dries` where it is bare at low water and covered at high, and neither where it never
+  shows. On a motionless sea nothing dries, which is correct — nothing moves.
+- **Shaded relief on the chart, for a game that wants it.** `numpy`, `scipy` and `Pillow`
+  are optional — install them and the chart draws the shape of the bottom, lit, beneath its
+  contours; leave them out and it is the line drawing it has always been. Maritime itself
+  still has no dependencies, and that is the point: the trade is offered to the game rather
+  than taken on its behalf.
+- Shaded from the **charted** grid and never the real seabed, so a poor chart's relief is
+  as wrong as its soundings and in the same places. Anything else would hand a graphical
+  player knowledge the fiction denies a terminal one.
+- Costs about 65 ms against the 983 the sounding already took, because the grid it shades
+  was computed to draw the contours and no new depth is asked for. Adds some 20 KB to a
+  payload that goes out once a minute. Unsurveyed water comes out transparent, so the paper
+  still runs out where the survey did.
+
+### Fix
+
+- **The coastline was being shredded by its own survey error.** A vertical error becomes a
+  horizontal one scaled by the slope, and on a coast rising a metre in a kilometre a chart
+  of quality 0.85 is out by under 2 m of depth and therefore **±1,745 m of shoreline** —
+  against an error that varied over 250 m patches. When the displacement is seven times the
+  wavelength it varies over, the drawn coast folds back through itself: it stops being a
+  line in the wrong place and becomes a scribble. Measured at a ten-kilometre reach against
+  about 24 km of real shore, the old 250 m patch drew 34.6 km in four broken runs; at two
+  kilometres it draws 24.5 km in one. The patch is 2 km now.
+- Runs too short to be anything a survey found are left off, which is ordinary cartography
+  — a cartographer calls it the minimum mappable unit. What arrived below that size was not
+  islets but survey error crossing the datum, drawn as a scatter of specks that moved
+  whenever the chart was redrawn at another scale. Anything real and smaller belongs to the
+  marks layer, where the isolated dangers already live for the same reason.
+- The coastline is drawn as a curve through its points rather than as straight runs between
+  them. It passes through every point exactly and invents no shoreline; it only stops
+  asserting that the coast turns a hard corner wherever somebody happened to sound.
+
+### Fix
+
+- **The charted seabed was a staircase.** Survey error was one value per 250 m patch, so
+  the paper stepped at every patch boundary: on a shelf truly falling a fifth of a metre
+  every fifty, a chart of quality 0.7 showed **4.55 m cliffs** a quarter of a kilometre
+  apart. A lead cast either side of an invisible line disagreed by more than the depth of
+  water changing under it. The error is interpolated between patches now, smoothstepped so
+  the slope matches at the joins as well as the value — a merely linear blend leaves a
+  crease along every boundary, and a crease in a seabed is a ridge nobody put there. The
+  intent the docstring always stated, that a survey is wrong about *areas*, is unchanged;
+  what has gone is the wall between one area and the next.
+- The test guarding that behaviour was asserting the bug. It asked for two readings a
+  metre apart to be *identical*, which is the implementation rather than the property —
+  the sentence above it said only that the error should not vary between one metre and
+  the next. It checks that now, and a second test walks a line and fails on any step.
+
+### Changed
+
+- **A sheet only sounds the cells a contour passes through**, where that can be done
+  safely. Most of a chart has no contour in it — counted on generated ground, about one
+  cell in twenty carries any traced level — and asking the world for a depth is very
+  nearly the whole price of a sheet. A seed pass finds the contours; the rest is filled
+  from its own corners, which can neither invent nor hide a crossing because bilinear
+  interpolation stays between the values it is given.
+- **It turns itself off where it would be wrong**, and that is most of the story. A seed
+  cell wider than the finest structure in the field steps over contours, and no
+  refinement can refine what it never saw. Measured worst departure of the drawn contour
+  from sounding every point: 421 m cells never seed, 211 m cells wandered 388 m, 84 m
+  cells 29 m, 42 m cells 18 m. The rule is derived from the sheet rather than configured,
+  so a wide zoom is untouched and a close one is about two and a half times cheaper —
+  which is the opposite of convenient, since the wide sheets are the expensive ones, and
+  is kept because the chart a pilot threads a harbour on is worth halving.
+- `GRID` stays at 96, after nearly being raised to 192 on a misreading. **A chart is not
+  the seabed, it is the seabed plus a survey error**, and sampling more finely than the
+  error varies resolves the error rather than the shore. Coastline traced on a
+  forty-kilometre sheet against about 55 km of real coast: a perfect chart gives 54.2 km
+  at 96 and 55.7 at 192; a 0.9 chart gives 57.1 and 67.9; a 0.6 chart gives 107.2 and
+  171.1. The extra detail at 192 is very largely survey noise drawn as coastline.
+
+### Feat
+
 - **Put the rocks on the chart.** `docs/client.md` has said since the interface was
   specified that the charted layer carries land, soundings, marks *and hazards*. The first
   three arrived and the fourth did not, while grounding went on asking providers for

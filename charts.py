@@ -122,6 +122,51 @@ class Chart:
         return max(0.0, min(1.0, self.quality) * (1.0 - decay))
 
 
+#: How big a patch of sea one survey error covers, in metres.
+#:
+#: A survey is wrong about areas rather than about points, so the error has to vary over a
+#: stretch of water a navigator could notice crossing. It was two hundred and fifty metres,
+#: which is not an area - it is a sounding - and it was small enough to destroy the thing
+#: the chart is for.
+#:
+#: **A vertical error becomes a horizontal one, and how much depends on the slope.** On a
+#: gently shelving coast rising a metre in a kilometre, a chart of quality 0.85 is out by
+#: under two metres of depth and therefore by *seventeen hundred metres of shoreline*. When
+#: that displacement is larger than the patch it varies over, the drawn coastline folds
+#: back through itself: it stops being a line that is in the wrong place and becomes a
+#: scribble, breaking into fragments and doubling its own length.
+#:
+#: Measured on generated coast at a ten-kilometre reach, against about 24 km of real shore:
+#:
+#:      patch      runs drawn      coast drawn
+#:        250 m        4              34.6 km      shredded, and 10 km of it is noise
+#:      1,000 m        1              24.5 km
+#:      3,000 m        1              24.1 km
+#:      8,000 m        1              24.5 km
+#:
+#: Two kilometres. Comfortably past where it stops shredding on the coasts measured, small
+#: enough that one part of a bay can still be surveyed better than another, and large
+#: enough that what a pilot learns is "this chart puts the point half a mile too far west"
+#: - which is a thing he can carry - rather than "this chart is fuzzy", which is not.
+ERROR_PATCH = 2000.0
+
+
+def _error_at_corner(chart, east, north):
+    """
+    Args:
+        chart (Chart): The chart, whose seed makes its errors its own.
+        east (int): Patch index, east-west.
+        north (int): Patch index, north-south.
+
+    Returns:
+        signed (float): In -1..1, the same for ever for this chart and this corner.
+
+    """
+    key = chart.seed * 1_000_003 + east * 73_856_093 + north * 19_349_663
+    scrambled = (key * 2_654_435_761) % 4_294_967_296
+    return scrambled / 2_147_483_648.0 - 1.0
+
+
 def _sounding_error(chart, position, quality):
     """
     How wrong this chart is at this exact spot.
@@ -142,19 +187,44 @@ def _sounding_error(chart, position, quality):
         feature of the paper, and a pilot who has caught it out once knows where
         to sound.
 
-        Sampled on a coarse grid so that error varies over a patch of sea rather
-        than between one metre and the next - a survey is wrong about *areas*.
+        Varying over a patch of sea rather than between one metre and the next,
+        because a survey is wrong about *areas*.
+
+        **Interpolated between patches, not stepped between them.** The first
+        version took one value per two-hundred-and-fifty-metre square, which made
+        the charted seabed a staircase: on a shelf truly falling a fifth of a metre
+        every fifty, the paper showed four-and-a-half-metre cliffs at every patch
+        boundary. A lead cast either side of an invisible line disagreed by more
+        than the depth of the water changing under it.
+
+        It also made the chart worse the more finely it was drawn. Sampling closer
+        together than a patch resolves the *patch edges*, so a coastline traced at
+        two hundred metres a sample followed the error grid rather than the shore -
+        on a poor chart it ran to two hundred and seventy kilometres where the real
+        coast was fifty-five.
+
+        Smoothstepped so the slope matches at the joins as well as the value. A
+        merely linear blend has a crease along every patch edge, and a crease in a
+        seabed is a ridge that nothing put there.
 
     """
-    grid = 250.0
-    key = (
-        chart.seed * 1_000_003
-        + int(math.floor(position.x / grid)) * 73_856_093
-        + int(math.floor(position.y / grid)) * 19_349_663
-    )
-    # A cheap deterministic hash, mapped to -1..1.
-    scrambled = (key * 2_654_435_761) % 4_294_967_296
-    signed = scrambled / 2_147_483_648.0 - 1.0
+    east = position.x / ERROR_PATCH
+    north = position.y / ERROR_PATCH
+    west_of, south_of = int(math.floor(east)), int(math.floor(north))
+
+    across = east - west_of
+    up = north - south_of
+    across = across * across * (3.0 - 2.0 * across)
+    up = up * up * (3.0 - 2.0 * up)
+
+    south_west = _error_at_corner(chart, west_of, south_of)
+    south_east = _error_at_corner(chart, west_of + 1, south_of)
+    north_west = _error_at_corner(chart, west_of, south_of + 1)
+    north_east = _error_at_corner(chart, west_of + 1, south_of + 1)
+
+    southern = south_west + (south_east - south_west) * across
+    northern = north_west + (north_east - north_west) * across
+    signed = southern + (northern - southern) * up
     return signed * MAX_CHART_ERROR * (1.0 - quality)
 
 

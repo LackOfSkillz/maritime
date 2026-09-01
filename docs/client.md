@@ -110,6 +110,64 @@ choice. For a chart it is the wrong one, and maritime uses SVG instead:
 The cost is that a very large coastline is a great many path points, which is answered by
 culling to the viewport rather than by changing technology.
 
+### The graticule, and how a flat sheet admits the world is round
+
+A chart is a plane and the world is not. The panel does not try to hide that, and it does not
+try to draw its way out of it either - what it does is rule the sheet with the meridians and
+parallels that genuinely lie on the ground, and let the reader watch them converge.
+
+They are not plotted. A parallel is the line along which latitude equals a round number,
+which is exactly what a contour tracer finds, so the graticule is the same marching squares
+that draws the coastline run over a grid of degrees instead of a grid of depths. Nothing
+approximates the projection; the projection produces the lines. Close in they stand square
+and the chart is honest to draw itself flat. At two hundred kilometres they lean by
+kilometres, and the world stops looking like a square tile.
+
+It costs the navigator nothing he does not have. Latitude comes from an observation and
+longitude from a reckoning; that is his job, and a chart with degrees in the margin is the
+ordinary tool for doing it.
+
+Like the relief, it degrades rather than demands. `MaritimeMapProvider.geographic_at`
+answers None by default, so a seabed defined by an arithmetic ramp - which is not *anywhere*
+- draws no graticule at all rather than inventing a latitude for a game that never named
+one. A world that knows where it is overrides the method and gets ruled lines for free.
+
+### An island is not a drying rock
+
+Three states, and they were one flag. `dries` used to mean "above chart datum", so an island
+twelve metres high reached the client saying that it dried twelve metres - which is not a
+sentence any chart has ever contained.
+
+The tide is watched over a full tidal day and each danger classified by what the water
+actually does to it:
+
+    ashore      the sea never covers it        an islet, a mole, a headland
+    dries       bare at low water, covered at high    the rock a tide table is for
+    neither     it never shows                  a pinnacle, a bar, a wreck
+
+A game with no tide gets nothing drying, and that is right rather than a gap: on a
+motionless sea nothing covers and uncovers, because nothing moves. The classification is
+measured rather than declared, so it holds for a harmonic tide, a story-driven flood, or
+none at all, without a tide provider having to implement anything new.
+
+### Shaded relief is offered, never required
+
+The contrib has no dependencies and that is a design guarantee. One thing sits outside it,
+deliberately and visibly: the chart's shaded relief needs `numpy`, `scipy` and `Pillow`, and
+a game that installs them gets the shape of the bottom lit beneath its contours while a game
+that does not gets exactly the interface it always had.
+
+That shape - offer the trade to the developer rather than take it on their behalf - is the
+only reason a dependency is acceptable here at all. It is enforced rather than trusted: CI
+fails on an unguarded import of any of the three, because a hard dependency wearing an
+optional label is the failure nobody notices, working perfectly on the machine of whoever
+added it.
+
+It is shaded from the **charted** grid, never the real seabed. The relief of a poor chart is
+as wrong as its soundings and in the same places, which it has to be - the rule below about
+the panel being a repeater and not an oracle applies to a picture exactly as it does to a
+number.
+
 ### Theming composes
 
 The client examined already themes with CSS custom properties. Maritime publishing its own

@@ -12,10 +12,26 @@ exactly why it is worth having as its own module.
 
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
+import math
+
+from ..bathymetry import MaritimeMapProvider
+from ..charts import Chart
 from ..client import cartography
 from ..position import METRES_PER_FATHOM, WorldPosition
 
 HERE = WorldPosition(1000.0, 2000.0)
+
+
+class SlopingSeabed(MaritimeMapProvider):
+    """
+    A shelf rising steadily eastward, with a swell running through it.
+
+    Steady enough that a coarse seed pass finds every contour there is, and rippled enough
+    that there are several to find rather than one straight line down the middle.
+    """
+
+    def terrain_z_at(self, position):
+        return -30.0 + position.x / 90.0 + 7.0 * math.sin(position.y / 400.0)
 
 
 def flat(value, steps=5):
@@ -390,3 +406,161 @@ class TestEveryCornerOfTheCaseTable(BaseEvenniaTestCase):
             for segment in self.cut(*grid):
                 self.assertTrue(self.edges_touched(segment))
                 self.assertEqual(len(self.edges_touched(segment)), 2)
+
+
+class TestSoundingOnlyWhereItMatters(BaseEvenniaTestCase):
+    """
+    Most of a sheet has no contour in it, and sounding all of it was the whole cost.
+
+    A seed grid finds the contours; only the cells carrying one are sounded in full. The
+    rest are filled from their own corners, which can neither invent nor hide a crossing,
+    because bilinear interpolation stays between the values it is given.
+
+    The interesting tests here are the ones about what it *cannot* promise. Refinement
+    only ever looks more closely at something the seed pass already noticed, so the seed
+    is the resolution that matters and a coarse one draws a different, worse coastline
+    while looking like a bargain.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.chart = Chart(key="a sheet", west=-9e4, east=9e4, south=-9e4, north=9e4)
+
+    def counted(self, world):
+        """Wrap a world so every depth it is asked for is counted."""
+        asked = []
+
+        class Counting:
+            def terrain_z_at(inner, position):
+                asked.append((position.x, position.y))
+                return world.terrain_z_at(position)
+
+            def __getattr__(inner, name):
+                return getattr(world, name)
+
+        return Counting(), asked
+
+    def test_the_seed_is_only_as_coarse_as_the_sheet_allows(self):
+        """
+        The rule that keeps this honest. A wide sheet has samples further apart than the
+        finest thing in the water, so there is nothing safe to seed with and everything
+        is sounded - which is what it did before any of this existed.
+
+        """
+        self.assertEqual(cartography._seed_factor(cell=420.0, ceiling=2), 1)
+        self.assertEqual(cartography._seed_factor(cell=210.0, ceiling=2), 1)
+        self.assertEqual(cartography._seed_factor(cell=42.0, ceiling=2), 2)
+        self.assertEqual(cartography._seed_factor(cell=42.0, ceiling=1), 1)
+
+    def test_it_sounds_far_fewer_points_than_the_grid_has(self):
+        world = SlopingSeabed()
+        counting, asked = self.counted(world)
+        steps = 48
+        cartography.sample(self.chart, counting, 0.0, -1000.0, -1000.0, 2000.0, steps=steps)
+        self.assertLess(
+            len(asked),
+            steps * steps * 0.75,
+            f"sounded {len(asked)} of {steps * steps}; the seed pass is doing nothing",
+        )
+
+    def test_and_sounds_every_point_when_told_not_to_be_clever(self):
+        """`coarse=1` is the old behaviour, kept so it can be compared against."""
+        counting, asked = self.counted(SlopingSeabed())
+        steps = 24
+        cartography.sample(
+            self.chart, counting, 0.0, -1000.0, -1000.0, 2000.0, steps=steps, coarse=1
+        )
+        self.assertEqual(len(set(asked)), steps * steps)
+
+    def test_the_contour_is_the_one_a_fully_sounded_grid_would_draw(self):
+        """
+        The property the whole thing rests on: where the seed pass finds a contour, what
+        gets drawn is what sounding every point would have drawn.
+
+        Compared as positions rather than as a count of segments. Counting was the first
+        version of this and it is brittle for a reason worth remembering - a contour that
+        grazes the edge of the paper breaks into slightly different numbers of pieces
+        depending on which points were taken, while running through all the same water.
+        What matters to a navigator is where the line is, not how many pieces the tracer
+        cut it into.
+
+        """
+        world = SlopingSeabed()
+        span, west, south = 2000.0, -1000.0, -1000.0
+        cell = span / 47.0
+        full = cartography.sample(self.chart, world, 0.0, west, south, span, steps=48, coarse=1)
+        seeded = cartography.sample(self.chart, world, 0.0, west, south, span, steps=48)
+
+        checked = 0
+        for level in cartography.traced_levels():
+            here = [
+                point
+                for segment in cartography.contour(full, level, west, south, span)
+                for point in segment
+            ]
+            there = [
+                point
+                for segment in cartography.contour(seeded, level, west, south, span)
+                for point in segment
+            ]
+            if not here:
+                continue
+            self.assertTrue(there, f"the seeded pass lost the {level} m contour entirely")
+            for x, y in here:
+                nearest = min(math.hypot(x - a, y - b) for a, b in there)
+                self.assertLess(
+                    nearest,
+                    cell,
+                    f"the {level} m contour moved {nearest:.0f} m, more than one cell",
+                )
+                checked += 1
+        self.assertGreater(checked, 50, "this test traced almost nothing")
+
+    def test_a_cell_with_no_contour_in_it_still_reads_as_a_depth(self):
+        grid = cartography.sample(
+            self.chart, SlopingSeabed(), 0.0, -1000.0, -1000.0, 2000.0, steps=48
+        )
+        for row in grid:
+            for value in row:
+                self.assertTrue(cartography.surveyed(value), "a filled cell came back unsounded")
+
+    def test_a_filled_cell_never_invents_a_crossing(self):
+        """
+        Bilinear interpolation is bounded by its corners, so a cell whose corners are all
+        on one side of a level stays on that side throughout. Asserted directly, because
+        it is the argument that makes skipping the cell safe.
+
+        """
+        for corners in ((-30.0, -28.0, -31.0, -29.0), (5.0, 7.0, 6.0, 8.0)):
+            self.assertFalse(cartography._worth_refining(corners, cartography.traced_levels()))
+        # and one that straddles the waterline is refined
+        self.assertTrue(
+            cartography._worth_refining((-1.0, 2.0, -3.0, 1.0), (cartography.COASTLINE,))
+        )
+
+    def test_unsurveyed_water_is_always_looked_at_closely(self):
+        """
+        Off the edge of the paper there is nothing to interpolate between, and filling
+        there would be the chart inventing coverage it does not have.
+
+        """
+        self.assertTrue(cartography._worth_refining((-30.0, None, -31.0, -29.0), (0.0,)))
+
+    def test_the_printed_figures_are_sounded_rather_than_interpolated(self):
+        """
+        A printed depth is a number a captain acts on, not a line he reads a shape from.
+        There are a few dozen of them and they are cheap, so none is ever a guess.
+
+        """
+        world = SlopingSeabed()
+        counting, asked = self.counted(world)
+        steps, span, west, south = 48, 4000.0, -2000.0, -2000.0
+        cartography.sample(self.chart, counting, 0.0, west, south, span, steps=steps)
+
+        sounded = {(round(x, 3), round(y, 3)) for x, y in asked}
+        cell = span / float(steps - 1)
+        every = max(1, int(round(steps / float(cartography.PRINTED))))
+        for row in range(0, steps, every):
+            for column in range(0, steps, every):
+                here = (round(west + column * cell, 3), round(south + row * cell, 3))
+                self.assertIn(here, sounded, f"a printed figure at {here} was a guess")

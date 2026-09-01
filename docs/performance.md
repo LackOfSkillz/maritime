@@ -52,7 +52,7 @@ Two rules the implementation had to get right:
 
 ---
 
-## Three bugs the measurement found
+## Four bugs the measurement found
 
 Neither would have been found by reading the code, which is the argument for measuring.
 
@@ -135,6 +135,60 @@ drawing one is nine thousand soundings.
 This is the bug that matters most for a game supplying real bathymetry, and it is the reason
 a costly map provider is affordable at all: the expensive question is now asked once a
 minute rather than thirty times a minute.
+
+### The chart was a staircase, and drawing it more finely made it worse
+
+Survey error was one value per 250 m patch — `int(floor(x / 250))` — so the charted seabed
+stepped at every patch boundary. On a shelf truly falling a fifth of a metre every fifty, a
+chart of quality 0.7 read:
+
+```text
+    x=1200   true -25.20   charted -26.62
+    x=1250   true -25.00   charted -22.07   step +4.55 m
+```
+
+A lead cast either side of an invisible line disagreed by more than the depth of water
+changing under it, and the instruments would jump as she crossed one.
+
+It also made the chart worse the more finely it was sampled. Sampling closer together than
+a patch resolves the *patch edges*, so a coastline traced at 209 m a sample followed the
+error grid rather than the shore. Coastline traced on a forty-kilometre sheet, against
+about 55 km of real coast:
+
+```text
+    quality     GRID 96    GRID 192
+    1.0         54.2 km    55.7 km     a perfect chart: the extra detail is real
+    0.9         57.1 km    67.9 km     a fifth of the coast is survey noise
+    0.6        107.2 km   171.1 km     three times the real coastline
+```
+
+That is the answer to "should the grid be finer": **not beyond the scale the paper is wrong
+at**. The error is smoothstepped between patches now, which removes the walls and leaves
+the stated intent — that a survey is wrong about areas — intact.
+
+### And most of a sheet did not need sounding at all
+
+About one cell in twenty carries any traced level; the other nineteen were sounded to
+produce nothing. A seed pass finds the contours and only those cells are sounded in full,
+the rest being filled from their corners — which can neither invent nor hide a crossing,
+because bilinear interpolation stays between the values it is given.
+
+The interesting part is where it has to be switched off. A seed cell wider than the finest
+structure in the field steps over contours, and no refinement pass can refine what it never
+saw:
+
+```text
+    seed cell     worst departure of the drawn contour
+        421 m     (never seeded)
+        211 m     388 m      too coarse, and looked perfectly safe
+         84 m      29 m
+         42 m      18 m
+```
+
+So it is derived from the sheet rather than configured, and pays only at close quarters — a
+four-kilometre sheet drops from about 970 ms to 356. The wide sheets, which are the
+expensive ones, are untouched. That is a disappointing shape for an optimisation and it is
+the honest one: the alternative was to seed everywhere and quietly draw a worse coastline.
 
 ---
 

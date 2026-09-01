@@ -14,7 +14,7 @@ from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
 from .. import config
-from ..bathymetry import MaritimeMapProvider, SAND
+from ..bathymetry import SAND, MaritimeMapProvider, MaritimeTideProvider
 from ..charts import Chart
 from ..client.state import chart_for, contacts_for, status_for
 from ..crew import ABLE
@@ -377,6 +377,30 @@ class RockyBottom(MaritimeMapProvider):
         return tuple(CHARTED_ROCKS)
 
 
+class TidalBottom(RockyBottom):
+    """
+    The same bottom, under a sea that moves. A metre and a half either way, twice a day.
+
+    Needed because whether a rock *dries* is a question about the tide and not about the
+    rock: the same stone is a drying ledge on a coast with a range and a permanent islet on
+    one without.
+    """
+
+    RANGE_M = 1.5
+
+    def __init__(self, tide_provider=None):
+        super().__init__(tide_provider=tide_provider or _Springs())
+
+
+class _Springs(MaritimeTideProvider):
+    """A plain semidiurnal tide, enough to cover and uncover something."""
+
+    def surface_z_at(self, position, game_time):
+        import math
+
+        return TidalBottom.RANGE_M * math.sin(2.0 * math.pi * game_time / (12.42 * 3600.0))
+
+
 class OlderProvider(MaritimeMapProvider):
     """
     A provider written before charted dangers existed.
@@ -394,6 +418,7 @@ class OlderProvider(MaritimeMapProvider):
 # well as the Evennia tree, so a dotted path spelled by hand hardcodes one of the two
 # homes - and CI checks for exactly that.
 ROCKY = f"{__name__}.RockyBottom"
+TIDAL = f"{__name__}.TidalBottom"
 OLDER = f"{__name__}.OlderProvider"
 
 
@@ -424,10 +449,10 @@ class TestTheRocksReachThePaper(StateTestCase):
     def sheet(self, reach=6000.0):
         return chart_for(self.hull, reach).as_message()
 
-    def rocky(self, *hazards):
+    def rocky(self, *hazards, provider=ROCKY):
         """Put those rocks on the bottom, under a provider that reports them."""
         CHARTED_ROCKS.extend(hazards)
-        override = override_settings(MARITIME_MAP_PROVIDER=ROCKY)
+        override = override_settings(MARITIME_MAP_PROVIDER=provider)
         override.enable()
         self.addCleanup(override.disable)
         config.forget_map_provider()
@@ -484,13 +509,51 @@ class TestTheRocksReachThePaper(StateTestCase):
         interface has to be able to draw it differently without doing the arithmetic
         itself.
 
+        Under a real tide, because drying is a fact about the *water* rather than about the
+        stone. The rock is bare at low water and covered at high, which is the definition,
+        and the ledge two metres up never covers at all - it is an islet.
+
         """
         self.rocky(
             Hazard(key="the Brawn", x=500.0, y=0.0, radius=40.0, top_z=0.6),
             Hazard(key="the Whaleback", x=900.0, y=0.0, radius=70.0, top_z=-3.5),
+            Hazard(key="the Ledge", x=1200.0, y=0.0, radius=50.0, top_z=2.0),
+            provider=TIDAL,
         )
-        drying = {d["label"]: d["dries"] for d in self.sheet()["dangers"]}
-        self.assertEqual(drying, {"the Brawn": True, "the Whaleback": False})
+        sheet = self.sheet()["dangers"]
+        self.assertEqual(
+            {d["label"]: d["dries"] for d in sheet},
+            {"the Brawn": True, "the Whaleback": False, "the Ledge": False},
+        )
+        self.assertEqual(
+            {d["label"]: d["ashore"] for d in sheet},
+            {"the Brawn": False, "the Whaleback": False, "the Ledge": True},
+        )
+
+    def test_nothing_dries_in_a_world_with_no_tide(self):
+        """
+        The bug this classification was written for, in its purest form.
+
+        `dries` used to mean "above chart datum", so a twelve-metre island came through the
+        payload announcing that it dried twelve metres - and the client dutifully printed
+        it, which is not a sentence any chart has ever contained.
+
+        On a motionless sea nothing covers and uncovers, because nothing moves. A rock
+        standing out of it is an islet however low it is, and saying otherwise would have
+        the chart claim a tide the game does not have.
+
+        """
+        self.rocky(
+            Hazard(key="the Brawn", x=500.0, y=0.0, radius=40.0, top_z=0.6),
+            Hazard(key="an island", x=900.0, y=0.0, radius=400.0, top_z=12.0),
+        )
+        sheet = self.sheet()["dangers"]
+        self.assertEqual(
+            {d["label"]: d["dries"] for d in sheet}, {"the Brawn": False, "an island": False}
+        )
+        self.assertEqual(
+            {d["label"]: d["ashore"] for d in sheet}, {"the Brawn": True, "an island": True}
+        )
 
     def test_the_worst_news_is_first(self):
         self.rocky(

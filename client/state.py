@@ -255,7 +255,7 @@ def chart_for(vessel, reach=10000.0):
         is a real situation and should look like one.
 
     """
-    from . import cartography
+    from . import cartography, relief
 
     if vessel is None:
         return ChartSheet()
@@ -275,7 +275,10 @@ def chart_for(vessel, reach=10000.0):
     grid = cartography.sample(chart, world, now, west, south, span)
 
     coast = cartography.as_offsets(
-        cartography.join(cartography.contour(grid, cartography.COASTLINE, west, south, span)),
+        cartography.worth_drawing(
+            cartography.join(cartography.contour(grid, cartography.COASTLINE, west, south, span)),
+            span,
+        ),
         here,
     )
 
@@ -283,17 +286,21 @@ def chart_for(vessel, reach=10000.0):
     for line in cartography.FATHOM_LINES:
         traced = cartography.contour(grid, cartography.fathoms(line), west, south, span)
         if traced:
-            depths[line] = cartography.as_offsets(cartography.join(traced), here)
+            kept = cartography.worth_drawing(cartography.join(traced), span)
+            if kept:
+                depths[line] = cartography.as_offsets(kept, here)
 
     return ChartSheet(
         reach=reach,
         coastline=coast,
         depths=depths,
         marks=_marks_within(here, reach),
-        dangers=_dangers_within(world, here, reach),
+        dangers=_dangers_within(world, here, reach, now),
+        relief=relief.shaded(grid, _safe_water_for(vessel)) or "",
         route=_route_of(vessel, here),
         soundings=cartography.soundings(grid, west, south, span, here),
         coverage=cartography.coverage(chart, here),
+        graticule=cartography.graticule(world, here, reach),
         revision=chart_revision(now),
     )
 
@@ -377,7 +384,32 @@ def _now():
     return config.time_provider().now()
 
 
-def _dangers_within(world, here, reach):
+def _safe_water_for(vessel):
+    """
+    How much water this hull wants under her, for the chart's safety contour.
+
+    Args:
+        vessel (Vessel): The hull reading the chart.
+
+    Returns:
+        depth (float or None): Metres, or None for a hull that draws nothing worth
+            drawing a contour for.
+
+    Notes:
+        Her draught plus the margin grounding already warns at, so the wash on the paper
+        and the warning on the instruments agree about what shoal water is. Two numbers
+        for one idea is how an interface starts telling a captain two different stories.
+
+    """
+    from ..grounding import SHOAL_WARNING_CLEARANCE
+
+    draft = getattr(vessel, "draft", None)
+    if not draft:
+        return None
+    return float(draft) + SHOAL_WARNING_CLEARANCE
+
+
+def _dangers_within(world, here, reach, now=0.0):
     """
     The rocks on the paper, out to the edge of the sheet.
 
@@ -385,6 +417,7 @@ def _dangers_within(world, here, reach):
         world (MaritimeMapProvider): The world's terrain.
         here (WorldPosition): Where she reckons she is.
         reach (float): How far the sheet extends, in metres.
+        now (float, optional): Game time, used to work out what the tide does here.
 
     Returns:
         dangers (list): Each as an offset, with what is over it and what it is.
@@ -420,6 +453,15 @@ def _dangers_within(world, here, reach):
     if dangers is None:
         return []
 
+    # What the water does here, so a rock can be told from an island.
+    #
+    # These are three different things on a chart and were one thing in the payload: a
+    # twelve-metre island came through flagged as drying, and the client dutifully printed
+    # "dries 12.0 m" - which is not a thing any chart has ever said. A feature dries if it
+    # is bare at low water and covered at high; above the highest tide it is land, and
+    # below the lowest it is a rock that never shows.
+    low_water, high_water = _tidal_span(world, here, now)
+
     # Sorted here rather than trusted from the provider. Shallowest first is a property
     # of the *sheet* - a client taking the first entry is taking the worst news - and
     # making it true at the point the sheet is built means it is true for every provider
@@ -435,10 +477,52 @@ def _dangers_within(world, here, reach):
                 "top_z": round(danger.top_z, 2),
                 "bottom": danger.bottom,
                 "label": danger.key,
-                "dries": danger.top_z >= 0.0,
+                "dries": low_water < danger.top_z <= high_water,
+                "ashore": danger.top_z > high_water,
             }
         )
     return out
+
+
+#: How long to watch the tide before deciding what a rock does, in game seconds, and how
+#: often to look. A tidal day is a little over twenty-four hours, so a full one catches both
+#: high waters and both lows however the game's harmonics are phased.
+TIDAL_DAY = 25.0 * 3600.0
+TIDE_SAMPLES = 25
+
+
+def _tidal_span(world, here, now):
+    """
+    The highest and lowest the water gets, measured rather than declared.
+
+    Args:
+        world (MaritimeMapProvider): The world, and through it the tide.
+        here (WorldPosition): Where the sheet is centred. The tide is taken once for the
+            sheet rather than once per danger - it varies over hundreds of kilometres, not
+            over the few that separate two rocks on one chart.
+        now (float): Game time in seconds.
+
+    Returns:
+        span (tuple): `(lowest, highest)` surface elevation in metres.
+
+    Notes:
+        A tide provider says where the water is *now*. Nothing in the interface says how
+        far it moves, and a chart needs that: whether a rock covers is a question about the
+        range, not about this instant.
+
+        Rather than add a method every game would have to implement, this watches. A full
+        tidal day of samples answers the question for a harmonic tide, a story-driven
+        flood, or no tide at all, and costs a couple of dozen calls to arithmetic that is
+        already cheap. A provider with no tide returns the same number every time and the
+        span comes out zero, which is the correct answer for a game that has no tides:
+        nothing covers and uncovers, because nothing moves.
+
+    """
+    surface = [
+        world.sea_surface_z_at(here, now + TIDAL_DAY * step / (TIDE_SAMPLES - 1))
+        for step in range(TIDE_SAMPLES)
+    ]
+    return min(surface), max(surface)
 
 
 def _marks_within(here, reach):

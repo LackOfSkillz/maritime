@@ -125,11 +125,45 @@ class TestSoundings(BaseEvenniaTestCase):
         self.assertLessEqual(abs(discrepancy(chart, HERE, 0.0, SEA)), MAX_CHART_ERROR + 1e-6)
 
     def test_it_varies_over_an_area_not_between_metres(self):
-        """A survey is wrong about patches of sea, not about single points."""
+        """
+        A survey is wrong about patches of sea, not about single points.
+
+        This asked for the two readings to be *identical*, which asserted the
+        implementation rather than the property - and the implementation it asserted was
+        a bug. One value per patch meant the charted seabed stepped at every patch
+        boundary: on a shelf truly falling a fifth of a metre every fifty, the paper
+        showed four-and-a-half-metre cliffs a quarter of a kilometre apart.
+
+        What the sentence above actually claims is that the error does not change
+        appreciably between one metre and the next, and that is what is checked now.
+
+        """
         chart = a_chart(quality=0.2)
         close = charted_terrain_z_at(chart, WorldPosition(500.0, 500.0), 0.0, SEA)
         alongside = charted_terrain_z_at(chart, WorldPosition(501.0, 500.0), 0.0, SEA)
-        self.assertEqual(close, alongside)
+        self.assertAlmostEqual(close, alongside, places=2)
+
+    def test_and_it_has_no_cliffs_in_it(self):
+        """
+        The other half, and the half that was wrong. Walk a line and the charted bottom
+        must never jump - a lead cast either side of an invisible boundary disagreeing by
+        metres is a chart nobody could learn to trust or to distrust.
+
+        """
+        chart = a_chart(quality=0.2)
+        worst = 0.0
+        previous = None
+        walked = 0
+        # Kept on the paper. Off its own edges a chart answers nothing, which is a real
+        # answer and not a depth to compare against the last one.
+        for step in range(200):
+            here = charted_terrain_z_at(chart, WorldPosition(step * 5.0, 300.0), 0.0, SEA)
+            if here is not None and previous is not None:
+                worst = max(worst, abs(here - previous))
+                walked += 1
+            previous = here
+        self.assertGreater(walked, 150, "this test barely got on the chart")
+        self.assertLess(worst, 0.6, f"the charted bottom steps by {worst:.2f} m")
 
     def test_depth_is_given_at_the_datum(self):
         """

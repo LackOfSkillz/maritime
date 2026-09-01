@@ -609,6 +609,37 @@
     opacity: 0.6;
 }
 
+/* The ruled lines. Faint on purpose: a graticule is a reference frame, not a feature,
+ * and it must never compete with a contour for a reader's eye. Meridians are drawn a
+ * shade stronger than parallels for the same reason a printed chart does - they are the
+ * ones that lean, and the lean is the point. */
+/* Ground the sea never covers. Drawn in the land colour rather than the hazard one: an
+ * island is a fact about where the coast is, and colouring it like a rock awash would put
+ * the strongest warning on the chart's least surprising feature. */
+.maritime-danger-ashore line {
+    stroke: var(--maritime-land-line, #eab060);
+    opacity: 0.9;
+}
+
+.maritime-chart-graticule {
+    fill: none;
+    stroke: var(--maritime-border);
+    stroke-width: 0.75;
+    opacity: 0.42;
+}
+
+.maritime-chart-graticule-meridian {
+    opacity: 0.5;
+}
+
+.maritime-chart-graticule-label {
+    fill: var(--maritime-text-dim);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    opacity: 0.65;
+    pointer-events: none;
+}
+
 /* --- buoyage and the plotted course ----------------------------------------
  *
  * Marks are distinguished by shape as well as by colour: a can to port, a cone to
@@ -655,6 +686,48 @@
 .maritime-chart-mark:focus-visible circle {
     stroke: var(--maritime-accent);
     stroke-width: 3;
+}
+
+/* Water nobody surveyed.
+ *
+ * Hatched and named rather than left blank, because blank reads as "there is nothing
+ * there" and there is a great deal there - it is simply that nobody aboard has a survey
+ * of it. That is the whole difference between the edge of the world and the edge of the
+ * paper, and a navigator has to be able to see which one he has reached.
+ *
+ * Quiet on purpose. It is the absence of information, and absence should not out-shout
+ * the soundings beside it. */
+.maritime-hatch-ground {
+    fill: var(--maritime-bg, #1b232c);
+    opacity: 0.55;
+}
+
+.maritime-hatch-line {
+    stroke: var(--maritime-text-soft, #8fa4b8);
+    stroke-width: 0.7;
+    opacity: 0.28;
+}
+
+.maritime-chart-unsurveyed {
+    pointer-events: none;
+}
+
+.maritime-chart-unsurveyed-label {
+    fill: var(--maritime-text-soft, #8fa4b8);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* The shaded bottom, when a game draws one.
+ *
+ * Held back a little so the contours and figures stay the thing being read. A chart is a
+ * document first and a picture second, and a relief that shouted would make the soundings
+ * harder to find rather than easier. */
+.maritime-chart-relief {
+    opacity: 0.62;
+    image-rendering: auto;
 }
 
 /* A rock, a wreck or a shoal the survey recorded.

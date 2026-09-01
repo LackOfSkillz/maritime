@@ -208,10 +208,21 @@ class ChartSheet(Payload):
         depths (dict): Fathom lines, keyed by the fathom they trace.
         soundings (list): `[east, north, fathoms]` figures to print.
         marks (list): Buoyage on the paper, each with its kind and its meaning.
-        dangers (list): Rocks, wrecks and shoals the survey recorded, each with what
-            water is over it and what it is made of. Distinct from `marks`, because a
+        dangers (list): Rocks, wrecks, islands and shoals the survey recorded, each with
+            what water is over it and what it is made of, and each classified by what the
+            tide does to it - `ashore` for ground the sea never covers, `dries` for ground
+            bare at low water and covered at high, and neither for a rock that never shows.
+            A chart draws all three differently and says different things about them; they
+            were one flag, and an island came through announcing that it dried twelve
+            metres. Distinct from `marks`, because a
             buoy is a thing somebody moored and a rock is a thing somebody found, and
             a chart draws them differently for the good reason that one can drag.
+        relief (str): A shaded picture of the same soundings, as a data URI, or empty
+            where the game has no relief libraries. Optional at every layer: absent, the
+            chart is exactly the line drawing it has always been.
+        graticule (list): The meridians and parallels the sheet is ruled with, each
+            `{"kind", "label", "line"}`. Empty for a world with no geography to rule it
+            by, exactly as `relief` is empty for a game with no relief libraries.
         route (list): The plotted course, as offsets in metres.
         coverage (dict): The edges of the sheet, so the interface can show where
             surveying stops.
@@ -232,6 +243,8 @@ class ChartSheet(Payload):
     soundings: list = field(default_factory=list)
     marks: list = field(default_factory=list)
     dangers: list = field(default_factory=list)
+    relief: str = ""
+    graticule: list = field(default_factory=list)
     route: list = field(default_factory=list)
     coverage: dict = field(default_factory=dict)
     revision: int = 0
@@ -249,6 +262,8 @@ class ChartSheet(Payload):
             "soundings": list(self.soundings),
             "marks": list(self.marks),
             "dangers": list(self.dangers),
+            "relief": self.relief,
+            "graticule": list(self.graticule),
             "route": list(self.route),
             "coverage": dict(self.coverage),
             "revision": self.revision,

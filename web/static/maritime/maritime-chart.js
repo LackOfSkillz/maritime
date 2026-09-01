@@ -133,7 +133,11 @@ window.MaritimeChart = (function () {
 
     /* The window onto the drawing: the box itself, with the ship at the origin. */
     function viewBox() {
-        return (-box.width / 2) + " " + (-box.height / 2) + " " + box.width + " " + box.height;
+        return (
+            (-box.width / 2 - view.panX) + " " +
+            (-box.height / 2 - view.panY) + " " +
+            box.width + " " + box.height
+        );
     }
 
     /* Watch the box rather than the window: a pane can change shape because the player
@@ -174,12 +178,15 @@ window.MaritimeChart = (function () {
 
     /* Metres from the ship, to pixels from the centre of the box. North is up, so the
      * y axis runs the other way from the chart's. */
+    /* Metres from the ship into pixels on the drawing.
+     *
+     * The pan is deliberately *not* here. It lives in the viewBox, so dragging moves the
+     * window over a drawing that never changes - which means a drag is one attribute
+     * write instead of rebuilding every path, and everything moves together including
+     * the relief picture, which is not placed through this function at all. */
     function toChart(offset) {
         var scale = pixelsPerMetre();
-        return {
-            x: offset.east * scale + view.panX,
-            y: -offset.north * scale + view.panY
-        };
+        return { x: offset.east * scale, y: -offset.north * scale };
     }
 
     function ringLabel(metres) {
@@ -277,15 +284,103 @@ window.MaritimeChart = (function () {
     }
 
     /* A run of offsets into a path. Offsets are metres east and north of where she
-     * reckons she is, so this is the only place the chart turns knowledge into
-     * pixels. */
+     * reckons she is, so this is the only place the chart turns knowledge into pixels.
+     *
+     * DRAWN AS A CURVE THROUGH THE POINTS, NOT AS A ROAD BETWEEN THEM.
+     *
+     * The points come off a grid, so a straight-segment path turns every one of them into
+     * a corner and the coastline reads as a staircase - worst at a wide zoom, where a cell
+     * is hundreds of metres and there are few enough points to count.
+     *
+     * This is Catmull-Rom, written out as the cubic Bezier that SVG takes. It passes
+     * through every point exactly: it is not a smoothing, it averages nothing, and it
+     * invents no shoreline. What it stops doing is asserting that the coast turns a hard
+     * corner at each place somebody happened to sound - which is the honest reading, since
+     * the survey found those points and never claimed the water between them ran straight.
+     *
+     * A chart drawn by hand looks like this because a hand does not draw corners it has no
+     * evidence for either. */
     function pathOf(line) {
-        var parts = [];
+        var points = [];
         for (var i = 0; i < line.length; i++) {
-            var at = toChart({ east: line[i][0], north: line[i][1] });
-            parts.push((i ? "L" : "M") + at.x.toFixed(1) + " " + at.y.toFixed(1));
+            points.push(toChart({ east: line[i][0], north: line[i][1] }));
+        }
+        if (points.length < 3) {
+            return points
+                .map(function (at, index) {
+                    return (index ? "L" : "M") + at.x.toFixed(1) + " " + at.y.toFixed(1);
+                })
+                .join(" ");
+        }
+
+        /* A closed run - an island, or a patch of shoal - takes its neighbours round the
+         * loop, so the curve meets itself without a kink where the ends join. */
+        var first = points[0];
+        var last = points[points.length - 1];
+        var closed = Math.abs(first.x - last.x) < 0.5 && Math.abs(first.y - last.y) < 0.5;
+
+        function nth(index) {
+            if (closed) {
+                var span = points.length - 1;
+                return points[((index % span) + span) % span];
+            }
+            return points[Math.max(0, Math.min(points.length - 1, index))];
+        }
+
+        var parts = ["M" + first.x.toFixed(1) + " " + first.y.toFixed(1)];
+        for (var n = 0; n < points.length - 1; n++) {
+            var before = nth(n - 1);
+            var here = nth(n);
+            var next = nth(n + 1);
+            var after = nth(n + 2);
+            /* A sixth of the span to the neighbours: the uniform Catmull-Rom tangent,
+             * taut enough not to overshoot into the land it is drawing round. */
+            var firstX = here.x + (next.x - before.x) / 6;
+            var firstY = here.y + (next.y - before.y) / 6;
+            var secondX = next.x - (after.x - here.x) / 6;
+            var secondY = next.y - (after.y - here.y) / 6;
+            parts.push(
+                "C" + firstX.toFixed(1) + " " + firstY.toFixed(1) +
+                " " + secondX.toFixed(1) + " " + secondY.toFixed(1) +
+                " " + next.x.toFixed(1) + " " + next.y.toFixed(1)
+            );
         }
         return parts.join(" ");
+    }
+
+    /* The shape of the bottom, shaded, when the game has the libraries to draw it.
+     *
+     * Optional at every layer: a payload with no relief in it draws none, which is the
+     * interface every game had before this and the one a game without numpy still has.
+     *
+     * Placed by the same offsets as everything else on the sheet, under the contours
+     * rather than over them - the lines are what was surveyed and stay legible on top.
+     * The browser scales the picture, which is wanted: it is a shading of a few thousand
+     * soundings and smoothing it is truer to what it represents than showing its pixels.
+     *
+     * Not clickable, not focusable, no title. It is the paper, not a thing on it. */
+    function drawRelief(into, sheet) {
+        if (!sheet || !sheet.relief) {
+            return;
+        }
+        /* The *sheet's* reach, not the captain's scale. He picks how far the rings
+         * reach; the server draws whatever fills the box around them, and sizing the
+         * picture by his scale would stretch it over the wrong square of sea - visibly
+         * so at any zoom where the two differ, which is most of them. */
+        var side = (Number(sheet.reach) || reach()) * 2 * pixelsPerMetre();
+        var picture = node("image", {
+            x: -side / 2,
+            y: -side / 2,
+            width: side,
+            height: side,
+            preserveAspectRatio: "none",
+            class: "maritime-chart-relief"
+        });
+        picture.setAttributeNS(
+            "http://www.w3.org/1999/xlink", "xlink:href", sheet.relief
+        );
+        picture.setAttribute("href", sheet.relief);
+        into.appendChild(picture);
     }
 
     /* The paper: fathom lines, then the waterline, then the printed soundings.
@@ -337,12 +432,43 @@ window.MaritimeChart = (function () {
             layers.soundings.appendChild(figure);
         });
 
-        /* Where the survey stops. Off the chart is a state, not a failure, and a
-         * navigator wants to see the edge coming rather than discover it by finding
-         * no soundings under him. */
+        /* Where the survey stops.
+         *
+         * Off the chart is a state, not a failure, and a navigator wants to see the edge
+         * coming rather than discover it by finding no soundings under him.
+         *
+         * The water beyond it is *hatched and named*, not left blank. Blank reads as
+         * "there is nothing there", and there is a great deal there - it is simply that
+         * nobody aboard has a survey of it. The distinction is the whole difference
+         * between the edge of the world and the edge of the paper.
+         *
+         * Drawn as four bands around the sheet rather than as a hole in one shape,
+         * because SVG has no even-odd fill that survives a viewBox this large without
+         * artefacts, and four rectangles are easier to be sure about. */
         if (sheet.coverage && typeof sheet.coverage.west === "number") {
             var topLeft = toChart({ east: sheet.coverage.west, north: sheet.coverage.north });
             var bottomRight = toChart({ east: sheet.coverage.east, north: sheet.coverage.south });
+            var far = Math.max(box.width, box.height) * 3;
+
+            [
+                { x: -far, y: -far, width: far * 2, height: far + topLeft.y },
+                { x: -far, y: bottomRight.y, width: far * 2, height: far },
+                { x: -far, y: topLeft.y, width: far + topLeft.x, height: bottomRight.y - topLeft.y },
+                { x: bottomRight.x, y: topLeft.y, width: far, height: bottomRight.y - topLeft.y }
+            ].forEach(function (band) {
+                if (band.width <= 0 || band.height <= 0) {
+                    return;
+                }
+                layers.overlay.appendChild(
+                    node("rect", {
+                        x: band.x, y: band.y,
+                        width: band.width, height: band.height,
+                        fill: "url(#maritime-unsurveyed)",
+                        class: "maritime-chart-unsurveyed"
+                    })
+                );
+            });
+
             layers.overlay.appendChild(
                 node("rect", {
                     x: topLeft.x,
@@ -352,7 +478,80 @@ window.MaritimeChart = (function () {
                     class: "maritime-chart-coverage"
                 })
             );
+
+            /* Named, once, where there is room for the words. A hatch a player has not
+             * met before is a texture; a hatch with UNSURVEYED written in it is a fact. */
+            labelTheUnsurveyed(layers.overlay, topLeft, bottomRight);
         }
+    }
+
+    /* The meridians and parallels the sheet is ruled with.
+     *
+     * Two jobs, and the second is the reason this exists.
+     *
+     * The first is the ordinary one: a navigator reads a position off a graticule, and a
+     * chart without one is a picture rather than a chart.
+     *
+     * The second is curvature. This is a flat sheet on a round world, and the honest way
+     * to show that is not to bend the picture - it is to draw the lines that actually
+     * *are* bent and let the reader see them do it. Meridians converge towards the pole,
+     * so at a close scale they stand parallel to within a few metres and at a wide one
+     * they visibly lean together. The player zooms out and the world stops being square.
+     *
+     * The lines are computed on the server, from the projection, and drawn here exactly
+     * as sent. The client does no geography: the curve arrives already curved.
+     *
+     * Nothing at all for a world with no geography. A seabed defined by an arithmetic
+     * ramp has no latitude, the payload carries no graticule, and the chart is ruled with
+     * nothing rather than with invented degrees. */
+    function drawGraticule(into, sheet) {
+        if (!sheet || !sheet.graticule || !sheet.graticule.length) {
+            return;
+        }
+        var left = -box.width / 2 - view.panX;
+        var bottom = box.height / 2 - view.panY;
+
+        sheet.graticule.forEach(function (ruled) {
+            if (!ruled.line || ruled.line.length < 2) {
+                return;
+            }
+            into.appendChild(
+                node("path", {
+                    d: pathOf(ruled.line),
+                    class: "maritime-chart-graticule maritime-chart-graticule-" + ruled.kind
+                })
+            );
+
+            /* Labelled in the margin it runs out of, the way a printed chart does:
+             * parallels read up the left-hand edge, meridians along the bottom. Placing
+             * the figure at the end of the run rather than at a fixed spot keeps it with
+             * its own line when the sheet is dragged, and off the middle of the chart
+             * where the soundings are. */
+            var wanted = ruled.kind === "parallel" ? left : bottom;
+            var best = null;
+            var nearest = Infinity;
+            for (var i = 0; i < ruled.line.length; i++) {
+                var at = toChart({ east: ruled.line[i][0], north: ruled.line[i][1] });
+                var away = ruled.kind === "parallel"
+                    ? Math.abs(at.x - wanted)
+                    : Math.abs(at.y - wanted);
+                if (away < nearest) {
+                    nearest = away;
+                    best = at;
+                }
+            }
+            if (!best) {
+                return;
+            }
+            var figure = node("text", {
+                x: ruled.kind === "parallel" ? best.x + 6 : best.x,
+                y: ruled.kind === "parallel" ? best.y - 4 : best.y - 6,
+                class: "maritime-chart-graticule-label",
+                "text-anchor": ruled.kind === "parallel" ? "start" : "middle"
+            });
+            figure.textContent = ruled.label;
+            into.appendChild(figure);
+        });
     }
 
     /* The plotted course, drawn under everything else so marks and contacts sit on
@@ -454,7 +653,10 @@ window.MaritimeChart = (function () {
 
             var at = toChart({ east: danger.east, north: danger.north });
             var group = node("g", {
-                class: "maritime-chart-danger" + (danger.dries ? " maritime-danger-dries" : ""),
+                class:
+                    "maritime-chart-danger" +
+                    (danger.dries ? " maritime-danger-dries" : "") +
+                    (danger.ashore ? " maritime-danger-ashore" : ""),
                 tabindex: "0",
                 role: "button"
             });
@@ -474,7 +676,7 @@ window.MaritimeChart = (function () {
 
             /* The least depth over it, which is the number that decides whether she
              * may pass. Omitted where it dries, because there is no water to quote. */
-            if (!danger.dries && typeof danger.top_z === "number") {
+            if (!danger.dries && !danger.ashore && typeof danger.top_z === "number") {
                 var figure = node("text", {
                     x: at.x + 9, y: at.y + 4, class: "maritime-danger-depth"
                 });
@@ -485,7 +687,9 @@ window.MaritimeChart = (function () {
             var told = node("title");
             told.textContent =
                 (danger.label || "danger") +
-                (danger.dries
+                (danger.ashore
+                    ? " - an island, " + Math.abs(danger.top_z).toFixed(0) + " m high"
+                    : danger.dries
                     ? " - dries " + Math.abs(danger.top_z).toFixed(1) + " m"
                     : " - " + Math.abs(danger.top_z).toFixed(1) + " m over it") +
                 (danger.bottom ? ", " + danger.bottom : "");
@@ -502,6 +706,34 @@ window.MaritimeChart = (function () {
             return "";
         }
         return metres < 10 ? metres.toFixed(1) : String(Math.round(metres));
+    }
+
+    /* Write UNSURVEYED in whichever margin has room for it.
+     *
+     * One label, not four: the point is to say what the hatching means, and saying it in
+     * every direction at once is shouting. The widest margin wins, which is also the one
+     * a player is most likely to be looking at when they sail off the paper. */
+    function labelTheUnsurveyed(into, topLeft, bottomRight) {
+        var edge = box.width / 2;
+        var lip = box.height / 2;
+        var margins = [
+            { room: edge - bottomRight.x, x: (bottomRight.x + edge) / 2, y: 0 },
+            { room: topLeft.x + edge, x: (topLeft.x - edge) / 2, y: 0 },
+            { room: lip - bottomRight.y, x: 0, y: (bottomRight.y + lip) / 2 },
+            { room: topLeft.y + lip, x: 0, y: (topLeft.y - lip) / 2 }
+        ];
+        margins.sort(function (a, b) { return b.room - a.room; });
+        if (margins[0].room < 70) {
+            return;
+        }
+        var said = node("text", {
+            x: margins[0].x,
+            y: margins[0].y,
+            class: "maritime-chart-unsurveyed-label",
+            "text-anchor": "middle"
+        });
+        said.textContent = "UNSURVEYED";
+        into.appendChild(said);
     }
 
     /* Buoyage answers a bearing for where the safe water lies; a player wants a
@@ -634,15 +866,25 @@ window.MaritimeChart = (function () {
             if (!dragging) {
                 return;
             }
-            /* The drawing is in screen pixels now, so a drag is the distance the
-             * finger moved and needs no conversion at all. The local measurement this
-             * used to take also shadowed the module's own box. */
+            /* MOVE THE WINDOW, DO NOT REBUILD THE DRAWING.
+             *
+             * This called `redraw()`, which rebuilds the whole interface and hands back a
+             * brand new `<svg>`. The element the drag started on was thrown away on the
+             * first pointermove, and the replacement had never seen a pointerdown - so a
+             * drag moved the chart once, by a few pixels, and then stopped dead. It read
+             * as "you cannot drag the map".
+             *
+             * The pan lives in the viewBox, so panning is one attribute on the element
+             * already under the finger. Nothing is re-rendered and nothing is replaced.
+             *
+             * The drawing is in screen pixels, so the distance the finger moved is the
+             * distance the chart moves, with no conversion at all. */
             view.held = true;
             view.panX += event.clientX - lastX;
             view.panY += event.clientY - lastY;
             lastX = event.clientX;
             lastY = event.clientY;
-            redraw();
+            svg.setAttribute("viewBox", viewBox());
         });
         ["pointerup", "pointercancel", "pointerleave"].forEach(function (name) {
             svg.addEventListener(name, function () {
@@ -687,6 +929,27 @@ window.MaritimeChart = (function () {
             "aria-label": "Chart showing own vessel and contacts in sight"
         });
 
+        /* The hatch that means nobody surveyed this.
+         *
+         * Defined per sheet rather than once in the page, because the chart is rebuilt
+         * wholesale on every zoom and a pattern living in a document the drawing no
+         * longer belongs to resolves to nothing - which paints the unsurveyed water
+         * solid black, and is exactly what happened the first time this was tried. */
+        var defs = node("defs", {});
+        var hatch = node("pattern", {
+            id: "maritime-unsurveyed",
+            width: 9,
+            height: 9,
+            patternUnits: "userSpaceOnUse",
+            patternTransform: "rotate(45)"
+        });
+        hatch.appendChild(node("rect", { width: 9, height: 9, class: "maritime-hatch-ground" }));
+        hatch.appendChild(
+            node("line", { x1: 0, y1: 0, x2: 0, y2: 9, class: "maritime-hatch-line" })
+        );
+        defs.appendChild(hatch);
+        svg.appendChild(defs);
+
         /* The sea, and anything a host has hung behind the plot, live on a box under
          * the drawing rather than inside it.
          *
@@ -726,7 +989,7 @@ window.MaritimeChart = (function () {
         plot.appendChild(rose);
 
         var layers = {};
-        ["depths", "land", "soundings", "rings", "dangers", "marks", "contacts", "own", "overlay"].forEach(function (name) {
+        ["relief", "graticule", "depths", "land", "soundings", "rings", "dangers", "marks", "contacts", "own", "overlay"].forEach(function (name) {
             layers[name] = node("g", { class: "maritime-layer-" + name });
             svg.appendChild(layers[name]);
         });
@@ -739,6 +1002,8 @@ window.MaritimeChart = (function () {
          * wrong scale, twice, on the way to the right one. One empty sea for a frame
          * beats two wrong charts. */
         if (measured) {
+            drawRelief(layers.relief, state.chart);
+            drawGraticule(layers.graticule, state.chart);
             drawSheet(layers, state.chart);
             if (state.chart) {
                 drawRoute(layers.marks, state.chart.route);

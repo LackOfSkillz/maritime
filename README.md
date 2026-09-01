@@ -467,6 +467,58 @@ yourself.
 Nothing above is needed for a terminal player, and a session that never asks for the
 interface is never sent it.
 
+### Meridians and parallels, which show the world is round
+
+The chart is ruled with a graticule: round degrees of latitude and longitude, labelled in
+the margin the way a printed chart labels them. A navigator reads his position off them,
+which is reason enough — but they earn their place twice, because they are the only honest
+way a flat sheet can show a curved world. The meridians converge, and the further out the
+view, the more visibly they do it.
+
+They are not drawn as an approximation. A parallel is the line where latitude equals a round
+number, so the same contour tracer that draws the coastline draws the graticule, over a grid
+of degrees instead of a grid of depths. The lines curve because the projection curves them.
+
+A world that does not know where it is gets none. `geographic_at` returns None by default,
+and a seabed defined by an arithmetic ramp draws no graticule rather than inventing a
+latitude:
+
+```python
+class MyWorld(MaritimeMapProvider):
+    def geographic_at(self, position):
+        return (self.latitude_of(position), self.longitude_of(position))
+```
+
+### Shaded relief, which is optional twice over
+
+**Maritime itself has no dependencies and never will.** The simulation, the commands, the
+charts and the browser interface all work with nothing installed beyond Evennia, and that
+is a promise rather than a current state of affairs.
+
+A game that would rather have a better-looking chart than a shorter install can have one:
+
+```bash
+pip install numpy scipy pillow
+```
+
+With those present the chart draws **shaded relief** beneath its contours — the shape of
+the bottom, lit, so a bank reads as a bank at a glance instead of as a ring a pilot has to
+interpret. Without them the chart is the line drawing it has always been. Nothing is
+configured, nothing degrades, and no code path differs beyond one `available()` check: the
+payload simply carries no picture and the browser draws what it was sent.
+
+Three things worth knowing before you take the trade:
+
+- **It is shaded from the charted seabed, never the real one.** A poor chart's relief is
+  as wrong as its soundings, and in the same places. Anything else would hand a graphical
+  player knowledge the fiction denies a terminal one, which is the rule the whole interface
+  is built on.
+- **It is nearly free.** The soundings were already taken to draw the contours; shading
+  them costs about 65 ms against the 983 the sounding took, and adds some 20 KB to a
+  payload that goes out once a minute.
+- **It stops where the survey stopped.** Unsurveyed water is transparent, not blue, so the
+  paper still visibly runs out at the edge of what somebody covered.
+
 ### Putting the commands on your own ships
 
 The example does this for you. For a ship you build yourself, the helm command set goes on

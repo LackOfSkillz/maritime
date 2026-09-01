@@ -188,6 +188,33 @@ class MaritimeMapProvider:
         """
         return ()
 
+    def geographic_at(self, position):
+        """
+        Where in the world a position is, in degrees.
+
+        Args:
+            position (WorldPosition): Where to ask.
+
+        Returns:
+            place (tuple or None): `(latitude, longitude)`, or None for a world with no
+                geography to report.
+
+        Notes:
+            Nothing, unless a game's world is somewhere. A flat seabed defined by an
+            arithmetic ramp has no latitude and should not invent one; a generated planet
+            has a real answer and can give it.
+
+            What it buys is the graticule - the meridians and parallels a chart is ruled
+            with. They are worth having for their own sake, and they are also the only
+            honest way a flat sheet can show that the world is round: meridians converge,
+            and at a wide enough view a navigator can see them doing it.
+
+            It leaks nothing. A navigator knows his latitude by observation and his
+            longitude by reckoning; that is the job.
+
+        """
+        return None
+
     def charted_dangers(self, position, reach):
         """
         Discrete hazards near enough to belong on a chart, drawn as symbols.
