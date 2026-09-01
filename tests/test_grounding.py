@@ -218,24 +218,32 @@ class TestVesselGrounding(EmptySeaMixin, BaseEvenniaTest):
         self.hull.light_draft = 2.0
 
     def test_deep_water_leaves_her_sailing(self):
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0
+        ):
             for _ in range(10):
                 self.hull.at_maritime_tick(5.0)
         self.assertFalse(self.hull.aground)
 
     def test_too_little_water_grounds_her(self):
         """The acceptance criterion: running onto the shoal stops her."""
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0
+        ):
             self.hull.at_maritime_tick(5.0)
         self.assertTrue(self.hull.aground)
 
     def test_grounding_takes_the_way_off_her(self):
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0
+        ):
             self.hull.at_maritime_tick(5.0)
         self.assertEqual(self.hull.speed, 0.0)
 
     def test_she_stays_put_once_aground(self):
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0
+        ):
             self.hull.at_maritime_tick(5.0)
             where = self.hull.maritime_position
             for _ in range(10):
@@ -245,12 +253,16 @@ class TestVesselGrounding(EmptySeaMixin, BaseEvenniaTest):
     def test_the_ship_is_told(self):
         heard = []
         self.deck.msg_contents = lambda text, **kwargs: heard.append(text)
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=1.0
+        ):
             self.hull.at_maritime_tick(5.0)
         self.assertTrue(any("aground" in text for text in heard))
 
     def test_clearance_is_reportable(self):
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=20.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=20.0
+        ):
             self.assertAlmostEqual(self.hull.keel_clearance(), 18.0)
 
     def test_an_unlaunched_vessel_has_no_clearance(self):
@@ -259,7 +271,15 @@ class TestVesselGrounding(EmptySeaMixin, BaseEvenniaTest):
 
 
 class TestSurfaceConstraint(EmptySeaMixin, BaseEvenniaTest):
-    """A surface vessel floats, and cannot be sailed under."""
+    """
+    A surface vessel floats, and cannot be sailed under.
+
+    Every test here pins the tide as well as the seabed, because "the surface" is only the
+    datum on a sea that does not move. They asserted a z of zero and passed for as long as
+    the contrib had no working tide; the first game to install one broke three of them, and
+    the tests were right about the behaviour and wrong about the number.
+
+    """
 
     def setUp(self):
         super().setUp()
@@ -276,13 +296,17 @@ class TestSurfaceConstraint(EmptySeaMixin, BaseEvenniaTest):
 
         """
         self.hull.maritime_position = WorldPosition(0.0, 0.0, -40.0)
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0
+        ):
             self.hull.at_maritime_tick(5.0)
         self.assertAlmostEqual(self.hull.maritime_position.z, 0.0)
 
     def test_she_stays_at_the_surface_while_sailing(self):
         self.hull.maritime_position = WorldPosition(0.0, 0.0)
-        with override_settings(MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0):
+        with override_settings(
+            MARITIME_TIDE_PROVIDER="", MARITIME_MAP_PROVIDER="", MARITIME_DEFAULT_DEPTH=100.0
+        ):
             for _ in range(10):
                 self.hull.at_maritime_tick(5.0)
         self.assertAlmostEqual(self.hull.maritime_position.z, 0.0)

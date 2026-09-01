@@ -29,7 +29,7 @@ from django.conf import settings
 
 from evennia.utils.utils import class_from_module
 
-from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider
+from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider, MaritimeTideProvider
 from .cargo import STANDARD_STOWAGE
 from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
 from .messaging import VesselNarrator, WaterNarrator
@@ -195,19 +195,59 @@ def map_provider():
 
     """
     path = get_setting("MAP_PROVIDER")
-    key = (path, get_setting("DEFAULT_DEPTH", 200.0))
+    key = (path, get_setting("DEFAULT_DEPTH", 200.0), get_setting("TIDE_PROVIDER"))
     provider = _MAP_PROVIDER.get(key)
     if provider is not None:
         return provider
 
-    if not path:
-        provider = FlatSeaMapProvider(depth=float(key[1]))
-    else:
-        provider = load_class(path, expected=MaritimeMapProvider)()
+    # Only handed over when a game asked for one. Passing `tide_provider=None` would look
+    # harmless and would break every provider whose __init__ takes no arguments - which is
+    # most of them, since until now there was nothing to pass.
+    tide = tide_provider()
+    built = FlatSeaMapProvider if not path else load_class(path, expected=MaritimeMapProvider)
+    arguments = {"depth": float(key[1])} if not path else {}
+    if tide is not None:
+        arguments["tide_provider"] = tide
+    provider = built(**arguments)
 
     _MAP_PROVIDER.clear()
     _MAP_PROVIDER[key] = provider
     return provider
+
+
+def tide_provider():
+    """
+    The configured tide.
+
+    Returns:
+        tide (MaritimeTideProvider or None): What moves the water, or None to leave the
+            choice to the map provider - which is what a game that builds its own tide in
+            its own provider wants.
+
+    Raises:
+        TypeError: If the configured class is not a tide provider.
+
+    Notes:
+        A tide is a *world* setting rather than a provider's private business, which is
+        why it is configured beside the map rather than inside it. Before this, the only
+        way to have moving water was to write a map provider subclass whose sole purpose
+        was to pass one to `super().__init__` - so a game that wanted its own terrain and
+        a stock tide had to write a class to get one, and every game that did not bother
+        sailed on a sea that never moved.
+
+        Point `MARITIME_TIDE_PROVIDER` at a class taking no arguments:
+
+            MARITIME_TIDE_PROVIDER = "world.tides.HarbourTide"
+
+        Unset, this answers None and a map provider falls back to its own default, which
+        remains a motionless surface at the datum. A game with no tides configures nothing
+        and notices nothing, exactly as before.
+
+    """
+    path = get_setting("TIDE_PROVIDER")
+    if not path:
+        return None
+    return load_class(path, expected=MaritimeTideProvider)()
 
 
 def forget_map_provider():

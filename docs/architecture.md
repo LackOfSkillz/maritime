@@ -204,7 +204,19 @@ Same terrain, different navigable water. This is what makes tide a system rather
 flavour — it opens and closes harbour approaches and decides when a bar is passable.
 
 Tide is a provider with a flat default, so a game that does not want tides never configures
-one.
+one. A game that does points `MARITIME_TIDE_PROVIDER` at `tides.HarmonicTide`, which is the
+sum of a handful of cosines turning at the periods of the bodies that drive them.
+
+The springs and neaps are worth a note, because they are the clearest case of this codebase's
+general preference for deriving rather than tabulating. Nothing in the tide checks a calendar
+or a phase of the moon. The lunar wave turns once every 12 h 25 m and the solar one once
+every 12 h, so over a fortnight they drift in and out of step; in step the ranges add and it
+is springs, out of step they subtract and it is neaps. The 14.77-day cycle is a *consequence*
+and appears nowhere in the arithmetic.
+
+A scripted cycle would be a number a designer has to keep consistent with the tide it claims
+to describe. A beat is consistent because it is the same arithmetic — the same reason
+`water_depth_at` is derived rather than stored, one level down.
 
 ### 4.3 Map provider
 

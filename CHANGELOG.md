@@ -13,6 +13,41 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **A sea that moves.** `bathymetry` has always said depth is the surface less the terrain,
+  and that moving the surface changes every depth in the world without touching any ground
+  — but the only surface the contrib shipped was `FlatTideProvider`, which does not move.
+  Every feature authored to teach a tide had nothing to teach with. `tides.HarmonicTide`
+  is the tide those features were waiting for.
+- **Springs and neaps are not scripted.** They fall out of the lunar and solar waves beating
+  against each other, which is what they are. Measured on the demonstration coast: the daily
+  range swings between 1.65 m and 4.31 m, biggest and smallest seven days apart — and half
+  the beat period is 7.38 days. Nothing in the code checks a calendar or a phase of the moon.
+- Configured the way a tide table states one — `HarmonicTide.semidiurnal(spring_range_m=4.0,
+  neap_range_m=1.5)` — because a designer knows their harbour's ranges and nobody knows
+  their harbour's M2 amplitude. The inversion is exact, so a game gets the two numbers it
+  asked for rather than an approximation of them. `mixed` adds the diurnal inequality, where
+  the two daily high waters differ and "wait for high water" stops being one instruction.
+- **A tide table, searched rather than stored.** `next_high_water`, `next_low_water` and
+  `table` hunt the same function the water is drawn from, so a prediction cannot disagree
+  with the sea — which is exactly how it goes wrong in a game that caches them.
+- Optionally the tidal wave travels, so high water reaches one end of a coast before the
+  other. Exact, not approximated: running the tide later up-coast is the same arithmetic as
+  running the clock earlier here.
+- **`MARITIME_TIDE_PROVIDER`, so a tide can be installed rather than inherited.** Before
+  this the only way to have moving water was to write a map provider subclass whose sole
+  purpose was to pass a tide to `super().__init__`, so a game wanting its own terrain and a
+  stock tide had to write a class to get one. Unset, nothing changes and the sea stays
+  still.
+- **`RegionalWater`, so a game can have a pond as well as a sea.** A pond is not a bay: it
+  sits at whatever height its valley holds it at and does not care what the tide is doing,
+  and the only reason that is hard is that a world has one datum and the pond is nowhere
+  near it. `WorldPosition` has carried a `region` since the beginning and nothing was using
+  it for water; this is what it is for. Each inland water is a full tide provider rather
+  than a number, so a lake can have a seiche and a lagoon behind a sill can have a smaller
+  tide than the sea outside it. The depth arithmetic is untouched — a pond five metres deep
+  comes out five metres deep by the same subtraction that gives a harbour its nine.
+- What it bought on the demonstration coast: the harbour bar carries 4.97 m at high water
+  and 1.48 m at low, so it is a gate a laden hull waits for. The drying rock dries.
 - **The chart is ruled with meridians and parallels.** A navigator reads a position off
   them, and they are also the one honest way a flat sheet can show a round world: the
   meridians converge, visibly, and converge further the wider the view. No projection was
@@ -42,6 +77,17 @@ weather, crew, combat and damage are not.
   still runs out where the survey did.
 
 ### Fix
+
+- **The contrib's own tests assumed a motionless sea**, so installing its new tide broke
+  four of them. Three grounding tests asserted a vessel's elevation was zero, which is the
+  datum and not the surface; a fourth asserted eighteen metres of clearance under twenty
+  metres of water, true only at the top of the hour on a sea that never moves. They were
+  right about the behaviour and wrong about the number, and they passed for as long as
+  there was no tide to tell them apart.
+- Those tests already pinned the seabed to get a known sea. They now pin the tide for the
+  same reason. Worth stating plainly: **CI would never have caught this**, because CI runs
+  with no tide configured — only a host game that installs one sees it, which is precisely
+  the game that would report it as a bug in the contrib.
 
 - **The coastline was being shredded by its own survey error.** A vertical error becomes a
   horizontal one scaled by the slope, and on a coast rising a metre in a kilometre a chart

@@ -467,6 +467,79 @@ yourself.
 Nothing above is needed for a terminal player, and a session that never asks for the
 interface is never sent it.
 
+### A sea that moves
+
+Depth is the water surface less the terrain beneath it, so moving the surface changes every
+depth in the world without touching any ground. That is what makes tide a system rather than
+decoration — and it is why a harbour bar is a gate rather than a wall, and why a ship on the
+putty comes off on the flood.
+
+```python
+# In settings.py
+MARITIME_TIDE_PROVIDER = "world.tides.HarbourTide"
+```
+
+```python
+# In world/tides.py
+from evennia.contrib.full_systems.maritime.tides import HarmonicTide
+
+class HarbourTide(HarmonicTide):
+    def __init__(self):
+        built = HarmonicTide.semidiurnal(spring_range_m=4.0, neap_range_m=1.5)
+        super().__init__(built.constituents)
+```
+
+Configure it the way a tide table states one, in ranges, because that is what a designer
+knows about their harbour. Nobody knows their harbour's M2 amplitude.
+
+**The fortnightly cycle is not something you set.** Springs and neaps are the lunar and solar
+tides beating against each other — in step the ranges add, out of step they subtract — so the
+cycle emerges from two periods that differ by twenty-five minutes. Measured on the example
+coast, the daily range swings between 1.65 m and 4.31 m, with the biggest and smallest seven
+days apart; half the beat period is 7.38 days. Nothing checks a calendar.
+
+A tide table comes with it, and it is searched rather than stored:
+
+```python
+for when, height, state in tide.table(now, entries=4):
+    print(f"{state} water {(when - now) / 3600:.1f} h from now, {height:+.2f} m")
+```
+
+Because those predictions hunt the same function the water is drawn from, a table cannot
+disagree with the sea. `HarmonicTide.mixed` adds the diurnal inequality if a game wants the
+two daily high waters to differ, and a `progression` makes the tidal wave travel, so high
+water reaches one end of a long coast before the other.
+
+#### Inland water, which keeps its own level
+
+A pond is not a bay. It stands where its valley holds it, twenty metres above the sea if
+that is where the valley is, and it does not rise and fall with the tide. `WorldPosition`
+has always carried a `region`; `RegionalWater` is what uses it:
+
+```python
+from evennia.contrib.full_systems.maritime.bathymetry import FlatTideProvider
+from evennia.contrib.full_systems.maritime.tides import HarmonicTide, RegionalWater
+
+class AllTheWater(RegionalWater):
+    def __init__(self):
+        super().__init__(
+            sea=HarmonicTide.semidiurnal(4.0, 1.5),
+            waters={"the pond": FlatTideProvider(surface_z=23.0)},
+        )
+```
+
+Ask about a position in region `"the pond"` and the water stands at 23 m; ask about the very
+same spot as sea and it is a hillside. Region is a property of the question, not of the
+ground, which is exactly what lets a pond sit above a sea that is directly beneath it.
+
+Each inland water is a full provider rather than a number, so a lake can have a seiche, a
+reservoir can be drawn down over a season, and a tidal lagoon behind a sill can have a tide
+of its own that is smaller than the sea's. None of it changes the depth arithmetic: depth is
+still the surface less the ground, so a pond five metres deep comes out five metres deep by
+the same subtraction that gives a harbour its nine.
+
+Unset the setting and nothing moves, exactly as before.
+
 ### Meridians and parallels, which show the world is round
 
 The chart is ruled with a graticule: round degrees of latitude and longitude, labelled in
@@ -570,6 +643,7 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_WEATHER_PROVIDER` | from the settings below | Dotted path to the game's weather |
 | `MARITIME_SEA_STATE` | follows the wind | Override the sea the wind would raise |
 | `MARITIME_MAP_PROVIDER` | flat sea | Dotted path to the game's bathymetry - a `TiledMapProvider` subclass for an authored seabed |
+| `MARITIME_TIDE_PROVIDER` | a motionless sea | Dotted path to the game's tide - `HarmonicTide` for a real one |
 | `MARITIME_COMMAND_POLICY` | captain, else owner, else anybody aboard an unowned ship | Dotted path to `(character, vessel) -> bool` |
 | `MARITIME_NARRATOR` | the one here | Dotted path to a `VesselNarrator` subclass |
 | `MARITIME_WATER_NARRATOR` | the one here | Dotted path to a `WaterNarrator` subclass |

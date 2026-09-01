@@ -449,10 +449,25 @@ class TestTheRocksReachThePaper(StateTestCase):
     def sheet(self, reach=6000.0):
         return chart_for(self.hull, reach).as_message()
 
-    def rocky(self, *hazards, provider=ROCKY):
-        """Put those rocks on the bottom, under a provider that reports them."""
+    def rocky(self, *hazards, provider=ROCKY, tide=""):
+        """
+        Put those rocks on the bottom, under a provider that reports them.
+
+        Args:
+            *hazards (Hazard): What is down there.
+            provider (str, optional): Dotted path to the map provider to use.
+            tide (str, optional): Dotted path to a tide, or empty for a motionless sea.
+
+        Notes:
+            The tide is pinned rather than inherited. Whether a rock dries is a question
+            about the water, so a test of that which took the *host game's* tide would pass
+            or fail depending on what somebody had configured in a settings file - and did:
+            adding a tide to the demonstration game broke the test that asserts nothing
+            dries without one.
+
+        """
         CHARTED_ROCKS.extend(hazards)
-        override = override_settings(MARITIME_MAP_PROVIDER=provider)
+        override = override_settings(MARITIME_MAP_PROVIDER=provider, MARITIME_TIDE_PROVIDER=tide)
         override.enable()
         self.addCleanup(override.disable)
         config.forget_map_provider()
