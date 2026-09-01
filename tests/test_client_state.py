@@ -11,7 +11,7 @@ builders decline to put on the wire.
 from django.test import override_settings
 
 from evennia.utils import create
-from evennia.utils.test_resources import BaseEvenniaTest
+from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
 from .. import config
 from ..bathymetry import SAND, MaritimeMapProvider, MaritimeTideProvider
@@ -605,3 +605,112 @@ class TestTheRocksReachThePaper(StateTestCase):
         drawn = self.sheet()
         self.assertEqual(len(drawn["dangers"]), 1)
         self.assertEqual(drawn["marks"], [])
+
+
+class TestLookingSomewhereOtherThanAtHerself(StateTestCase):
+    """
+    Dragging the chart used to be a lie.
+
+    A sheet was always drawn around the ship, so sliding it moved one fixed square about
+    inside its window: the corner arrived in the middle and there was nothing behind it,
+    because nothing outside that square had ever been drawn. Sliding a picture is not the
+    same as looking somewhere else, and the request had no way of saying which was meant.
+
+    Looking away from her is not looking at something she cannot see. The sheet still comes
+    from the charts she carries and still stops where their coverage does - drag out past
+    the survey and the answer is the hatching and the word UNSURVEYED, which is honest and
+    also useful.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # A sheet large enough to drag about inside. Without one she is off every chart
+        # aboard, and the honest answer to any request is an empty sheet - which is right,
+        # and tests nothing about where the sheet is centred.
+        self.hull.add_chart(
+            Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4)
+        )
+
+    def sheet(self, centre=(0.0, 0.0), reach=4000.0):
+        from ..client.state import chart_for
+
+        return chart_for(self.hull, reach, centre).as_message()
+
+    def test_by_default_she_is_in_the_middle(self):
+        self.assertEqual([abs(part) for part in self.sheet()["own"]], [0.0, 0.0])
+
+    def test_dragging_moves_her_off_it_by_exactly_what_was_asked(self):
+        """
+        She is a mark on the sheet like anything else. Drawn always at the centre, a
+        captain looking up the coast would watch his own ship glide along with the view.
+
+        """
+        self.assertEqual(self.sheet(centre=(3000.0, -1200.0))["own"], [-3000.0, 1200.0])
+
+    def test_the_sheet_is_drawn_somewhere_else_entirely(self):
+        """
+        The bug itself. Two sheets a long way apart have to differ; if dragging still only
+        slid the picture, these would be identical.
+
+        """
+        here = self.sheet()
+        away = self.sheet(centre=(60000.0, 60000.0))
+        self.assertNotEqual(here["soundings"], away["soundings"])
+
+    def test_what_is_drawn_follows_the_place_and_not_the_ship(self):
+        """
+        Asked twice about the same patch of sea, from a ship that has moved between. The
+        sheet is a place; her position only decides where her own mark goes on it.
+
+        """
+        first = self.sheet(centre=(2000.0, 0.0))
+        self.hull.maritime_position = WorldPosition(HERE.x - 500.0, HERE.y, HERE.z, HERE.region)
+        self.hull.start_reckoning()
+        second = self.sheet(centre=(2500.0, 0.0))
+        self.assertEqual(first["soundings"], second["soundings"])
+        self.assertNotEqual(first["own"], second["own"])
+
+    def test_the_graticule_and_the_coverage_follow_it_too(self):
+        """
+        Everything on a sheet is measured from the sheet. One thing left measuring from the
+        ship would sit a few kilometres out and be very hard to see.
+
+        """
+        away = self.sheet(centre=(40000.0, 0.0))
+        self.assertNotEqual(self.sheet()["coverage"], away["coverage"])
+
+
+class TestTheOffsetIsDistrusted(BaseEvenniaTestCase):
+    """
+    It arrives from a browser, so it is checked like everything else that does.
+    """
+
+    def offset(self, **kwargs):
+        from ..client.inputfuncs import _offset
+
+        return _offset(kwargs)
+
+    def test_nothing_asked_for_is_no_offset(self):
+        self.assertEqual(self.offset(), (0.0, 0.0))
+
+    def test_nonsense_is_no_offset_rather_than_a_traceback(self):
+        for bad in ({"east": "over there"}, {"north": None}, {"east": [1, 2]}):
+            self.assertEqual(self.offset(**bad), (0.0, 0.0))
+
+    def test_infinities_do_not_get_through(self):
+        """
+        `float("inf")` parses perfectly well and would be carried all the way into the
+        contour tracer, which would spend a while finding out.
+
+        """
+        self.assertEqual(self.offset(east=float("inf")), (0.0, 0.0))
+        self.assertEqual(self.offset(north=float("nan")), (0.0, 0.0))
+
+    def test_a_request_for_the_far_side_of_the_world_is_clamped(self):
+        from ..client.transport import MAX_OFFSET
+
+        east, north = self.offset(east=1e18, north=-1e18)
+        self.assertEqual((east, north), (MAX_OFFSET, -MAX_OFFSET))
+
+    def test_an_ordinary_drag_passes_through_untouched(self):
+        self.assertEqual(self.offset(east=1500.0, north=-820.0), (1500.0, -820.0))

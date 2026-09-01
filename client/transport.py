@@ -26,6 +26,14 @@ from .state import chart_for, contacts_for, mode_for, status_for, sync_for
 MIN_REACH = 500.0
 MAX_REACH = 100000.0
 
+#: How far from her own position a captain may slide the sheet, in metres.
+#:
+#: Generous, because looking a long way up the coast is an ordinary thing to want and the
+#: chart itself already refuses to invent anything: drag out past the survey and the answer
+#: is hatching and the word UNSURVEYED. This is a guard against a browser asking for a sheet
+#: on the far side of the world, not a rule about how far a captain may think.
+MAX_OFFSET = 1_000_000.0
+
 #: What to draw for a client that has not said what it is showing.
 DEFAULT_REACH = 10000.0
 
@@ -259,14 +267,17 @@ def broadcast_status(vessel):
     drawn = {}
     for session in listening:
         reach = session.ndb.maritime_reach or DEFAULT_REACH
-        stamp = (reach, revision, here)
+        centre = session.ndb.maritime_centre or (0.0, 0.0)
+        # Keyed by *where* as well as how far, or two captains looking at different
+        # parts of the same coast would be handed each other's sheets.
+        stamp = (reach, centre, revision, here)
         if session.ndb.maritime_chart_stamp == stamp:
             continue
-        if reach not in drawn:
-            drawn[reach] = chart_for(vessel, reach)
+        if (reach, centre) not in drawn:
+            drawn[(reach, centre)] = chart_for(vessel, reach, centre)
 
         session.ndb.maritime_chart_stamp = stamp
-        announce(session, drawn[reach], "chart")
+        announce(session, drawn[(reach, centre)], "chart")
     return told
 
 
@@ -297,12 +308,14 @@ def redraw_chart(session):
         return False
 
     reach = session.ndb.maritime_reach or DEFAULT_REACH
-    sheet = chart_for(vessel, reach)
+    centre = session.ndb.maritime_centre or (0.0, 0.0)
+    sheet = chart_for(vessel, reach, centre)
 
     # Stamped the same way the broadcast stamps it, or the two disagree for ever and
     # the next tick redraws what this call has already sent.
     session.ndb.maritime_chart_stamp = (
         reach,
+        centre,
         sheet.revision,
         getattr(vessel.chart_here(), "key", None),
     )

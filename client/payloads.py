@@ -223,6 +223,10 @@ class ChartSheet(Payload):
         graticule (list): The meridians and parallels the sheet is ruled with, each
             `{"kind", "label", "line"}`. Empty for a world with no geography to rule it
             by, exactly as `relief` is empty for a game with no relief libraries.
+        own (list): Where the ship herself lies on this sheet, as `[east, north]` metres
+            from its middle. Zero unless the captain has dragged the chart away from her,
+            which is the whole reason it is here: everything on a sheet is measured from the
+            sheet, and she is a mark on it like any other.
         route (list): The plotted course, as offsets in metres.
         coverage (dict): The edges of the sheet, so the interface can show where
             surveying stops.
@@ -244,6 +248,7 @@ class ChartSheet(Payload):
     marks: list = field(default_factory=list)
     dangers: list = field(default_factory=list)
     relief: str = ""
+    own: list = field(default_factory=lambda: [0.0, 0.0])
     graticule: list = field(default_factory=list)
     route: list = field(default_factory=list)
     coverage: dict = field(default_factory=dict)
@@ -263,6 +268,7 @@ class ChartSheet(Payload):
             "marks": list(self.marks),
             "dangers": list(self.dangers),
             "relief": self.relief,
+            "own": list(self.own),
             "graticule": list(self.graticule),
             "route": list(self.route),
             "coverage": dict(self.coverage),

@@ -637,9 +637,12 @@ class TestThePaperIsDrawnOnlyWhenItChanges(ClientTestCase):
 
         real_chart_for = transport.chart_for
 
-        def counted(vessel, reach):
-            self.drawn.append(reach)
-            return real_chart_for(vessel, reach)
+        def counted(vessel, reach, centre=(0.0, 0.0)):
+            # Both, because a sheet is a scale *and* a place. Counting only the scale
+            # would call two captains looking at opposite ends of the same coast one
+            # drawing, which is the economy these tests exist to measure.
+            self.drawn.append((reach, centre))
+            return real_chart_for(vessel, reach, centre)
 
         for name, value in (
             ("chart_for", counted),
@@ -701,7 +704,7 @@ class TestThePaperIsDrawnOnlyWhenItChanges(ClientTestCase):
         transport._graphical_sessions_aboard = lambda vessel: [self.browser, watcher]
 
         self.tick(10)
-        self.assertEqual(sorted(self.drawn), [4000.0, 20000.0])
+        self.assertEqual(sorted(self.drawn), [(4000.0, (0.0, 0.0)), (20000.0, (0.0, 0.0))])
 
     def test_everybody_at_one_scale_contours_once(self):
         watcher = FakeSession(self.char1)
@@ -711,7 +714,7 @@ class TestThePaperIsDrawnOnlyWhenItChanges(ClientTestCase):
         transport._graphical_sessions_aboard = lambda vessel: [self.browser, watcher]
 
         self.tick(10)
-        self.assertEqual(self.drawn, [8000.0])
+        self.assertEqual(self.drawn, [(8000.0, (0.0, 0.0))])
 
     def test_both_of_them_are_still_sent_it(self):
         watcher = FakeSession(self.char1)

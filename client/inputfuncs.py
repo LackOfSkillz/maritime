@@ -18,8 +18,10 @@ authority check a typed command passes, in a separate function that says so.
 
 """
 
+import math
+
 from .payloads import CAPABILITIES, PROTOCOL_VERSION
-from .transport import MAX_REACH, MIN_REACH, hello, redraw_chart
+from .transport import MAX_OFFSET, MAX_REACH, MIN_REACH, hello, redraw_chart
 
 
 def maritime_hello(session, *args, **kwargs):
@@ -58,7 +60,9 @@ def maritime_view(session, *args, **kwargs):
     Args:
         session (Session): The connection that spoke.
         *args: Ignored.
-        **kwargs: `reach`, in metres from the ship to the edge of its view.
+        **kwargs: `reach`, in metres from the ship to the edge of its view, and
+            optionally `east` and `north` - how far the captain has slid the sheet
+            away from his own position.
 
     Notes:
         The chart is drawn to the reach the client asked for, because a sheet drawn
@@ -66,9 +70,23 @@ def maritime_view(session, *args, **kwargs):
         coastline into the middle fifth of somebody's panel. The client knows how
         much sea it is showing; the server should not have to guess.
 
+        **And to the place it asked for, which it could not say before.** A sheet
+        was always drawn around the ship, so dragging the chart slid one fixed
+        square about inside its window: the corner arrived in the middle and there
+        was nothing behind it, because nothing outside that square had ever been
+        drawn. Sliding a picture is not the same as looking somewhere else, and the
+        request had no way of telling the difference.
+
+        Looking away from the ship is not looking at something she cannot see. The
+        sheet is still drawn from the charts she carries and stops where their
+        coverage stops, so dragging out past the survey shows hatching and the word
+        UNSURVEYED - which is the honest answer and the useful one.
+
         Clamped, and distrusted like everything else arriving from a browser. A
         request for a thousand leagues is a request to contour half the world, and
-        the answer to it is a reasonable sheet rather than a hung server.
+        the answer to it is a reasonable sheet rather than a hung server. The
+        offset is clamped too, against the same ceiling: a captain may look a long
+        way off his own position, and not an arbitrary distance.
 
     """
     try:
@@ -77,7 +95,36 @@ def maritime_view(session, *args, **kwargs):
         return
 
     session.ndb.maritime_reach = max(MIN_REACH, min(MAX_REACH, wanted))
+    session.ndb.maritime_centre = _offset(kwargs)
     redraw_chart(session)
+
+
+def _offset(kwargs):
+    """
+    Args:
+        kwargs (dict): What the client sent.
+
+    Returns:
+        offset (tuple): `(east, north)` in metres from the ship, both finite and
+            clamped.
+
+    Notes:
+        Anything unreadable comes back as no offset at all rather than as an error.
+        A browser sending nonsense should get its chart drawn around its ship, not
+        a traceback in the server log.
+
+    """
+    try:
+        east = float(kwargs.get("east", 0.0))
+        north = float(kwargs.get("north", 0.0))
+    except (TypeError, ValueError):
+        return (0.0, 0.0)
+    if not (math.isfinite(east) and math.isfinite(north)):
+        return (0.0, 0.0)
+    return (
+        max(-MAX_OFFSET, min(MAX_OFFSET, east)),
+        max(-MAX_OFFSET, min(MAX_OFFSET, north)),
+    )
 
 
 def maritime_action(session, *args, **kwargs):

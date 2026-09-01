@@ -14,6 +14,7 @@ step to forget.
 
 """
 
+from ..position import WorldPosition
 from ..vessel import vessel_in
 from .context import COMMAND, PASSENGER, resolve_maritime_ui_context
 from .payloads import CAPABILITIES, ChartSheet, Contacts, Mode, Status, Sync
@@ -238,13 +239,15 @@ def chart_revision(now):
     return int(now // CHART_REVISION_SECONDS)
 
 
-def chart_for(vessel, reach=10000.0):
+def chart_for(vessel, reach=10000.0, centre=(0.0, 0.0)):
     """
-    The paper, drawn around where she reckons she is.
+    The paper, drawn around where she reckons she is - or wherever he is looking.
 
     Args:
         vessel (Vessel or None): The hull.
-        reach (float, optional): How far to draw, in metres from her.
+        reach (float, optional): How far to draw, in metres from the middle of the sheet.
+        centre (tuple, optional): `(east, north)` metres from her reckoned position to the
+            middle of the sheet. Zero draws her in the middle, which is the ordinary case.
 
     Returns:
         sheet (ChartSheet): What the chart shows, or an empty one if she has none.
@@ -269,8 +272,18 @@ def chart_for(vessel, reach=10000.0):
 
     now = config.time_provider().now()
     world = vessel.map_here()
+
+    # Where the *sheet* is centred, which is only where she is until somebody drags it.
+    #
+    # Everything below is measured from this rather than from her, because a chart is a
+    # patch of sea and she is a mark on it. Conflating the two is what made dragging useless:
+    # the sheet was always drawn around the ship, so sliding it moved one fixed square about
+    # inside its window and the corner arrived in the middle with nothing behind it.
+    east, north = centre
+    middle = WorldPosition(here.x + east, here.y + north, here.z, here.region)
+
     span = reach * 2.0
-    west, south = here.x - reach, here.y - reach
+    west, south = middle.x - reach, middle.y - reach
 
     grid = cartography.sample(chart, world, now, west, south, span)
 
@@ -279,7 +292,7 @@ def chart_for(vessel, reach=10000.0):
             cartography.join(cartography.contour(grid, cartography.COASTLINE, west, south, span)),
             span,
         ),
-        here,
+        middle,
     )
 
     depths = {}
@@ -288,19 +301,20 @@ def chart_for(vessel, reach=10000.0):
         if traced:
             kept = cartography.worth_drawing(cartography.join(traced), span)
             if kept:
-                depths[line] = cartography.as_offsets(kept, here)
+                depths[line] = cartography.as_offsets(kept, middle)
 
     return ChartSheet(
         reach=reach,
+        own=[round(-east, 1), round(-north, 1)],
         coastline=coast,
         depths=depths,
-        marks=_marks_within(here, reach),
-        dangers=_dangers_within(world, here, reach, now),
+        marks=_marks_within(middle, reach),
+        dangers=_dangers_within(world, middle, reach, now),
         relief=relief.shaded(grid, _safe_water_for(vessel)) or "",
-        route=_route_of(vessel, here),
-        soundings=cartography.soundings(grid, west, south, span, here),
-        coverage=cartography.coverage(chart, here),
-        graticule=cartography.graticule(world, here, reach),
+        route=_route_of(vessel, middle),
+        soundings=cartography.soundings(grid, west, south, span, middle),
+        coverage=cartography.coverage(chart, middle),
+        graticule=cartography.graticule(world, middle, reach),
         revision=chart_revision(now),
     )
 

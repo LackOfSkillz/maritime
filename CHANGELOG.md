@@ -78,6 +78,16 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- **Dragging the chart was a lie.** A sheet was always drawn around the ship, so sliding it
+  moved one fixed square about inside its window: the corner arrived in the middle and there
+  was nothing behind it, because nothing outside that square had ever been drawn. Sliding a
+  picture is not the same as looking somewhere else, and the request — which carried only a
+  reach — had no way of saying which was meant. It now carries a place as well, the sheet is
+  drawn there, and the payload says where the ship lies on it so she is not glued to the
+  middle of a view she is no longer in.
+- Looking away from her is not looking at something she cannot see. The sheet still comes
+  from the charts she carries and still stops where their coverage does, so dragging out past
+  the survey gives hatching and the word UNSURVEYED.
 - **The contrib's own tests assumed a motionless sea**, so installing its new tide broke
   four of them. Three grounding tests asserted a vessel's elevation was zero, which is the
   datum and not the surface; a fourth asserted eighteen metres of clearance under twenty

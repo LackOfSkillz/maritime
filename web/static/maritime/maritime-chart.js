@@ -104,9 +104,49 @@ window.MaritimeChart = (function () {
         askTimer = window.setTimeout(function () {
             askTimer = null;
             if (window.Evennia && typeof Evennia.msg === "function") {
-                Evennia.msg("maritime_view", [], { reach: sheetReach() });
+                /* Where it is looking as well as how far.
+                 *
+                 * The pan is in pixels on a sheet already drawn; turned back into metres
+                 * it says how far off her position the captain has slid the chart, which
+                 * is what the server needs in order to draw somewhere else. Without it,
+                 * dragging moved one fixed square about inside its window and the corner
+                 * arrived in the middle with nothing behind it. */
+                var scale = pixelsPerMetre();
+                asked.panX = view.panX;
+                asked.panY = view.panY;
+                Evennia.msg("maritime_view", [], {
+                    reach: sheetReach(),
+                    east: scale ? -view.panX / scale : 0,
+                    north: scale ? view.panY / scale : 0
+                });
             }
         }, 250);
+    }
+
+    /* The pan that was in force when the last request went out.
+     *
+     * When the sheet comes back it is already drawn around the point that pan pointed at,
+     * so keeping the pan as well would count the drag twice and the chart would leap away
+     * at every request. Subtracting what was asked for - rather than zeroing - keeps
+     * whatever dragging happened while the round trip was in flight, which is most of it
+     * when somebody is sweeping the chart along a coast. */
+    var asked = { panX: 0, panY: 0 };
+
+    var lastSheet = null;
+
+    function settlePan(sheet) {
+        /* Only when a *new* sheet has arrived. The chart is redrawn for contacts, for
+         * status, for a resize - and settling on any of those would subtract a pan that
+         * no sheet had yet answered, walking the view sideways every few seconds. */
+        if (sheet === lastSheet) {
+            return false;
+        }
+        lastSheet = sheet;
+        view.panX -= asked.panX;
+        view.panY -= asked.panY;
+        asked.panX = 0;
+        asked.panY = 0;
+        return true;
     }
 
     function reach() {
@@ -226,8 +266,12 @@ window.MaritimeChart = (function () {
 
     /* Her own mark: a hull shape pointing the way she is heading, so the chart answers
      * "which way am I facing" without anybody reading a number off the strip. */
-    function drawOwnVessel(into, heading) {
-        var centre = toChart({ east: 0, north: 0 });
+    function drawOwnVessel(into, heading, own) {
+        /* Where she lies *on this sheet*, which is the middle of it only until somebody
+         * drags the chart. Drawn at her offset rather than at the centre, or a captain
+         * looking up the coast would see his own ship gliding along with the view. */
+        var at = own && own.length === 2 ? { east: own[0], north: own[1] } : { east: 0, north: 0 };
+        var centre = toChart(at);
         var ship = node("g", {
             class: "maritime-chart-own",
             transform:
@@ -785,6 +829,8 @@ window.MaritimeChart = (function () {
             button("CENTRE", "Put her back in the middle", function () {
                 view.panX = 0;
                 view.panY = 0;
+                asked.panX = 0;
+                asked.panY = 0;
                 view.held = false;
                 askForSheet();
                 redraw();
@@ -1002,6 +1048,9 @@ window.MaritimeChart = (function () {
          * wrong scale, twice, on the way to the right one. One empty sea for a frame
          * beats two wrong charts. */
         if (measured) {
+            if (settlePan(state.chart)) {
+                svg.setAttribute("viewBox", viewBox());
+            }
             drawRelief(layers.relief, state.chart);
             drawGraticule(layers.graticule, state.chart);
             drawSheet(layers, state.chart);
@@ -1020,7 +1069,7 @@ window.MaritimeChart = (function () {
 
         var motion = (state.status && state.status.motion) || {};
         if (measured) {
-            drawOwnVessel(layers.own, motion.heading);
+            drawOwnVessel(layers.own, motion.heading, state.chart && state.chart.own);
         }
 
         makeDraggable(svg, redraw);
