@@ -22,8 +22,8 @@ import tempfile
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from .. import bake, seabed
-from ..bathymetry import MaritimeMapProvider, ROCK, SAND
 from ..baked_world import OFF_THE_BUNDLE_M, BakedMapProvider
+from ..bathymetry import ROCK, SAND, MaritimeMapProvider
 from ..discovery import Landmark
 from ..position import WorldPosition
 from ..tiles import Hazard

@@ -9,7 +9,6 @@ builders decline to put on the wire.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
@@ -22,9 +21,9 @@ from ..damage import HULL, RIGGING
 from ..motion import HelmOrders, MotionLimits
 from ..observation import IDENTIFIED, VESSEL
 from ..position import WorldPosition
-from ..tiles import Hazard
 from ..rooms import ShipRoom
 from ..sailing import FULL
+from ..tiles import Hazard
 from ..traffic import traffic
 from ..typeclasses import Vessel
 from ..vessel import OPEN
@@ -712,3 +711,52 @@ class TestTheOffsetIsDistrusted(BaseEvenniaTestCase):
 
     def test_an_ordinary_drag_passes_through_untouched(self):
         self.assertEqual(self.offset(east=1500.0, north=-820.0), (1500.0, -820.0))
+
+
+class TestEveryFieldReachesTheWire(BaseEvenniaTestCase):
+    """
+    A payload's dataclass and its `as_message` say the same thing.
+
+    Notes:
+        `as_message` writes its dict out by hand, which is deliberate - a payload should
+        state exactly what it puts on the wire rather than reflecting over itself - and it
+        is the one place these classes can go quietly wrong.
+
+        `ChartSheet.harbours` was declared, filled on every tick, documented in the class
+        docstring and drawn by the browser, and left out of that dict. Fourteen harbours
+        computed and thrown away every two seconds, with no error anywhere to find and a
+        client-side layer that simply never had anything to draw.
+
+    """
+
+    def fields_of(self, payload):
+        """
+        Args:
+            payload (Payload): An instance.
+
+        Returns:
+            names (set): Its dataclass fields, less the ones deliberately not sent.
+
+        """
+        from dataclasses import fields
+
+        return {one.name for one in fields(payload)}
+
+    def test_the_chart_sends_every_field_it_declares(self):
+        from ..client.payloads import ChartSheet
+
+        sheet = ChartSheet()
+        sent = set(sheet.as_message())
+        self.assertEqual(
+            self.fields_of(sheet) - sent,
+            set(),
+            "declared on ChartSheet and never sent",
+        )
+
+    def test_every_payload_sends_every_field_it_declares(self):
+        from ..client import payloads
+
+        for name in ("Mode", "Status", "Contacts", "ChartSheet"):
+            made = getattr(payloads, name)()
+            missing = self.fields_of(made) - set(made.as_message())
+            self.assertEqual(missing, set(), f"{name} declares {missing} and never sends it")

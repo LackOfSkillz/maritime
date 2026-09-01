@@ -15,13 +15,12 @@ still importable from `typeclasses` - see the note there.
 from evennia.objects.objects import DefaultExit, DefaultRoom
 from evennia.utils import create
 
-from .observation import DEFAULT_HEIGHT_OF_EYE
-from .stowage import Stowed
 from .client.boundary import NoticesTheWaterline
-from .vessel import WEATHER_DECKS
+from .observation import DEFAULT_HEIGHT_OF_EYE
 from .ports import APPROACH_RANGE
 from .position import WorldPosition
-from .vessel import EXPOSURES, INTERIOR, MAIN_DECK
+from .stowage import Stowed
+from .vessel import EXPOSURES, INTERIOR, MAIN_DECK, WEATHER_DECKS
 
 
 class ShipRoom(NoticesTheWaterline, Stowed, DefaultRoom):

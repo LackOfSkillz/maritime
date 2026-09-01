@@ -4,11 +4,8 @@ Tests for finding the bottom.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
-
-from .base import EmptySeaMixin
 
 from ..bathymetry import MUD, REEF, ROCK, FlatSeaMapProvider, MaritimeMapProvider
 from ..grounding import (
@@ -25,6 +22,7 @@ from ..motion import HelmOrders, MotionLimits
 from ..position import EAST, WorldPosition
 from ..typeclasses import ShipRoom, Vessel
 from ..vessel import OPEN
+from .base import EmptySeaMixin
 
 HERE = WorldPosition(0.0, 0.0)
 

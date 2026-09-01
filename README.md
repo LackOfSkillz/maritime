@@ -156,7 +156,11 @@ build_aetos
 ```
 
 That builds Careenage and the six islands: 76 rooms, 148 exits, eighteen people behind
-counters. It is the worked example of the question this contrib gets asked most - how does an
+counters. It prints the dbref of the room new players should start in, for `START_LOCATION`.
+
+Ashore you get `browse`, `buy`, `market` and `sell` — installed on the rooms themselves, so
+they exist where there is a counter and nowhere else. Islands trade by the ton: each wants
+one cargo and offers another, and the six of them make a round a captain can run. It is the worked example of the question this contrib gets asked most - how does an
 ordinary Evennia area sit inside a world with coordinates in it?
 
 **The answer is one room type.** A `PortRoom` is an ordinary room that also holds a
@@ -659,6 +663,43 @@ room.cmdset.add("evennia.contrib.full_systems.maritime.cmdsets.HelmCmdSet", pers
 On the compartments rather than on the character, so that a helm order needs a deck under
 you and cannot be given from a tavern.
 
+### Switching the interface at runtime
+
+Four commands decide which interface the game shows, and how much of the world it shows.
+They go on your character cmdset, because a switch reachable only from a deck you cannot
+see is a switch with no way back:
+
+```python
+from evennia.contrib.full_systems.maritime.commands.interface import (
+    MaritimeInterfaceCmdSet,
+)
+
+
+class CharacterCmdSet(default_cmds.CharacterCmdSet):
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+        self.add(MaritimeInterfaceCmdSet)
+```
+
+| Command | Effect |
+| --- | --- |
+| `maritime ui on\|off\|hybrid` | When the panel is shown, for the whole server |
+| `maritime uncharted on\|off` | Draw the sea as it truly is, for building and testing |
+| `maritime player gui on\|off` | Whether players may choose the interface for themselves |
+| `maritime gui ...` | What one player chose, when the game allows it |
+
+All four are locked to `perm(Admin)` — admins, developers and the superuser — so installing
+the set puts nothing in front of your players. `maritime gui` opens to everybody only while
+`maritime player gui` is on, and is hidden rather than refused before then.
+
+`maritime ui` overrides `MARITIME_ASHORE_PANEL` at runtime and survives a reload, which is
+the whole reason it is a command rather than a second setting. `maritime uncharted` is for
+building: with it on, every chart reads the world itself — nothing off the paper, no survey
+error, and a chart even for a ship carrying none. **A game left in that state has no
+navigation in it**, so turn it off before anybody plays.
+
+See `docs/switches.md`.
+
 ### The builder's command
 
 `@ship` is the one maritime command that must work with *no* deck under you — a world is
@@ -677,6 +718,69 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
 
 The command locks itself to Builders; the cmdset does not, so a game wanting it somewhere
 narrower can say so without editing the contrib.
+
+### The shipyard, and keeping the harbour clear
+
+Seven hulls a player can build from at a quay, and an answer to the question every
+persistent maritime game eventually asks - why is the harbour full of ships nobody has
+sailed since March?
+
+```python
+from evennia.contrib.full_systems.maritime.commands.shipyard import (
+    MaritimeShipyardCmdSet,
+)
+
+
+class CharacterCmdSet(default_cmds.CharacterCmdSet):
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+        self.add(MaritimeShipyardCmdSet)
+```
+
+| Command | Effect |
+| --- | --- |
+| `maritime build` | The book of hulls: size, tonnage, hold and berths |
+| `maritime build <rig> <name>` | Build one alongside, gangway down. Staff, or anybody once opened |
+| `maritime summon <name>` | Bring a laid-up ship of yours round to this dock |
+| `maritime lay up <name>` | Put one of yours into ordinary and free her berth |
+| `maritime player build on\|off` | Whether players may build at all (Admin+) |
+
+The hulls are yawl, lugger, cutter, schooner, brig, barque and frigate, and every figure
+they carry is derived rather than chosen - tonnage by Builder's Old Measurement,
+displacement by block coefficient, holds from the tonnage. Two of them are checked against
+vessels that existed: the frigate lands within one per cent of a *Leda* class fifth rate and
+the brig five per cent over a *Cruizer* class brig-sloop, in the direction the rule is known
+to err.
+
+**A ship laid up is *in ordinary*, not deleted.** She keeps her cargo, her crew, her damage
+and her compartments, and gives up her berth and her place on the water - so the simulation
+stops ticking her, a lookout stops raising her, and nothing can run into her. That is not a
+new mode: a vessel with no position has never been simulated, and this is that state with a
+name on it.
+
+Evennia fires no hook this contrib can see when somebody logs out, so laying a fleet up on
+logout is offered rather than installed - four lines in your own `at_post_unpuppet`. See
+`docs/shipyard.md`.
+
+### Ordering a passage, and surviving a grounding
+
+`make for <harbour>` is `plot`, `follow` and `dock` in one order - which is how a decision
+of that size is actually made, and what a chart with harbours drawn on it invites somebody
+to click. Clicking a harbour sends exactly that command as typed text, so nothing the
+browser can do is unavailable to a terminal player.
+
+Whether she can get there is two questions: is there a course over the marks somebody laid,
+and is there water on the two legs no mark covers - the run in from the last mark to the
+quay, and the run out from wherever she is floating to the first mark. A pond with a quay in
+it is water, and no course can be laid to it, because reachability is a thing a world states
+rather than a thing an algorithm finds.
+
+Grounding has guardrails. The leadsman casts ahead of the ship rather than under her middle;
+the sailing master sounds ninety seconds ahead and falls off rather than carrying her onto
+ground he can see; a tide lifts a hull that is merely held; and `kedge` hauls her off by her
+own cable when it does not. Only foul ground struck at eight knots or more opens a hull.
+
+See `docs/passage.md`.
 
 ## Settings
 
@@ -731,6 +835,9 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `fix` | Fix her position off a landmark, and learn the set |
 | `chart` | What the paper says is under her, and how far to trust it |
 | `plot <mark>` | Lay a course by way of safe water |
+| `ports` | What harbours she could be told to make for, and why not |
+| `make for <harbour>` | The whole passage: course, sailing master, and alongside at the end |
+| `kedge` | Run an anchor out astern and haul her off the ground |
 | `follow` / `belay` | Hand the sailing master the con, and take it back |
 | `speed <knots>` | Order a speed, for vessels not under sail |
 | `allstop` | Take the way off her |
@@ -749,6 +856,10 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `lookout` | What is in sight — shipping, and the marks, reported apart |
 | `@maritime` | Raw coordinates and motion state (Builder+) |
 | `@ship` | Build ships, and set owner and captain (Builder+) |
+| `maritime ui` / `maritime uncharted` / `maritime player gui` | Runtime switches (Admin+) |
+| `maritime gui` | Your own interface, if the game allows it |
+| `maritime build` / `maritime player build` | The shipyard, at a quay (Admin+ unless opened) |
+| `maritime summon` / `maritime lay up` | Call a ship of yours back, or put her in ordinary |
 
 ## Examples
 

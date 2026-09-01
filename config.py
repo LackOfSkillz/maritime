@@ -26,20 +26,19 @@ under a different path.
 """
 
 from django.conf import settings
-
 from evennia.utils.utils import class_from_module
 
 from .bathymetry import FlatSeaMapProvider, MaritimeMapProvider, MaritimeTideProvider
 from .cargo import STANDARD_STOWAGE
+from .clock import MaritimeTimeProvider
 from .currents import CurrentVector, FlatCurrentProvider, MaritimeCurrentProvider
 from .messaging import VesselNarrator, WaterNarrator
+from .observation import DEFAULT_VISIBILITY
 from .projection import CELL_SIZE, OceanProjection
+from .rng import RNGContext
 from .routes import NavigationNetwork
 from .sailing import WindVector
 from .weather import FlatWeatherProvider, MaritimeWeatherProvider
-from .observation import DEFAULT_VISIBILITY
-from .clock import MaritimeTimeProvider
-from .rng import RNGContext
 
 # Every setting this contrib reads carries this prefix, so a game's settings file shows
 # at a glance which knobs belong to maritime.

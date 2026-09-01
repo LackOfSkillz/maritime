@@ -3,14 +3,14 @@ The gun deck: serving her, laying her, and firing.
 
 """
 
+from ..ammunition import DEFAULT_SHOT, SHOT_TYPES, shot_named
 from ..config import rng_context, time_provider
+from ..damage import serving_time
 from ..observation import DEFAULT_HEIGHT_OF_EYE, IDENTIFIED
 from ..rng import COMBAT
-from ..vessel import WEATHER_DECKS
-from ..ammunition import DEFAULT_SHOT, SHOT_TYPES, shot_named
-from ..damage import serving_time
 from ..sailing import hands_aloft
 from ..tactical import AFT, FORWARD, PORT_BROADSIDE, STARBOARD_BROADSIDE
+from ..vessel import WEATHER_DECKS
 from ..weapons import serve
 from .base import MaritimeCommand
 

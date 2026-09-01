@@ -9,12 +9,11 @@ the settings-only one.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
-from .base import EmptySeaMixin
-
 from ..position import WorldPosition
 from ..resolver import NoWorldPosition, get_world_position
 from ..typeclasses import ShipRoom, Vessel
 from ..vessel import BELOW_WATERLINE, INTERIOR, MAIN_DECK, OPEN
+from .base import EmptySeaMixin
 
 
 class VesselTestCase(EmptySeaMixin, BaseEvenniaTest):

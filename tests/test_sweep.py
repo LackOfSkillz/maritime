@@ -4,7 +4,6 @@ Tests for testing a whole hull along a whole track.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 

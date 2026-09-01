@@ -4,7 +4,6 @@ Tests for the sailing master: the smallest automation that gets her there.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import (
     BaseEvenniaCommandTest,
@@ -12,14 +11,14 @@ from evennia.utils.test_resources import (
     BaseEvenniaTestCase,
 )
 
+from ..clock import MaritimeTimeProvider
 from ..commands import CmdBelay, CmdFollow
+from ..crew import ABLE
 from ..currents import CurrentVector, made_good
 from ..motion import HelmOrders, MotionLimits
 from ..position import EAST, NORTH, WorldPosition
 from ..rooms import ShipRoom
 from ..routes import Route, Waypoint
-from ..clock import MaritimeTimeProvider
-from ..crew import ABLE
 from ..sailing import FULL, FURLED, REEFED, STORM, WindVector
 from ..typeclasses import Vessel
 from ..vessel import OPEN
@@ -315,14 +314,58 @@ class TestTheSailingMaster(ConTestCase):
 
     def test_he_cannot_work_a_ship_that_is_held(self):
         """
-        Made fast, aground or anchored, he is as stuck as anybody. He has no
-        private channel to the hull.
+        Made fast or aground, he is as stuck as anybody. He has no private channel to the
+        hull.
+
+        Notes:
+            This said "or anchored" until he was given the job of weighing for a passage
+            himself - which is right, and is a genuine narrowing of the rule rather than an
+            exception to it. An anchor is a thing he can pick up; a berth and a sandbank are
+            not. The two cases below are the ones where he really is as stuck as anybody,
+            and `test_he_weighs_for_a_passage` is the one where he is not.
+
+        """
+        # Holed on rock, which no tide lifts. Setting `aground` alone is not enough any
+        # more and should not be: these tests sail on a thousand metres of water, so a hull
+        # merely flagged aground floats off on the first tick - correctly, and which is the
+        # whole point of `float_off`.
+        self.hull.aground = True
+        self.hull.db.grounding = {"severity": "holed", "bottom": "rock", "clearance": -2.0}
+        self.hull.under_con = True
+        self.sail(MARITIME_WIND_SPEED=8.0)
+        self.assertTrue(self.hull.aground)
+        self.assertAlmostEqual(self.hull.orders.heading, NORTH)
+
+    def test_nor_one_that_is_made_fast(self):
+        self.hull.db.docked_at = self.hull  # anything not None; he is not going anywhere
+        self.hull.under_con = True
+        self.sail(MARITIME_WIND_SPEED=8.0)
+        self.assertAlmostEqual(self.hull.orders.heading, NORTH)
+
+    def test_he_leaves_an_anchored_ship_alone_with_no_passage_ordered(self):
+        # An anchor is what a ship lies to when nobody has told her to go anywhere, and
+        # weighing it uninvited would be a mate deciding to sail.
+        self.hull.route = None
+        self.hull.anchored = True
+        self.hull.under_con = True
+        self.sail(MARITIME_WIND_SPEED=8.0)
+        self.assertTrue(self.hull.anchored)
+        self.assertAlmostEqual(self.hull.orders.heading, NORTH)
+
+    def test_he_weighs_for_a_passage(self):
+        """
+        Given the con and somewhere to go, he brings the anchor home himself.
+
+        Notes:
+            Ordering a passage is one decision, and a mate who accepted it and then sat at
+            anchor waiting to be told to weigh would have to be told twice - which is the
+            thing `make for` exists to avoid.
 
         """
         self.hull.anchored = True
         self.hull.under_con = True
         self.sail(MARITIME_WIND_SPEED=8.0)
-        self.assertAlmostEqual(self.hull.orders.heading, NORTH)
+        self.assertFalse(self.hull.anchored)
 
 
 class TestTheConCommands(EmptySeaMixin, BaseEvenniaCommandTest):

@@ -216,6 +216,24 @@ window.MaritimeChart = (function () {
         return { east: Math.sin(radians) * metres, north: Math.cos(radians) * metres };
     }
 
+    /* Sent as the words a captain would have typed.
+     *
+     * Not as a private instruction to a handler somewhere: a click on a harbour is the
+     * `make for` order, so it goes out as `make for <name>` and is parsed, locked and
+     * answered exactly as if it had been typed. Anything a chart can do that a keyboard
+     * cannot is a thing telnet players do not have.
+     *
+     * It lived inside `offsetOf` for one commit, because it was pasted in front of the
+     * first `return {` in the file and that was somebody else's. `node --check` passed:
+     * the braces balanced, the grammar was valid, and every chart render threw a
+     * ReferenceError at the call site. A parser checks a file is a program; it does not
+     * check the program is the one you meant. */
+    function orderPassage(port) {
+        if (window.Evennia && typeof Evennia.msg === "function") {
+            Evennia.msg("text", ["make for " + port.name], {});
+        }
+    }
+
     /* Metres from the ship, to pixels from the centre of the box. North is up, so the
      * y axis runs the other way from the chart's. */
     /* Metres from the ship into pixels on the drawing.
@@ -252,16 +270,29 @@ window.MaritimeChart = (function () {
      * says the ship can see a patch of sea she is nowhere near, and a contact drawn there
      * puts another vessel in the wrong place - on the one instrument whose whole job is
      * saying where things are relative to you. */
-    function shipOn(sheet) {
-        var own = sheet && sheet.own;
+    /* Where she lies on the sheet, taken from her readings before the sheet itself.
+     *
+     * THE PAPER IS FIXED AND THE PENCIL MOVES. A sheet is drawn centred on her, so the
+     * `own` that arrives *with* a sheet is the middle of it and never changes - and sheets
+     * are drawn about once a minute. Reading her position from the sheet alone meant a ship
+     * that jumped to the centre once a minute and sat there, which to somebody watching a
+     * passage is a ship that does not move at all.
+     *
+     * Her readings arrive every tick and now carry her offset from the middle of whatever
+     * sheet this session is holding, so she crosses her own chart the way she should. The
+     * sheet's own `own` is still the fallback, for a client whose server predates this. */
+    function shipOn(sheet, status) {
+        var own = (status && status.own && status.own.length === 2)
+            ? status.own
+            : (sheet && sheet.own);
         return own && own.length === 2
             ? { east: own[0], north: own[1] }
             : { east: 0, north: 0 };
     }
 
-    function drawRings(into, sheet) {
+    function drawRings(into, sheet, status) {
         var span = reach();
-        var her = shipOn(sheet);
+        var her = shipOn(sheet, status);
         [0.5, 1.0].forEach(function (fraction) {
             var radius = span * fraction * pixelsPerMetre();
             var centre = toChart(her);
@@ -308,8 +339,8 @@ window.MaritimeChart = (function () {
     /* A contact, at the bearing and range the lookout gave. Anything not identified is
      * drawn hollow and named only by what it looks like - the payload never carried a
      * name, so there is none here to show. */
-    function drawContacts(into, contacts, onSelect, selectedId, sheet) {
-        var her = shipOn(sheet);
+    function drawContacts(into, contacts, onSelect, selectedId, sheet, status) {
+        var her = shipOn(sheet, status);
         (Array.isArray(contacts) ? contacts : []).forEach(function (contact) {
             if (!contact || typeof contact.bearing !== "number" || typeof contact.range !== "number") {
                 return;
@@ -691,6 +722,66 @@ window.MaritimeChart = (function () {
                 (mark.safe_water ? ", safe water to the " + compassOf(mark.safe_water) : "") +
                 (mark.danger ? ", foul ground" : "");
             group.appendChild(told);
+            into.appendChild(group);
+        });
+    }
+
+    /* Harbours, and the one thing on this chart you can give an order with.
+     *
+     * A quay is drawn as a quay is drawn: an anchor-fast symbol at the head of a pier
+     * rather than a buoy shape, because it is neither floating nor something to pass.
+     * Clicking one orders the passage - the same order `make for` gives, sent as the
+     * same words a captain would type, so nothing here can do anything a player could
+     * not have done at the keyboard.
+     *
+     * REACHABLE AND UNREACHABLE BOTH GET DRAWN, and that is the whole design. A harbour
+     * with no channel marked into it is a fact about the coast: hiding it would leave a
+     * captain wondering where the pond went, and drawing it as though it were reachable
+     * would be a lie the command would then refuse. So it is drawn hollow, with the
+     * reason in its tooltip, and clicking it does nothing but say so. */
+    function drawHarbours(into, harbours, onOrder) {
+        (Array.isArray(harbours) ? harbours : []).forEach(function (port) {
+            if (!port || !Array.isArray(port.at)) {
+                return;
+            }
+            var span = reach();
+            if (Math.abs(port.at[0]) > span * 1.05 || Math.abs(port.at[1]) > span * 1.05) {
+                return;
+            }
+            var at = toChart({ east: port.at[0], north: port.at[1] });
+            var group = node("g", {
+                class: "maritime-chart-harbour" + (port.reach ? " maritime-harbour-open"
+                                                              : " maritime-harbour-shut"),
+                tabindex: "0",
+                role: "button"
+            });
+
+            /* A pier and a bollard: a stroke out from the shore with a ring on the end
+             * of it. Nothing else on this chart is that shape, which is the only thing a
+             * symbol has to achieve. */
+            group.appendChild(
+                node("path", {
+                    d: "M " + (at.x - 7) + " " + (at.y + 5) + " L " + at.x + " " + at.y,
+                    class: "maritime-harbour-pier"
+                })
+            );
+            group.appendChild(
+                node("circle", { cx: at.x, cy: at.y, r: 4, class: "maritime-harbour-head" })
+            );
+
+            var told = node("title");
+            told.textContent = port.reach
+                ? port.name + " - click to make for"
+                : port.name + " - " + (port.why || "she cannot go there");
+            group.appendChild(told);
+
+            if (port.reach && typeof onOrder === "function") {
+                group.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onOrder(port);
+                });
+            }
             into.appendChild(group);
         });
     }
@@ -1101,18 +1192,20 @@ window.MaritimeChart = (function () {
                 drawRoute(layers.marks, state.chart.route);
                 drawDangers(layers.dangers, state.chart.dangers);
                 drawMarks(layers.marks, state.chart.marks);
+                drawHarbours(layers.marks, state.chart.harbours, orderPassage);
             }
-            drawRings(layers.rings, state.chart);
+            drawRings(layers.rings, state.chart, state.status);
         }
         if (measured) {
             drawContacts(layers.contacts, state.contacts, function (id) {
                 MaritimeState.select(id);
-            }, state.selectedContactId, state.chart);
+            }, state.selectedContactId, state.chart, state.status);
         }
 
         var motion = (state.status && state.status.motion) || {};
         if (measured) {
-            drawOwnVessel(layers.own, motion.heading, state.chart && state.chart.own);
+            var her = shipOn(state.chart, state.status);
+            drawOwnVessel(layers.own, motion.heading, [her.east, her.north]);
         }
 
         makeDraggable(svg, redraw);

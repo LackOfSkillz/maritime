@@ -8,6 +8,7 @@ not notice.
 
 """
 
+from django.test import override_settings
 from evennia.server.signals import SIGNAL_OBJECT_POST_UNPUPPET
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
@@ -27,6 +28,14 @@ from .test_client_protocol import FakeSession
 HERE = WorldPosition(0.0, 0.0)
 
 
+#: Pinned, because these test what the contrib does and not what one game asked for.
+#:
+#: `MARITIME_ASHORE_PANEL` decides what happens when somebody steps off a gangway, and the
+#: contrib's own answer - the one documented and the one that ships - is that maritime gets
+#: out of the way. A suite that read the setting from whatever game it happened to run
+#: inside would assert that answer here and the opposite answer in a game that turned the
+#: panel on, which is a suite that tests its host rather than its subject.
+@override_settings(MARITIME_ASHORE_PANEL=False)
 class HardeningTestCase(EmptySeaMixin, BaseEvenniaTest):
     """A ship, a deck, and a connection that is about to have a bad day."""
 

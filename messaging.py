@@ -27,9 +27,10 @@ hand differently, without reimplementing when to speak.
 
 from dataclasses import dataclass
 
-from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
-from .formatting import about_how_long, format_range, format_speed, pick_scale
+from .buoyage import ISOLATED_DANGER as ISOLATED_DANGER_KIND
 from .cargo import VOLUME, WEIGHT, stowed_volume
+from .formatting import about_how_long, format_range, format_speed, pick_scale
+from .grounding import HOLED, SHOAL_WARNING_CLEARANCE
 from .oars import (
     EASY_OARS,
     GIVE_WAY,
@@ -47,11 +48,10 @@ from .observation import (
     direction_named,
     in_arc,
 )
-from .sailing import beaufort_force
-from .weather import CALM, RIPPLED, SMOOTH
 from .position import COMPASS_POINTS, METRES_PER_FATHOM, bearing_difference
+from .sailing import beaufort_force
 from .vessel import WEATHER_DECKS
-from .buoyage import ISOLATED_DANGER as ISOLATED_DANGER_KIND
+from .weather import CALM, RIPPLED, SMOOTH
 
 # Things that happen to a vessel that the people aboard would notice. These name
 # the *event*, not the sentence - which is the point, since the sentence is what a
@@ -1727,6 +1727,139 @@ class VesselNarrator:
         self.deliver(
             "The sailing master reports the passage made, and hands back the con.",
             "Word comes down that the passage is made.",
+        )
+
+    def brought_up_short(self):
+        """
+        Tell the ship the mate has anchored rather than drift.
+
+        Notes:
+            Said once, like everything else he does on his own account. The flag rides with
+            the shoal warning that caused it and is cleared with it, so a ship that anchors,
+            weighs on the tide and has to anchor again is heard both times.
+
+        """
+        self.deliver(
+            'The sailing master calls, "Let go!" The cable runs out and she brings up '
+            "where she lies.",
+            "The cable roars out overhead, and she comes up short.",
+        )
+
+    def weighed_for_passage(self):
+        """
+        Tell the ship the mate has weighed to make a passage that was ordered.
+
+        Notes:
+            Said apart from the ordinary `weigh anchor` messages because it is a different
+            event: nobody on deck called for it, and the first a captain knows of it is the
+            capstan turning. An order carried out silently is an order the player did not
+            know they gave.
+
+        """
+        self.deliver(
+            'The sailing master calls, "Hands to the capstan - weigh, and make sail." '
+            "The cable comes in and she pays off.",
+            "The capstan starts overhead, and she begins to move.",
+        )
+
+    def falling_off(self, ordered, steering):
+        """
+        The mate comes off his course to keep water under her.
+
+        Args:
+            ordered (float): The heading the course wanted.
+            steering (float): What he is actually steering.
+
+        Notes:
+            Said out loud, and for the same reason `giving_a_berth` is: a helmsman who
+            quietly steered somewhere other than where he was told would be a bug wearing a
+            feature's coat. The player has to know the course was altered, why, and by how
+            much, or the next time they look at the compass they will not trust it.
+
+            Once per alteration rather than once per tick. He goes on steering the new
+            course for as long as the old one is foul, and saying so every two seconds is
+            the wallpaper this module exists to prevent.
+
+        """
+        vessel = self.vessel
+        rounded = round(steering)
+        if vessel.ndb.fallen_off == rounded:
+            return
+        vessel.ndb.fallen_off = rounded
+        off = abs((steering - ordered + 180.0) % 360.0 - 180.0)
+        self.deliver(
+            f'The mate says, "Shoaling on the course, sir - falling off {off:.0f} degrees." '
+            f"She comes round to {rounded:03.0f}.",
+            "She comes round a little, and holds the new course.",
+        )
+
+    def shoal_ahead(self, clear=False):
+        """
+        Tell the ship the sailing master has stopped short of shoal water.
+
+        Args:
+            clear (bool, optional): True when the water ahead has opened again, which
+                forgets the warning so the next bank is announced properly.
+
+        Notes:
+            Said *once*. He goes on finding the same bank on every tick for as long as she
+            lies off it, and announcing it every two seconds is precisely the wallpaper
+            this module exists to prevent - a ship reports that she has stopped, not that
+            she is still stopped. The state rides on `.ndb` beside the berth given to a
+            mark, for the same reason and in the same way.
+
+        """
+        vessel = self.vessel
+        if clear:
+            vessel.ndb.shoal_called = False
+            vessel.ndb.fallen_off = None
+            return
+        if vessel.ndb.shoal_called:
+            return
+        vessel.ndb.shoal_called = True
+        self.deliver(
+            'The sailing master takes the way off her. "Shoaling ahead, sir - '
+            'I will not carry her on to it."',
+            "Word runs aft that the water is shoaling, and she loses her way.",
+        )
+
+    def floated_off(self):
+        """
+        Tell the ship the tide has lifted her clear.
+
+        Notes:
+            Worth saying out loud. A crew who have spent a tide aground with the pumps
+            going and the boats out feel her come off before anybody reports it, and a
+            captain who is not told has no way to know his ship answers again.
+
+        """
+        self.deliver(
+            "She lifts, swings, and comes upright - the tide has her off.",
+            "A long grinding shudder runs through her, and then she is floating.",
+        )
+
+    def gone_alongside(self, berth):
+        """
+        Tell the ship the sailing master has laid her against the quay.
+
+        Args:
+            berth (Berth): Where she is lying.
+
+        Notes:
+            Said apart from `passage_made` rather than folded into it, because they are
+            two different pieces of news and one of them does not always happen. A ship
+            that made her passage and found the berth taken has to be told the first and
+            not the second, and a single sentence covering both would have to lie about
+            one of them.
+
+            "Warped" because that is how a ship comes the last few lengths onto a quay -
+            hauled on lines rather than sailed. She furled before she stopped; nothing is
+            driving her now but the hands on the capstan.
+
+        """
+        self.deliver(
+            f"She is warped in and made fast in {berth.key}, and her gangway comes down.",
+            "The lines go ashore, and she comes to rest against the quay.",
         )
 
     def trimmed(self, plan):

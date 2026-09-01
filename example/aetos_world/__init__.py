@@ -28,12 +28,27 @@ from evennia.utils import create
 from evennia.utils.search import search_object
 
 from ...client.context import ASHORE_CATEGORY, ASHORE_TAG
-from ...rooms import PortRoom
 from . import islands, people, stock, village
 
-#: What an ordinary land room is. A string rather than the class, because a game that has
-#: its own room typeclass should be able to swap this and have the whole world use it.
-LAND_ROOM = "evennia.objects.objects.DefaultRoom"
+#: What an ordinary land room is.
+#:
+#: Not a plain `DefaultRoom`. A room ashore has two jobs beyond being a room: it keeps the
+#: land map current for anybody standing in it, and it carries the commands that only make
+#: sense where there is a counter. Both were written and neither was wired, so `buy` existed
+#: in no cmdset and the map redrew only when a sheet happened to arrive - which is to say
+#: the shops were unreachable and the map was a photograph.
+LAND_ROOM = f"{__package__}.typeclasses.ShoreStreet"
+
+#: What a room with a berth in it is.
+#:
+#: A `PortRoom` and a shore room both, because it is both. It holds a position and a berth,
+#: which is the maritime half; and it is a place somebody stands and walks about in, which is
+#: the landward half and is what keeps the land map current under their feet.
+#:
+#: It was a plain `PortRoom`, and the seam showed: walking onto an island landing drew a map
+#: and walking down Careenage's own pier drew "nowhere to map", because the island rooms were
+#: shore rooms and the town's quays were not.
+QUAY_ROOM = f"{__package__}.typeclasses.IslandLanding"
 
 #: What an exit is, on the same reasoning.
 EXIT = "evennia.objects.objects.DefaultExit"
@@ -78,12 +93,43 @@ def build(world=None, on_report=None):
             _, made_now = islands.stock_the_bar(island, bar)
             tally["people"] += 1 if made_now else 0
 
+    start = starting_room()
+    if start is not None:
+        _say(
+            on_report,
+            f"maritime: new players start at {start.key} (#{start.id}). Put that in "
+            "settings as START_LOCATION to send them there.",
+        )
+
     _say(
         on_report,
         f"maritime: {tally['rooms']} rooms, {tally['exits']} exits and "
         f"{tally['people']} people made.",
     )
     return tally
+
+
+def starting_room():
+    """
+    Where a new character should be put down.
+
+    Returns:
+        room (Object or None): The room, or None if the world has not been built.
+
+    Notes:
+        Inland and upstream on purpose. The town is what a player arrives at rather than
+        what they start in, so the creek landing is the door: a boat comes down the water
+        and the place is discovered from it rather than handed over.
+
+        Evennia wants `START_LOCATION` as a dbref in settings and cannot be told one by a
+        build command, so this returns the room and the build prints it. A number nobody
+        reports is a number nobody sets.
+
+    """
+    for found in search_object(village.STARTING_ROOM):
+        if found.destination is None:
+            return found
+    return None
 
 
 def _middle():
@@ -143,7 +189,7 @@ def _room(spec):
         interface does about it is the game's, which is why the two are separate.
 
     """
-    wanted = spec.get("typeclass") or (PortRoom if spec.get("berth") else LAND_ROOM)
+    wanted = spec.get("typeclass") or (QUAY_ROOM if spec.get("berth") else LAND_ROOM)
     for found in search_object(spec["key"]):
         if found.destination is None:
             return (found, False)
@@ -216,4 +262,14 @@ def _say(on_report, line):
         on_report(line)
 
 
-__all__ = ("LAND_ROOM", "EXIT", "build", "islands", "people", "stock", "village")
+__all__ = (
+    "LAND_ROOM",
+    "QUAY_ROOM",
+    "EXIT",
+    "build",
+    "starting_room",
+    "islands",
+    "people",
+    "stock",
+    "village",
+)

@@ -696,6 +696,57 @@ svg.maritime-chart {
     stroke-width: 3;
 }
 
+/* Harbours: the one symbol on this chart that is also a control.
+ *
+ * A pier and a bollard, which is nothing like a buoy and nothing like a rock - the two
+ * other things drawn out here - so it reads as a different kind of object before anybody
+ * has read the tooltip.
+ *
+ * Open and shut are told apart by fill and not by hue alone: a harbour she can make for is
+ * solid, one she cannot is hollow and dimmed. Somebody who cannot separate the two colours
+ * still sees a filled dot and an empty one, which is the same argument the buoyage shapes
+ * make and the same reason it matters. */
+.maritime-chart-harbour {
+    cursor: pointer;
+}
+
+.maritime-harbour-pier {
+    fill: none;
+    stroke: var(--maritime-text-soft);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.maritime-harbour-open .maritime-harbour-head {
+    fill: var(--maritime-accent, #e8b64c);
+    stroke: var(--maritime-bg);
+    stroke-width: 1.2;
+}
+
+.maritime-harbour-open .maritime-harbour-pier {
+    stroke: var(--maritime-accent, #e8b64c);
+}
+
+/* Drawn, not hidden. A harbour with no channel into it is a fact about the coast, and a
+ * captain who cannot see it will go on wondering where it went. */
+.maritime-harbour-shut {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.maritime-harbour-shut .maritime-harbour-head {
+    fill: none;
+    stroke: var(--maritime-text-soft);
+    stroke-width: 1.6;
+    stroke-dasharray: 2 2;
+}
+
+.maritime-chart-harbour:focus-visible circle,
+.maritime-chart-harbour:focus-visible path {
+    stroke: var(--maritime-accent);
+    stroke-width: 3;
+}
+
 /* Water nobody surveyed.
  *
  * Hatched and named rather than left blank, because blank reads as "there is nothing
@@ -1202,63 +1253,169 @@ svg.maritime-chart {
  * between. Four colours carry meaning and everything else is deliberately quiet,
  * because a map where six things shout is a map where nothing does. */
 
+/* THE MAP ASHORE.
+ *
+ * Drawn the way a zone map is drawn, because that is what it is: a dark plot with a warm
+ * cast to the middle of it, small tan dots joined by tan lines, and a row of named buttons
+ * across the head. A player who has used one of these before does not have to learn this
+ * one.
+ *
+ * The plot takes the whole card and the legend hides behind the `i` button, because the
+ * thing anybody came here to look at is the map and every strip of chrome is height taken
+ * from it. */
+.maritime-landmap .maritime-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.maritime-landmap-title {
+    letter-spacing: 0.14em;
+    color: var(--maritime-accent, #d6b061);
+}
+
+/* Where you are, beside the label rather than under it. It is the one piece of text on
+ * this card that changes, so it wants to be where the eye already is. */
+.maritime-landmap-where {
+    color: var(--maritime-text, #e8dcc4);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Pushed right, so the buttons are in the same place whatever the room is called. A
+ * control that moves because a name got longer is a control you have to look for. */
+.maritime-landmap-controls {
+    margin-left: auto;
+    display: flex;
+    gap: 0.25rem;
+    flex: none;
+}
+
+.maritime-map-button {
+    font: inherit;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    padding: 0.3rem 0.5rem;
+    color: var(--maritime-text-soft, #a9a291);
+    background: rgba(214, 176, 97, 0.1);
+    border: 1px solid rgba(214, 176, 97, 0.28);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.maritime-map-button:hover {
+    background: rgba(214, 176, 97, 0.2);
+    color: var(--maritime-text, #e8dcc4);
+}
+
+/* A pressed state, because `i` and `FULL` are toggles, and a toggle that looks the same in
+ * both positions is a button that appears to do nothing twice. */
+.maritime-map-button.is-on {
+    background: rgba(214, 176, 97, 0.32);
+    color: var(--maritime-bg, #14100c);
+    border-color: rgba(214, 176, 97, 0.55);
+}
+
+.maritime-landmap-plot {
+    position: relative;
+    min-height: 220px;
+    height: min(34vh, 360px);
+    border: 1px solid rgba(214, 176, 97, 0.16);
+    background: radial-gradient(
+        circle at center,
+        rgba(60, 45, 36, 0.6),
+        rgba(8, 7, 7, 0.95)
+    );
+    overflow: hidden;
+}
+
+/* FULL fills the panel rather than the screen.
+ *
+ * A modal over the whole window is the wrong answer here: the map is for walking with, so
+ * the text you are walking through has to stay visible. Taking the panel is as big as it
+ * can honestly get. */
+.maritime-landmap.is-full .maritime-landmap-plot {
+    height: min(72vh, 900px);
+}
+
 .maritime-landmap-svg {
     width: 100%;
     height: 100%;
     display: block;
+    cursor: grab;
     touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
+}
+
+.maritime-landmap-svg.is-dragging {
+    cursor: grabbing;
 }
 
 .maritime-landmap-way {
-    stroke: var(--maritime-border, #6b5c48);
-    stroke-width: 1.5;
-    opacity: 0.55;
+    stroke-linecap: round;
 }
 
-.maritime-landmap-ring {
-    fill: none;
-    stroke: #e2725b;
-    stroke-width: 1.5;
-    opacity: 0.8;
-}
-
-/* A room is a target, so it has to look like one under a pointer. */
 .maritime-landmap-room {
     cursor: pointer;
 }
 
+/* A way up or down out of this room. A chevron above the dot rather than a line to
+ * somewhere, because a ladder is not a street and drawing it as one is what turned a
+ * waterfront into a cat's cradle. */
+.maritime-landmap-stairs {
+    fill: none;
+    stroke: rgba(195, 164, 104, 0.85);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .maritime-landmap-room circle {
-    transition: r 90ms ease-out;
+    stroke: rgba(8, 7, 7, 0.9);
+    stroke-width: 0.8;
+}
+
+/* The room you are in, ringed as well as coloured - so it is findable without reading a
+ * colour at all, which is the same argument the buoyage shapes make on the chart.
+ *
+ * Pale rather than the same red as the dot, and heavy enough to see at the zoom a whole
+ * town is drawn at. It was a thin red circle round a red dot, which is a red dot: it
+ * looked right on a nine-room quay blown up to fill the panel and vanished entirely on
+ * the map anybody would actually be reading. */
+/* Selected past `.maritime-landmap-room circle`, which is one class and one element and
+ * therefore beats a lone class. It was painting the ring in the same near-black hairline
+ * every dot gets for its outline, on a near-black background - measured, after two rounds
+ * of wondering why a rule that was plainly there did nothing. */
+.maritime-landmap-room circle.maritime-landmap-ring {
+    fill: none;
+    stroke: #f2e4c8;
+    stroke-width: 2;
+    opacity: 0.9;
 }
 
 .maritime-landmap-room:hover circle,
-.maritime-landmap-room:focus circle {
-    r: 7;
+.maritime-landmap-room:focus circle,
+.maritime-landmap-room:focus-visible circle {
+    stroke: var(--maritime-accent, #d6b061);
+    stroke-width: 1.6;
 }
 
 .maritime-landmap-room:focus {
     outline: none;
 }
 
-.maritime-landmap-room:focus .maritime-landmap-ring,
-.maritime-landmap-room:hover .maritime-landmap-ring {
-    opacity: 1;
-}
-
-/* You are here, and you cannot walk to where you already are. */
-.maritime-room-here {
-    cursor: default;
-}
-
 .maritime-landmap-legend {
     display: flex;
-    gap: 0.9rem;
-    padding: 0.35rem 0.6rem 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.4rem 0.6rem 0.5rem;
     font-size: 0.72rem;
     letter-spacing: 0.04em;
-    color: var(--maritime-text-dim, #9aa8b5);
+    color: var(--maritime-text-soft, #a9a291);
 }
 
 .maritime-legend-item {

@@ -11,7 +11,6 @@ which is a ratio wide enough that a loaded build machine does not make them lie.
 import time
 
 from django.test import override_settings
-
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from .. import config

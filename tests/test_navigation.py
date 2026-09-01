@@ -4,7 +4,6 @@ Tests for dead reckoning, and for being wrong about where you are.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import (
     BaseEvenniaCommandTest,

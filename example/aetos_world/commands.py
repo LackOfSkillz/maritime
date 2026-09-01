@@ -22,9 +22,8 @@ wired here rather than in the contrib because morale of that kind belongs to a s
 see `shoreleave`.
 """
 
-from evennia.utils import create
-
 from evennia.commands.command import Command
+from evennia.utils import create
 
 from . import people, shoreleave
 
@@ -241,6 +240,147 @@ def _port_of(room, reach=6):
     return None
 
 
+#: What a hundredweight of cargo fetches, in coin per tonne.
+#:
+#: Two prices and a spread between them, which is the whole of trading: an island pays well
+#: for what it wants and asks well for what it has, and the difference between two islands
+#: is where a voyage makes money. Deliberately crude - a real economy prices by supply, and
+#: this is an example showing that the seam exists rather than a market.
+PAID_PER_TONNE = 9
+CHARGED_PER_TONNE = 6
+
+
+class CmdMarket(Command):
+    """
+    What this port buys and sells by the ton.
+
+    Usage:
+        market
+
+    Islands trade. Each wants one cargo and offers another, and a captain who reads both
+    before sailing does better than one who does not - the chain of them makes a round.
+    """
+
+    key = "market"
+    aliases = ("trade",)
+    locks = "cmd:all()"
+    help_category = "Ashore"
+
+    def func(self):
+        """Read out what the island trades."""
+        island = _island_here(self.caller)
+        if island is None:
+            self.caller.msg("Nobody here trades by the ton.")
+            return
+
+        from . import islands
+
+        wants, offers = islands.trade_at(island)
+        lines = [f"|w{island['key']}|n trades:"]
+        if wants:
+            lines.append(
+                f"  buys  {wants.name:<18} {PAID_PER_TONNE} coin the ton   "
+                "|xsell <tons> " + wants.key + "|n"
+            )
+        if offers:
+            lines.append(
+                f"  sells {offers.name:<18} {CHARGED_PER_TONNE} coin the ton  "
+                "|xbuy cargo <tons> " + offers.key + "|n"
+            )
+        self.caller.msg(chr(10).join(lines))
+
+
+class CmdSellCargo(Command):
+    """
+    Sell cargo out of your ship's hold to the island.
+
+    Usage:
+        sell <tons> <cargo>
+
+    She has to be lying at the pier, and the island has to want what you are selling. The
+    cargo comes out of her holds and the coin goes in your purse.
+    """
+
+    key = "sell"
+    locks = "cmd:all()"
+    help_category = "Ashore"
+
+    def func(self):
+        """Take cargo out of the hold and pay for it."""
+        from ...cargo import commodity_named
+        from . import islands
+
+        island = _island_here(self.caller)
+        if island is None:
+            self.caller.msg("Nobody here buys cargo by the ton.")
+            return
+
+        vessel = _ship_alongside(self.caller)
+        if vessel is None:
+            self.caller.msg("You have no ship lying here to sell out of.")
+            return
+
+        tons, _, what = self.args.strip().partition(" ")
+        try:
+            tonnes = float(tons)
+        except ValueError:
+            self.caller.msg("Sell how many tons of what? Try |wsell 5 salt|n.")
+            return
+
+        commodity = commodity_named(what.strip())
+        wants, _offers = islands.trade_at(island)
+        if commodity is None or wants is None or commodity.key != wants.key:
+            self.caller.msg(
+                f"{island['key']} does not buy that. Try |wmarket|n to see what it wants."
+            )
+            return
+
+        # A TransferResult, not a list of parcels: it carries the one parcel that crossed
+        # the rail, how much was refused, and which capacity refused it. Treating it as a
+        # sequence read as "nothing came off" for a discharge that had worked perfectly.
+        landed = vessel.discharge(commodity, tonnes)
+        if not landed.success or landed.parcel is None:
+            self.caller.msg(f"She has no {commodity.name} aboard.")
+            return
+
+        moved = landed.parcel.tonnes
+        paid = int(round(moved * PAID_PER_TONNE))
+        self.caller.db.coin = people.purse_of(self.caller) + paid
+        self.caller.msg(f"You land {moved:.1f} tons of {commodity.name} and are paid {paid} coin.")
+        if landed.refused:
+            self.caller.msg(f"{landed.refused:.1f} tons stayed aboard - she had no more to land.")
+        self.caller.location.msg_contents(
+            f"{self.caller.key} lands {moved:.1f} tons of {commodity.name}.",
+            exclude=self.caller,
+        )
+
+
+def _island_here(character):
+    """
+    Args:
+        character (Object): Who is asking.
+
+    Returns:
+        island (dict or None): The island whose pier this is, if it is one.
+
+    Notes:
+        Found through the pier's own `landmark`, which the builder wrote there - so this
+        works from the pier itself and from anywhere the port walk reaches, and does not
+        need a second list of which room belongs to which island.
+
+    """
+    from . import islands
+
+    port = _port_of(getattr(character, "location", None))
+    name = getattr(getattr(port, "db", None), "landmark", None) if port else None
+    if not name:
+        return None
+    for island in islands.ISLANDS:
+        if island["key"] == name:
+            return island
+    return None
+
+
 class CmdBuildAetos(Command):
     """
     Build the Aetos coast ashore: the town, the islands and their people.
@@ -268,4 +408,14 @@ class CmdBuildAetos(Command):
         )
 
 
-__all__ = ("GOODS", "counters_here", "CmdBrowse", "CmdBuy", "CmdBuildAetos")
+__all__ = (
+    "GOODS",
+    "PAID_PER_TONNE",
+    "CHARGED_PER_TONNE",
+    "counters_here",
+    "CmdBrowse",
+    "CmdBuy",
+    "CmdMarket",
+    "CmdSellCargo",
+    "CmdBuildAetos",
+)

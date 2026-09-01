@@ -385,3 +385,84 @@ class TestTheAshorePanelIsOffByDefault(BaseEvenniaTest):
         """A tavern forty miles from the sea does not get a harbour interface for being a
         tavern."""
         self.assertFalse(self.context.is_ashore(self.room1))
+
+
+class TestTheWiringIsActuallyConnected(BaseEvenniaTestCase):
+    """
+    The gap this class exists for: four things were written and none was wired.
+
+    `browse` and `buy` were in no cmdset, so nothing could reach them. `refresh_ashore` was
+    never called, so the map would have drawn the first room a player entered and kept
+    drawing it while they walked away. `STARTING_ROOM` and `trade_at` were read by nothing
+    but their own tests.
+
+    Every one of them looked finished. That is the point - a thing that is defined and never
+    called passes every test written about the definition, and the world it was written for
+    behaves as though it does not exist. So these tests assert that the *call sites* are
+    there, which is the half that was missing.
+    """
+
+    def test_the_ashore_commands_are_in_a_cmdset(self):
+        from ..example.aetos_world.typeclasses import AshoreCmdSet
+
+        cmdset = AshoreCmdSet()
+        cmdset.at_cmdset_creation()
+        keys = {command.key for command in cmdset.commands}
+        self.assertEqual(keys, {"browse", "buy", "market", "sell"})
+
+    def test_a_shore_room_carries_that_cmdset(self):
+        """
+        A command in a cmdset nothing installs is a command nobody can type. The rooms
+        install it themselves, so a game that builds this world gets working shops without
+        having to add anything to its own character cmdset.
+
+        """
+        import inspect
+
+        from ..example.aetos_world import typeclasses
+
+        source = inspect.getsource(typeclasses.ShoreStreet)
+        self.assertIn("AshoreCmdSet", source)
+
+    def test_land_rooms_are_built_as_shore_rooms(self):
+        """
+        The builder made plain `DefaultRoom`s, so nothing above applied to a single room in
+        the world it built.
+
+        """
+        from ..example import aetos_world
+
+        self.assertIn("ShoreStreet", aetos_world.LAND_ROOM)
+
+    def test_a_shore_room_redraws_the_map_when_somebody_arrives(self):
+        import inspect
+
+        from ..example.aetos_world import typeclasses
+
+        source = inspect.getsource(typeclasses.ShoreRoom)
+        self.assertIn("at_object_receive", source)
+        self.assertIn("send_land", source)
+
+    def test_the_starting_room_can_be_found_rather_than_only_named(self):
+        from ..example import aetos_world
+
+        self.assertTrue(callable(aetos_world.starting_room))
+
+    def test_selling_cargo_reads_the_island_the_pier_belongs_to(self):
+        """
+        `trade_at` existed and nothing called it, so every island's authored trade was
+        decoration. The selling command is what makes it a fact about the world.
+
+        """
+        import inspect
+
+        from ..example.aetos_world import commands
+
+        source = inspect.getsource(commands.CmdSellCargo)
+        self.assertIn("trade_at", source)
+
+    def test_an_island_pays_more_than_it_charges(self):
+        """Otherwise there is no reason to carry anything anywhere."""
+        from ..example.aetos_world import commands
+
+        self.assertGreater(commands.PAID_PER_TONNE, commands.CHARGED_PER_TONNE)

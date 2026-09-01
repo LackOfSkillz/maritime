@@ -4,7 +4,6 @@ Tests for saying distances and depths the way they were said.
 """
 
 from django.test import override_settings
-
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from ..formatting import (

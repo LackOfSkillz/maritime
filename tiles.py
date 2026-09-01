@@ -40,7 +40,7 @@ resident only the ones being sailed over.
 
 from dataclasses import dataclass, field
 
-from .bathymetry import DATUM, MaritimeMapProvider, ROCK, SAND
+from .bathymetry import DATUM, ROCK, SAND, MaritimeMapProvider
 from .spatial import cell_bounds, cell_of, cells_touching, distance_to_track
 
 # How wide a tile is, in metres. A kilometre is a compromise with two sides: small

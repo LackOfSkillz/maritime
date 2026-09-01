@@ -15,47 +15,50 @@ from evennia.commands.cmdset import CmdSet
 
 from .commands import (
     CmdAllStop,
-    CmdCrew,
-    CmdShipwright,
-    CmdWeighAnchor,
-    CmdFire,
-    CmdGuns,
-    CmdHoldFire,
-    CmdHelm,
-    CmdLoad,
-    CmdLookout,
-    CmdMaritimeStatus,
-    CmdPosition,
     CmdAnchor,
+    CmdBelay,
     CmdCastOff,
+    CmdChart,
+    CmdCrew,
+    CmdCurrent,
     CmdCutGrapples,
     CmdDischarge,
+    CmdDock,
     CmdEasyOars,
+    CmdFire,
+    CmdFix,
+    CmdFollow,
+    CmdGiveWay,
     CmdGrapple,
     CmdGrapples,
-    CmdGiveWay,
+    CmdGuns,
+    CmdHelm,
+    CmdHoldFire,
     CmdHoldWater,
+    CmdKedge,
+    CmdLoad,
+    CmdLookAround,
+    CmdLookout,
+    CmdMakeFor,
+    CmdManifest,
+    CmdMaritimeStatus,
     CmdOars,
     CmdPaddleStroke,
-    CmdStretchOut,
-    CmdStrike,
-    CmdDock,
-    CmdLookAround,
-    CmdManifest,
-    CmdStow,
-    CmdFix,
-    CmdWatch,
-    CmdBelay,
-    CmdChart,
-    CmdFollow,
-    CmdCurrent,
     CmdPlot,
+    CmdPorts,
+    CmdPosition,
     CmdSail,
     CmdScan,
-    CmdTarget,
+    CmdShipwright,
     CmdSound,
     CmdSpeed,
+    CmdStow,
+    CmdStretchOut,
+    CmdStrike,
+    CmdTarget,
+    CmdWatch,
     CmdWeather,
+    CmdWeighAnchor,
     CmdWind,
 )
 
@@ -90,6 +93,7 @@ class HelmCmdSet(CmdSet):
         self.add(CmdTarget())
         self.add(CmdAnchor())
         self.add(CmdDock())
+        self.add(CmdKedge())
         self.add(CmdStow())
         self.add(CmdDischarge())
         self.add(CmdManifest())
@@ -115,6 +119,8 @@ class HelmCmdSet(CmdSet):
         self.add(CmdFollow())
         self.add(CmdBelay())
         self.add(CmdPlot())
+        self.add(CmdPorts())
+        self.add(CmdMakeFor())
         self.add(CmdSound())
         self.add(CmdMaritimeStatus())
 

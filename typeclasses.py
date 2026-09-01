@@ -31,24 +31,18 @@ from evennia.objects.objects import DefaultObject
 from .boarding import Boarded
 from .charts import Charted
 from .crew import Crewed
-from .handling import Handled
 from .damage import Damaged
+from .environment import Situated
+from .floating import Floating
+from .grounding import check_swept_grounding
+from .handling import Handled
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
 from .oars import Oared, braking_limits
-from .ownership import Owned
-from .grounding import check_swept_grounding
 from .observation import Lookout
-from .sailing import Rigged, steerage_floor, leeway_angle
-from .position import WorldPosition, normalize_bearing
-from .environment import Situated
-from .floating import Floating
+from .ownership import Owned
 from .ports import Berthing
-from .stowage import Laden
-from .traffic import traffic
-from .voyage import Conned
-from .weapons import Armed
-from .weather import sea_drag
+from .position import WorldPosition, normalize_bearing
 
 # ShipRoom lives in rooms.py now, and is imported here for `ship_rooms` below - but
 # also re-exported deliberately. Evennia stores a typeclass as a dotted path on the
@@ -58,6 +52,12 @@ from .weather import sea_drag
 # a time as they are loaded, which is a considerably worse way to find out.
 from .rooms import Compartmented, ShipRoom  # noqa: F401
 from .routes import Routed
+from .sailing import Rigged, leeway_angle, steerage_floor
+from .stowage import Laden
+from .traffic import traffic
+from .voyage import Conned
+from .weapons import Armed
+from .weather import sea_drag
 
 
 def _tell_the_boards(vessel):
@@ -170,19 +170,37 @@ class Vessel(
     @maritime_position.setter
     def maritime_position(self, position):
         """
-        Move the vessel.
+        Move the vessel, or take her off the water entirely.
 
         Args:
-            position (WorldPosition): The new position.
+            position (WorldPosition or None): The new position, or None for a hull
+                that is not afloat - on the stocks, or laid up in ordinary.
 
         Raises:
-            TypeError: If given something that is not a `WorldPosition`. A tuple
-                would survive here and fail much later inside a distance
-                calculation, with nothing pointing back at the assignment.
+            TypeError: If given anything else. A tuple would survive here and fail much
+                later inside a distance calculation, with nothing pointing back at the
+                assignment.
+
+        Notes:
+            **None is written through to the database at once, and the live value with
+            it.** Everything else here is deferred to the next checkpoint, because a ship
+            under way moves many times a minute and each write is a pickle and a commit.
+            None cannot be: the getter reads the live value and falls back to the saved
+            one, and `checkpoint` deliberately skips a live position of None - so setting
+            only the live value would leave her reading back from the database as still
+            lying where she was.
+
+            That asymmetry is the same one `floating` makes, for the same reason, and it
+            costs nothing. A hull comes off the water once, not forty times a minute.
 
         """
+        if position is None:
+            self.ndb.maritime_position = None
+            self.db.maritime_position = None
+            self.ndb.maritime_dirty = False
+            return
         if not isinstance(position, WorldPosition):
-            raise TypeError(f"Expected a WorldPosition, got {type(position).__name__}.")
+            raise TypeError(f"Expected a WorldPosition or None, got {type(position).__name__}.")
         self.ndb.maritime_position = position
         self.ndb.maritime_dirty = True
 
@@ -463,6 +481,35 @@ class Vessel(
         # something deliberate, and one aground still has a broadside.
         self.take_opportunity()
 
+        # A rising tide lifts a ship that is merely held.
+        #
+        # `refloats_on_tide` has been written, exported and covered by tests since
+        # grounding arrived, and nothing in a running game has ever called it - so a hull
+        # that touched once stayed aground for ever. Found on a vessel sitting in twenty
+        # metres of water, reporting herself hard on the ground, with a sailing master who
+        # had the con and could not move her.
+        #
+        # **Above the check for whether she is held, because being aground is one of the
+        # things that holds her.** Put below it first, and the tick returned at the guard
+        # every time - so the code that lifts her ran only on ships that were not aground.
+        # It also has to be above `work_her`, so a ship that floats free on this tick can
+        # be worked on this tick rather than losing the top of the tide waiting.
+        if self.aground:
+            self.float_off()
+
+        # **The sailing master gets her under way himself, anchor and all.**
+        #
+        # Ordering a passage is one decision - *take her to Longhope* - and a mate who
+        # accepted it and then sat at anchor waiting to be told to weigh would not be a
+        # mate. He is holding the con because somebody handed him the whole job, so he does
+        # the whole job: he brings the anchor home, and everything below sets his sail and
+        # his course.
+        #
+        # Only with the con and only with somewhere to go. A ship lying at anchor with no
+        # passage ordered stays at anchor, which is what an anchor is for.
+        if self.under_con and self.anchored and self.next_mark() is not None:
+            self.weigh_for_passage()
+
         if self.held_by():
             self.take_way_off()
             return False
@@ -608,8 +655,61 @@ class Vessel(
         self.ndb.speed = after.speed
         narrator = self.narrator
         narrator.underway(before, after)
-        narrator.soundings(contact)
+
+        # **The lead goes in ahead of her, which is what a leadsman is for.**
+        #
+        # This warned on the water under her middle, which is the water she has already
+        # crossed - so at six metres a second the call came about a second before she
+        # struck, and on an authored rock it never came at all, because the clearance
+        # under her centre stayed twenty metres right up until her bow was on it.
+        #
+        # A man in the chains swings the lead forward so it is on the bottom beneath the
+        # bow as she comes up to it. Sounding the corridor she is about to cross is that,
+        # and it turns a grounding from an ambush into a decision somebody made.
+        narrator.soundings(self.water_before_her(after.speed) or contact)
         return True
+
+    def water_before_her(self, speed, seconds=None):
+        """
+        The least water on the stretch she is about to cross.
+
+        Args:
+            speed (float): How fast she is going, in metres per second.
+            seconds (float, optional): How far ahead to look, in seconds of running.
+
+        Returns:
+            found (GroundingResult or None): The shallowest contact on the corridor ahead,
+                or None if there is nothing to sound with.
+
+        Notes:
+            The same look-ahead the sailing master uses, deliberately - so a captain
+            steering by hand is warned of exactly what would have stopped his mate, and the
+            two never disagree about where the water goes.
+
+        """
+        from .grounding import check_swept_grounding
+        from .voyage import LOOKAHEAD_METRES, LOOKAHEAD_SECONDS
+
+        world = self.map_here()
+        here = self.maritime_position
+        if world is None or here is None:
+            return None
+
+        look = max(
+            LOOKAHEAD_METRES,
+            abs(float(speed)) * (LOOKAHEAD_SECONDS if seconds is None else seconds),
+        )
+        return check_swept_grounding(
+            here,
+            here.moved(self.heading, look),
+            self.heading,
+            self.draft,
+            0.0,
+            self.length,
+            self.beam,
+            world,
+            _now(),
+        )
 
     # --- persistence --------------------------------------------------------
 
@@ -635,6 +735,69 @@ class Vessel(
         if self.ndb.speed is not None:
             self.db.speed = self.ndb.speed
         self.ndb.maritime_dirty = False
+        return True
+
+    def float_off(self, now=None):
+        """
+        Lift her if the tide has made enough water since she grounded.
+
+        Args:
+            now (float, optional): Game time. Read from the clock if omitted.
+
+        Returns:
+            floated (bool): Whether she came off.
+
+        Notes:
+            **Only a grounding a tide can undo.** A hull holed on rock does not float off
+            when the water rises; she fills. That is what `held_not_holed` decides, and it
+            is asked of what was written down when she struck rather than of what the
+            ground looks like now - the bottom she is on has not changed, and re-deriving
+            it would be answering a different question.
+
+            **Asked with the same test that grounded her**, hull outline and authored
+            hazards and all - not with a bare sounding under her middle. Those two can
+            disagree, and where they do the disagreement is vicious: a hull sitting on the
+            edge of a charted rock has twenty metres of terrain beneath her centre, so a
+            clearance check floats her, the very next tick grounds her again on the rock,
+            and she oscillates for ever announcing both. Found exactly that way.
+
+            The mechanism is still the tide: tide and terrain share one model, so the water
+            rising turns a negative clearance positive without anything else moving. She
+            simply has to be clear of everything, not clear of the seabed.
+
+            Total. A vessel with no world, no position or no record of how she grounded
+            stays where she is - none of those is a reason to declare her afloat, and a
+            ship wrongly floated is a ship that sails away over a sandbank.
+
+        """
+        from .grounding import check_swept_grounding, held_not_holed
+
+        record = self.db.grounding or {}
+        if not held_not_holed(record.get("severity"), record.get("bottom")):
+            return False
+
+        world = self.map_here()
+        here = self.maritime_position
+        if world is None or here is None:
+            return False
+
+        standing = check_swept_grounding(
+            here,
+            here,
+            self.heading,
+            self.draft,
+            0.0,
+            self.length,
+            self.beam,
+            world,
+            now if now is not None else _now(),
+        )
+        if not standing:
+            return False
+
+        self.aground = False
+        self.db.grounding = None
+        self.narrator.floated_off()
         return True
 
     def at_server_reload(self):

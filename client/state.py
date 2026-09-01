@@ -14,12 +14,12 @@ step to forget.
 
 """
 
-from .. import seabed
+from .. import charts, seabed
 from ..position import WorldPosition
 from ..vessel import vessel_in
 from .context import COMMAND, PASSENGER, resolve_maritime_ui_context
-from .payloads import CAPABILITIES, ChartSheet, Contacts, Mode, Status, Sync
 from .controls import offered as controls_offered
+from .payloads import CAPABILITIES, ChartSheet, Contacts, Mode, Status, Sync
 
 
 def mode_for(character, room=None):
@@ -240,6 +240,54 @@ def chart_revision(now):
     return int(now // CHART_REVISION_SECONDS)
 
 
+def sheet_middle(vessel, centre=(0.0, 0.0)):
+    """
+    Where the middle of a sheet drawn now would lie, in the world.
+
+    Args:
+        vessel (Vessel): The hull.
+        centre (tuple, optional): `(east, north)` metres the chart has been dragged.
+
+    Returns:
+        middle (WorldPosition or None): The world point the sheet is centred on.
+
+    Notes:
+        Split out of `chart_for` so the transport can remember where a sheet was drawn
+        without keeping the sheet, and so the two can never disagree about it. A second
+        copy of this arithmetic is a second chance to put the ship in the wrong place on
+        her own chart.
+
+    """
+    here = vessel.reckoned_position or vessel.maritime_position if vessel else None
+    if here is None:
+        return None
+    east, north = centre
+    return WorldPosition(here.x + east, here.y + north, here.z, here.region)
+
+
+def own_on_sheet(vessel, middle):
+    """
+    Where she lies on a sheet centred there.
+
+    Args:
+        vessel (Vessel): The hull.
+        middle (WorldPosition or None): The middle of the sheet.
+
+    Returns:
+        offset (list): `[east, north]` metres, or empty if either is unknown.
+
+    Notes:
+        Reckoned rather than true, like everything else drawn on a chart. A ship whose
+        reckoning has drifted is drawn where her navigator believes she is, which is the
+        whole point of the chart being a record rather than a window.
+
+    """
+    here = (vessel.reckoned_position or vessel.maritime_position) if vessel else None
+    if here is None or middle is None or here.region != middle.region:
+        return []
+    return [round(here.x - middle.x, 1), round(here.y - middle.y, 1)]
+
+
 def chart_for(vessel, reach=10000.0, centre=(0.0, 0.0)):
     """
     The paper, drawn around where she reckons she is - or wherever he is looking.
@@ -264,14 +312,24 @@ def chart_for(vessel, reach=10000.0, centre=(0.0, 0.0)):
     if vessel is None:
         return ChartSheet()
 
-    chart = vessel.chart_here()
     here = vessel.reckoned_position or vessel.maritime_position
-    if chart is None or here is None:
+    if here is None:
         return ChartSheet(reach=reach)
 
-    from .. import config
+    from .. import config, switches
 
     now = config.time_provider().now()
+
+    # The development switch, and the one seam it needs.
+    #
+    # Every way the sea is hidden runs through the chart being read: water off the paper
+    # comes back as None because `covers` said no, and water on it is wrong by however
+    # much the survey was. So replacing the paper with the ground reveals the whole world
+    # without a second code path drawing it - which matters, because a reveal that drew
+    # the sea by some other route would stop being a view of what players see.
+    chart = charts.ground_truth(here.region, now) if switches.uncharted() else vessel.chart_here()
+    if chart is None:
+        return ChartSheet(reach=reach)
     world = vessel.map_here()
 
     # Where the *sheet* is centred, which is only where she is until somebody drags it.
@@ -325,6 +383,7 @@ def chart_for(vessel, reach=10000.0, centre=(0.0, 0.0)):
         marks=_marks_within(middle, reach),
         dangers=_dangers_within(world, middle, reach, now),
         relief=relief.shaded(grid, _safe_water_for(vessel)) or "",
+        harbours=_harbours_within(vessel, middle, reach),
         route=_route_of(vessel, middle),
         soundings=cartography.soundings(grid, west, south, span, middle),
         coverage=cartography.coverage(chart, middle),
@@ -551,6 +610,68 @@ def _tidal_span(world, here, now):
         for step in range(TIDE_SAMPLES)
     ]
     return min(surface), max(surface)
+
+
+def _harbours_within(vessel, here, reach):
+    """
+    The quays on this sheet, and whether she could be told to make for each.
+
+    Args:
+        vessel (Vessel): The hull, because reachability is about her draught as well as
+            about the water.
+        here (WorldPosition): The middle of the sheet.
+        reach (float): How far it extends, in metres.
+
+    Returns:
+        harbours (list): Each as an offset, with a name and a verdict.
+
+    Notes:
+        **The verdict travels with the mark, and that is the point of sending them at
+        all.** A chart that drew six harbours and let a captain discover on clicking the
+        seventh that there is no channel into it would be a chart that lies by omission.
+        Drawn differently and labelled with the reason, an unreachable harbour is a thing
+        the player has learned about the coast.
+
+        Asked of `passage.can_reach`, which is the same function `make for` asks, so a
+        harbour the chart offers is a harbour the command accepts. Two answers to one
+        question is how an interface comes to disagree with the game behind it.
+
+        Bounded to the sheet like everything else here. Planning a course to every harbour
+        in the world on every chart tick would be a Dijkstra per harbour per two seconds;
+        planning one for each of the handful actually on the paper is nothing.
+
+    """
+    from .. import config, passage
+
+    network = config.navigation_network()
+    if network is None:
+        return []
+
+    # Found once for the sheet, not once per harbour. It depends only on where *she* is,
+    # and asking fourteen times cost six hundred milliseconds of soundings on a reactor
+    # that has one thread and draws this every two seconds.
+    start = passage.departure_from(here, network, vessel.draft)
+
+    out = []
+    for port in passage.ports_afloat():
+        where = port.maritime_position
+        if where is None or where.region != here.region:
+            continue
+        east = where.x - here.x
+        north = where.y - here.y
+        if abs(east) > reach or abs(north) > reach:
+            continue
+        can = passage.can_reach(vessel, port, network, start=start)
+        out.append(
+            {
+                "id": port.id,
+                "name": str(port.key),
+                "at": [round(east, 1), round(north, 1)],
+                "reach": bool(can),
+                "why": can.said,
+            }
+        )
+    return out
 
 
 def _marks_within(here, reach):

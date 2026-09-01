@@ -8,7 +8,6 @@ so it is asserted rather than eyeballed.
 """
 
 from django.test import override_settings
-
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
 from ..bathymetry import MUD, ROCK, SAND

@@ -17,14 +17,14 @@ from ..crew import (
     ABLE,
     CRACK,
     LANDSMEN,
+    MARINES,
+    MASS_PER_HAND,
     ORDINARY,
     PRESSED,
+    SEAMEN,
     SEASONED,
     CrewQuality,
     Division,
-    MARINES,
-    MASS_PER_HAND,
-    SEAMEN,
     ShipsCompany,
     blended,
 )
@@ -40,7 +40,7 @@ from ..morale import (
     STRIKE_READING,
 )
 from ..motion import MotionLimits
-from ..oars import GIVE_WAY, OAR_PLANS, STRETCH_OUT, EASY_OARS, rowed_speed
+from ..oars import EASY_OARS, GIVE_WAY, OAR_PLANS, STRETCH_OUT, rowed_speed
 from ..position import WorldPosition
 from ..rooms import ShipRoom
 from ..typeclasses import Vessel

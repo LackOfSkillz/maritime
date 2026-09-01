@@ -13,6 +13,229 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **Dredged channels, dug by the engine rather than authored.** `dredging` lets a world say
+  the one thing it never could: that the sea here is *deeper* than the ground would suggest.
+  Everything else a world could declare - hazards, banks, rocks - makes the water shallower,
+  and a harbour is the opposite of all of them.
+
+  Nothing is written down. `Dredged` reads the quays out of the game, takes the deepest
+  berth each one advertises, sounds sixteen bearings out from it for the nearest sea that
+  *stays* deep, and cuts between the two at that depth plus two metres. Put down a room with
+  berths and the way in appears with it; deepen a berth later and its channel deepens too.
+  The alternative - a list of cuts kept beside the world - is a second description of the
+  same harbour, and the two part company the first time anybody moves a pier.
+
+  On the coast this was written for it is the difference between a working harbour and a
+  decorative one. Six metres of water was most of a kilometre out and the last of the run in
+  crossed two and three metres of sand, so every quay was correctly reported as having no
+  safe water into it. Long Pier now advertises 6.00 m against a channel carrying 7.38 m the
+  whole way, so a hull loaded to the marks the berth accepts can still get to it.
+- The cut runs out to water that *holds* its depth for five hundred metres, not to the first
+  deep spot. A channel ending in a hole with a bar beyond it grounds a ship on the way
+  **out** - which is the failure nobody tests for, because everyone arrives before they
+  leave.
+- The sides slope. A vertical wall would put a hull half a metre outside the cut in three
+  metres of water where one half a metre inside had eight, and a dredger's spoil will not
+  stand up vertically under water in any case.
+- **Clickable harbours, and one order that gets her there.** `make for <harbour>` lays the
+  course over the marked channels, hands the con to the sailing master, and gives him the
+  one standing order he takes: to warp her in when she arrives. `ports` lists what she can
+  be told to make for and *why not* for the rest. A harbour on the chart is a symbol you
+  click, which sends `make for <harbour>` as ordinary typed text - so nothing the browser
+  can do is unavailable to a telnet player.
+- Unreachable harbours are still drawn, hollow and dimmed, with the reason in the tooltip.
+  Hiding them would leave a captain wondering where the pond went; drawing them as reachable
+  would be a lie the command then refuses.
+- **Reachability is two questions.** A course over the marks somebody laid - which is what
+  keeps a clever search out of a pond by way of water that is technically continuous - and
+  water on the two legs no mark covers: the run in from the last mark to the quay, and the
+  run out from wherever she is floating to the first mark. Both were missing; the second was
+  found when a course the game planned itself put a ship on a spit two hundred metres away.
+- **`example/aetos_world/approaches`: a navigation network for the shipped coast.** A mark
+  walked seaward off every harbour until there is twelve metres under it and two hundred and
+  fifty metres of clearance beyond the foul ground, plus one authored fairway. The fairway
+  exists because the direct line from Careenage to Gannet Isle crosses two shoals of 2.7 and
+  3.4 metres; its position was found by sounding a grid, and `tests/test_approaches.py`
+  re-sounds every leg on every run - including the run in from each mark to each berth,
+  which is the leg a ship actually arrives on and the one nobody would have thought to
+  check.
+- **`kedge`**: run an anchor out astern on a hawser and walk the capstan round, which is the
+  thing that was actually done. Each heave hauls her part of the way to the nearest water
+  she would float in; a soft bottom lets her slide, rock holds her, and a hull that has been
+  opened cannot be kedged at all - she is not held by the ground, she is sitting on it
+  because the sea is inside her.
+- **The sailing master weighs for a passage and anchors when he cannot sail.** Ordering a
+  passage is one decision, so he brings the anchor home himself rather than sitting at
+  anchor waiting to be told twice. And when the water shuts in front of her and no heading
+  within sixty degrees is clear, he lets go rather than merely stopping - taking the way off
+  her and doing nothing else is a slower grounding, which a ship proved by coming to rest in
+  two fathoms and being set down onto the beach at eight tenths of a knot with the mate's
+  warning still the last thing anybody had heard.
+- The margin comes off on the final approach. A quay is in shallow water by definition, so
+  a mate carrying two metres of spare water everywhere would not take a ship to her own
+  berth - and did not, steering for the pier and refusing to give her way. The last leg has
+  already been checked against the berth's own advertised depth, which is somebody's
+  statement that she fits.
+- **Guardrails on grounding**, which was close to unsurvivable. The leadsman now casts
+  *ahead* of the ship rather than under her middle; the sailing master sounds ninety seconds
+  ahead and falls off up to sixty degrees rather than carrying her onto ground he can see,
+  and stops and says so if the water is foul all round; and `HOLING_SPEED` has gone from
+  1.5 m/s to 4.0 with a separate `TOUCHING_SPEED` of 2.0 beneath it. Under three knots
+  everything was a holing, so a hull that touched a rock while ghosting under a reefed
+  topsail was lost. Taking the ground gently, being hard on and waiting for the tide, and
+  being opened on a reef are three different afternoons.
+
+### Fix
+
+- **Her position on the chart shipped with the chart, so she never appeared to move.** A
+  sheet is drawn centred on her, and sheets are redrawn about once a minute - so the `own`
+  that arrived with one put her in the middle of it and nothing changed until the next.
+  Watching a passage was watching a still picture with the speed altering beside it. Her
+  offset now rides with her *readings*, every tick, measured against the middle of whatever
+  sheet that session is holding: the paper is fixed and the pencil moves, which is how a
+  chart has always worked. Remembered per session, because two captains at different scales
+  - or one who has dragged his chart - are holding sheets centred on different water.
+- **`ChartSheet.harbours` was declared, computed, documented, drawn by the client, and left
+  out of `as_message`.** The browser had a layer with nothing to draw and there was no error
+  anywhere to find. That list of fields is written by hand on purpose - a payload should say
+  exactly what it puts on the wire - and it is the one place the class can go quietly wrong.
+- **A status message was sent under the wrong name and printed into the player's window.**
+  `announce(session, payload, "status")` takes the *capability* as its third argument and
+  reads the name off the payload; a new caller passed `"status"` as the name. No client has a
+  listener for it, and an Evennia client prints an unknown message name as text - so every
+  tick dumped the whole status payload over the top of the game. Two arguments, one of them
+  nearly the other's value.
+- **`Dredged.rebuild` marked itself done before trying.** The survey ran while Django was
+  still starting, the quay table was not readable, and it cached zero channels for ever -
+  with the reason swallowed by the same `except` that was there to make startup survivable.
+  Every harbour in the game reported no way in, silently. It now retries until it works and
+  logs the failure instead of eating it.
+- **Sounding a leg cost sixty times what it should.** Checking whether a course had water on
+  it was changed from sampling the terrain to handing the whole leg to
+  `check_swept_grounding` - which was right about authored hazards and, with no hull length
+  to go on, stepped every two metres: two and a half thousand soundings on a five-kilometre
+  leg where forty-one had done, on a function called fourteen times for every chart drawn.
+  The suite went from twenty-eight minutes to over an hour. It now asks the two questions the
+  two right ways: authored hazards *exactly*, through `check_hazards`, and the ground
+  *sampled* at a bounded count.
+- **A grounded ship could never come off.** `refloats_on_tide` had existed since grounding
+  was written - exported, documented, covered by tests - and nothing in a running game had
+  ever called it. A vessel was found sitting in 19.86 m of water, drawing 2 m, reporting
+  herself hard on the ground, with a sailing master who had the con and could not move her.
+  Her record read `touched, sand, -14.0 m, 0.93 m/s`: the softest grounding the model has,
+  and it was permanent.
+- She floats off only when the *same* test that grounded her says she is clear. A bare
+  sounding under her middle instead made a hull on the edge of a rock float, ground, float
+  and ground for ever, announcing both - the seabed there is twenty metres down and the rock
+  is an authored hazard standing over it.
+- **`terrain_z_at` and the authored hazards are two different answers, and only one of them
+  is the one the game acts on.** Every "is there water here" question now asks the same
+  `check_swept_grounding` the tick asks. That one disagreement produced three bugs in an
+  afternoon: the oscillating refloat above, a navigation network whose marks were laid inside
+  the islands they served, and a sailing master who sounded ahead and saw nothing.
+- **`ChartSheet.harbours` was declared, computed, documented, drawn by the client - and left
+  out of `as_message`.** Fourteen harbours worked out on every chart tick and thrown away,
+  with no error anywhere to find. That dict is written by hand on purpose, and it is the one
+  place this class can go quietly wrong; `tests/test_client_state.py` now checks the
+  dataclass and the wire agree.
+- The harbour layer cost 656 ms a sheet, re-deriving which mark serves each quay forty
+  soundings at a time for all fourteen on every redraw. Which mark serves a quay depends on
+  the quay, the marks and her draught and on nothing about where she is floating, so it is
+  remembered; the departure mark is found once per sheet rather than fourteen times. Warm
+  cost is now 32 ms.
+- **The whole browser interface was dead, and had been for three commits.** Wiring the land
+  map in, a second handler was written into `Evennia.emitter.on`'s argument list as though it
+  were an object literal - `[LAND]: function (...)`. The browser said `SyntaxError: missing )
+  after argument list`, refused the entire file, and `MaritimeTransport` never existed, so
+  the panel never started at all in any mode.
+- And then the chart pane went blank, because `orderPassage` was pasted in front of "the
+  first `return {` in the file" and that `return {` belonged to `offsetOf`. The function was
+  scoped inside another one, every render threw a `ReferenceError` at the call site, and the
+  instrument strip kept working because it is a separate call. `node --check` passed both
+  times: a parser checks a file is *a* program, not that it is the one you meant.
+- `Vessel.maritime_position` now accepts None, for a hull that is not afloat. It always
+  *read* None - `scripts.py` has said since the beginning that a vessel without a position is
+  on the stocks - but there was no way to set it, because until now nothing ever took a ship
+  back off the water. Written straight through rather than deferred, because the getter falls
+  back to the saved value and a deferred None would read back as still lying where she was.
+- `make for` no longer sends her round a mark she is lying on. A ship moored to the very mark
+  her course started from was told to make for it, which sent her away and then back - a lap
+  of a buoy she was already at.
+- **The marks were drifting with the tide.** `offing_from` walks seaward until there is
+  twelve metres under it, and how deep the water is depends on the tide - so the network
+  rebuilt itself differently every few hours. Careenage Roads came out at two positions a
+  quarter of a kilometre apart within an hour. A buoy is moored; marks are now sited against
+  chart datum, which is what a real chart sounds against and for exactly this reason. A
+  course plotted at high water is otherwise a course to somewhere else at low.
+- **The sailing master sounded ahead at one state of tide and grounded at another.** He
+  looked ninety seconds ahead with one metre of margin against a range of two, and put her
+  on a bank in 3.78 m of water drawing 2.00, recorded clearance -0.15 m. He carries a
+  further two metres now: "could a ship get through here" and "would a prudent mate take her
+  through here" are different questions, and he is asked the second.
+- `tests/test_client_scripts.py` runs `node --check` over every client script when node
+  happens to be installed, which is not the same as requiring it: nothing fails without node,
+  and the skip says exactly what is going unchecked. A companion test feeds it the broken
+  file to prove the check can fail.
+
+
+- **The whole browser interface was dead, and had been for three commits.** Wiring the land
+  map in, a second handler was written into `Evennia.emitter.on`'s argument list as though
+  it were an object literal - `[LAND]: function (...)`. Brackets balanced, braces balanced,
+  every name was declared once, and every existing check on these files passed. The browser
+  said `SyntaxError: missing ) after argument list`, refused the entire file, and
+  `MaritimeTransport` never existed - so the panel did not lose the land map, it never
+  started at all, in any mode.
+- `tests/test_client_scripts.py` now runs `node --check` over every client script when node
+  happens to be installed, which is not the same as requiring it: nothing fails without
+  node, and the skip says exactly what is going unchecked. A companion test feeds it the
+  broken file to prove the check can fail. Reading a file as text cannot catch a grammar
+  error; only a parser can, and the position that this contrib needs no second toolchain is
+  kept by using one when it is there rather than depending on it.
+
+### Feat
+
+- **A shipyard: seven hulls, built at a quay.** `maritime build <rig> <name>` puts a yawl,
+  lugger, cutter, schooner, brig, barque or frigate alongside in a free berth with her
+  gangway down. Every figure is derived rather than chosen - tonnage by Builder's Old
+  Measurement, displacement by block coefficient, hold from the tonnage - and two are
+  checked against vessels that existed: the frigate within 1% of a *Leda* class fifth rate,
+  the brig 5% over a *Cruizer* class brig-sloop in the direction the rule is known to err.
+- Three polar curves rather than seven. A square rig cannot lie inside six points and is
+  best on the quarter, a fore-and-aft rig is the reverse, and a lug sits between and runs
+  better than either. Seven curves would have been seven sets of invented numbers dressed
+  as research.
+- **Ships can be laid up *in ordinary*, which is the harbour's housekeeping.**
+  `maritime lay up` and `maritime summon` take a ship off the water and bring her back at
+  any dock. She keeps her cargo, her crew, her damage and her compartments and gives up her
+  berth - so nothing ticks her, nothing raises her and nothing runs into her. Not a new
+  mode: a vessel with no position was never simulated, and this is that state named.
+- `ordinary.lay_up_fleet_of` for a game to call from its own `at_post_unpuppet`, because
+  Evennia fires no logout hook a contrib can see. Silent about the ships it could not lay
+  up - at sea, under orders, somebody still aboard - because the caller is a logout and
+  there is nobody to tell.
+- `Vessel.maritime_position` now takes None, for a hull that is not afloat. It always
+  *read* None - `scripts.py` has said since the beginning that a vessel without a position
+  is on the stocks - but there was no way to set it, because until now nothing ever took a
+  ship back off the water. Written straight through to the database rather than deferred,
+  because the getter falls back to the saved value and a deferred None would read back as
+  still lying where she was.
+- Ship names are unique, checked against every hull in the game whether laid up or not. Two
+  ships called *Swift* is a harbour where summoning one is a coin toss.
+- **Four runtime switches, so the interface can be changed without editing Python.**
+  `maritime ui on|off|hybrid` says when the maritime panel is shown, for the whole server
+  and not per player; `maritime uncharted on|off` draws the sea as it truly is for building
+  and testing; `maritime player gui on|off` decides whether accounts may choose for
+  themselves; `maritime gui` is that choice. All are locked to `perm(Admin)`, all
+  persist across a reload in `ServerConfig`, and all four take effect on every screen at
+  once rather than at the next tick.
+- `maritime gui` is *hidden* from players until a developer lends the choice out, rather
+  than visible and refused. A command a player can see in `help` and cannot use is a fair
+  question with no good answer.
+- **`uncharted` has one seam and no second code path.** Every way the sea is hidden runs
+  through the chart being read - off the paper is `covers` saying no, and wrong is the
+  survey error - so the switch replaces the paper with the ground and reveals everything
+  without drawing the sea any other way. A reveal that drew it by another route would stop
+  being a view of what players see.
 - **A whole coast ashore, as the worked example of putting 2D Evennia land in a maritime
   world.** `example/aetos_world` builds Careenage - 55 hand-authored rooms at the head of
   the harbour - and four rooms on each of the six islands, with piers, eighteen people
@@ -166,6 +389,25 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- **Four things ashore were written and never wired**, which is the same failure four times:
+  something defined, never called, passing every test about its definition while the world
+  behaved as though it did not exist.
+  - `browse` and `buy` were in no cmdset, so nothing could reach them and the hundred and
+    six goods were unbuyable.
+  - `refresh_ashore` was never called, so the land map would have drawn the first room a
+    player entered and gone on drawing it while they walked away - click-to-move moving
+    them correctly into a map of nowhere they were.
+  - `STARTING_ROOM` and `trade_at` were read by nothing but their own tests, so new players
+    started wherever the game happened to put them and every island's authored trade was
+    decoration.
+- All four are now connected, and the tests assert the *call sites* rather than the
+  definitions, because it was the call sites that were missing.
+- Land rooms carry their own cmdset, so shops work where there is something to buy and
+  nowhere else - a `buy` command on the character answers "there is nobody selling anything
+  here" in every forest on the map, which is worse than no command at all.
+- `sell <tons> <cargo>` lands cargo at an island that wants it and pays for it. It read the
+  discharge result as a list of parcels, which reported "nothing came off" for a discharge
+  that had worked - it is a `TransferResult` carrying the one parcel that crossed the rail.
 - **Dragging the chart was a lie.** A sheet was always drawn around the ship, so sliding it
   moved one fixed square about inside its window: the corner arrived in the middle and there
   was nothing behind it, because nothing outside that square had ever been drawn. Sliding a

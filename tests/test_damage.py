@@ -4,10 +4,10 @@ Tests for what is broken and what that stops her doing.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
+from ..crew import ABLE
 from ..damage import (
     DISABLED,
     DISARMED,
@@ -29,7 +29,6 @@ from ..damage import (
     share_of,
     structural,
 )
-from ..crew import ABLE
 from ..motion import MotionLimits
 from ..oars import OAR_PLANS
 from ..position import WorldPosition

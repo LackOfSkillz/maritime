@@ -5,7 +5,7 @@ Tests for the tiled seabed, and for the hazards that make it exact.
 
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
-from ..bathymetry import FlatSeaMapProvider, MaritimeMapProvider, ROCK, SAND
+from ..bathymetry import ROCK, SAND, FlatSeaMapProvider, MaritimeMapProvider
 from ..grounding import (
     HOLED,
     check_hazards,
@@ -21,8 +21,8 @@ from ..tiles import (
     DictTileSource,
     Hazard,
     Tile,
-    TileSource,
     TiledMapProvider,
+    TileSource,
 )
 
 SHELF = ("default", 0, 0)

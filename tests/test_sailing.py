@@ -4,15 +4,11 @@ Tests for the sailing model.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
-from .base import EmptySeaMixin
-
 from ..motion import HelmOrders, MotionLimits
 from ..position import EAST, NORTH, SOUTH, WEST, WorldPosition
-from ..typeclasses import Vessel
 from ..sailing import (
     FULL,
     FURLED,
@@ -30,6 +26,8 @@ from ..sailing import (
     sail_plan,
     steerage_floor,
 )
+from ..typeclasses import Vessel
+from .base import EmptySeaMixin
 
 HULL = MotionLimits(max_speed=10.0, acceleration=1.0, turn_rate=6.0)
 CURVE = PolarCurve()

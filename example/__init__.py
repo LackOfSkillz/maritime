@@ -22,6 +22,7 @@ game can read `world.py` as the shortest honest answer to "how do I build a ship
 
 """
 
+from .commands import CmdMaritimeExample, report
 from .craft import (
     CRAFT,
     CRUISING_SPEED,
@@ -46,7 +47,6 @@ from .geography import (
     nearest_island,
     river_set_at,
 )
-from .commands import CmdMaritimeExample, report
 from .world import FERRY_STEPS, MAINLAND, POND_LANDING, STONE_QUAY, build
 
 __all__ = (

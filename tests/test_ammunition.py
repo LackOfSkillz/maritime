@@ -19,10 +19,10 @@ from ..ammunition import (
     told_by,
 )
 from ..damage import HULL, RIGGING
-from ..tactical import STARBOARD_BROADSIDE
 from ..position import WorldPosition
-from ..weather import CALM
+from ..tactical import STARBOARD_BROADSIDE
 from ..weapons import SHOT_FALLS_SHORT, Mount, WeaponType, fire, serve
+from ..weather import CALM
 
 HERE = WorldPosition(0.0, 0.0)
 

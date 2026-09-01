@@ -147,6 +147,7 @@ class Status(Payload):
     propulsion: dict = field(default_factory=dict)
     condition: dict = field(default_factory=dict)
     units: dict = field(default_factory=dict)
+    own: list = field(default_factory=list)
 
     @property
     def kind(self):
@@ -165,6 +166,7 @@ class Status(Payload):
             "propulsion": dict(self.propulsion),
             "condition": dict(self.condition),
             "units": dict(self.units),
+            "own": list(self.own),
         }
 
 
@@ -223,6 +225,23 @@ class LandSheet(Payload):
     rooms: tuple = ()
     edges: tuple = ()
 
+    @property
+    def kind(self):
+        """
+        Returns:
+            name (str): The message name this goes out under.
+
+        Notes:
+            Every payload has to say this and this one did not, so `announce` raised
+            `NotImplementedError` the moment anything tried to send a land map. Nobody saw
+            it: the capability check in front of it was being asked the wrong question and
+            returned False first, so the exception was never reached. Three faults in one
+            function, each hiding the next, and the symptom for all three was a panel that
+            said "nowhere to map".
+
+        """
+        return LAND
+
     def as_message(self):
         """
         Returns:
@@ -230,6 +249,10 @@ class LandSheet(Payload):
 
         """
         return {
+            # The module says at the top that every message carries its protocol version,
+            # and this one did not. Nothing broke - the client only warns on a version it is
+            # too old for - which is exactly why it was worth fixing before something did.
+            "version": self.version,
             "title": self.title,
             "here": self.here,
             "rooms": [dict(one) for one in self.rooms],
@@ -267,6 +290,11 @@ class ChartSheet(Payload):
             from its middle. Zero unless the captain has dragged the chart away from her,
             which is the whole reason it is here: everything on a sheet is measured from the
             sheet, and she is a mark on it like any other.
+        harbours (list): The quays on this sheet, each `{"id", "name", "at", "reach",
+            "why"}` - where it lies as an offset, whether she could be told to make for
+            it, and the reason if she could not. Sent so the interface can offer the
+            passage rather than make somebody type a name they have to already know, and
+            so that a harbour drawn as unreachable says why rather than looking broken.
         route (list): The plotted course, as offsets in metres.
         coverage (dict): The edges of the sheet, so the interface can show where
             surveying stops.
@@ -279,6 +307,14 @@ class ChartSheet(Payload):
         being lost looks like and what the navigator has to work with. It also means
         a browser is never handed a survey of the world.
 
+        **Every field here has to appear in `as_message` as well as in the dataclass.**
+        That list is written out by hand rather than derived, which is deliberate - a
+        payload should say exactly what it puts on the wire - and it is also the one place
+        this class can go quietly wrong. `harbours` was declared, computed, documented and
+        drawn by the client, and left out of that dict: the browser had a layer with
+        nothing to draw and there was no error anywhere to find. If you add a field, add
+        it in both places, and `tests/test_client_state.py` now checks that they agree.
+
     """
 
     reach: float = 0.0
@@ -290,6 +326,7 @@ class ChartSheet(Payload):
     relief: str = ""
     own: list = field(default_factory=lambda: [0.0, 0.0])
     graticule: list = field(default_factory=list)
+    harbours: list = field(default_factory=list)
     route: list = field(default_factory=list)
     coverage: dict = field(default_factory=dict)
     revision: int = 0
@@ -310,6 +347,7 @@ class ChartSheet(Payload):
             "relief": self.relief,
             "own": list(self.own),
             "graticule": list(self.graticule),
+            "harbours": list(self.harbours),
             "route": list(self.route),
             "coverage": dict(self.coverage),
             "revision": self.revision,

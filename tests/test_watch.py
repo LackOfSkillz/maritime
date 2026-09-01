@@ -4,13 +4,12 @@ Tests for keeping a lookout: the register, the hull, and what gets called.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 
 from ..commands import CmdLookout
-from ..messaging import VesselNarrator
 from ..formatting import RAW, format_range
+from ..messaging import VesselNarrator
 from ..motion import HelmOrders, MotionLimits
 from ..observation import CLASSIFIED, CONTACT, IDENTIFIED, VESSEL, Sighting
 from ..position import EAST, METRES_PER_NAUTICAL_MILE, NORTH, WorldPosition

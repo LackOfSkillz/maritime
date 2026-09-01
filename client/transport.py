@@ -73,6 +73,35 @@ def announce(session, payload, capability=None):
     return True
 
 
+def _announce_message(session, kind, message, capability=None):
+    """
+    Send one already-built message to one session.
+
+    Args:
+        session (Session): Who to tell.
+        kind (str): The message name, as `Payload.kind` gives it.
+        message (dict): What to send.
+        capability (str, optional): What a client must have declared first.
+
+    Returns:
+        sent (bool): Whether anything was sent.
+
+    Notes:
+        The same rules as `announce`, for a caller that has had to add something to a
+        payload's message for one session in particular - her place on the sheet *that*
+        session is holding, which no shared payload can carry. Written as a second door
+        into the same wall rather than as a fatter `announce`, because every other caller
+        has a payload and should go on passing one.
+
+    """
+    if session is None or not understands(session):
+        return False
+    if capability is not None and capability not in (session.ndb.maritime_capabilities or ()):
+        return False
+    session.msg(**{kind: ((), message)})
+    return True
+
+
 def understands(session):
     """
     Args:
@@ -137,16 +166,42 @@ def refresh(session, force=False, room=None):
     if session is None or not understands(session):
         return False
 
+    from .context import ASHORE
+
     character = getattr(session, "puppet", None)
     if force:
         session.ndb.maritime_mode = mode_for(character, room)
-        return announce(session, sync_for(character, session.ndb.maritime_capabilities, room))
+        told = announce(session, sync_for(character, session.ndb.maritime_capabilities, room))
+        # A client that has just announced itself has nothing, which is the whole reason
+        # this branch is forced - and somebody who reloads a page while already ashore
+        # never crosses a waterline afterwards, so the transition below never fires for
+        # them. That is the commonest way anybody sees this panel: they were ashore, and
+        # they pressed refresh.
+        if session.ndb.maritime_mode.mode == ASHORE:
+            send_land(session)
+        return told
 
     now = mode_for(character, room)
     if now == session.ndb.maritime_mode:
         return False
     session.ndb.maritime_mode = now
-    return announce(session, now)
+    told = announce(session, now)
+
+    # **The map goes with the mode that asks for it.**
+    #
+    # Stepping off a gangway changes the mode to `ashore`, and the panel then keeps its
+    # space and draws the town instead of the sea - except that nothing sent it a town, so
+    # it drew "nowhere to map" and stayed that way. `refresh_ashore` existed to send one and
+    # had no callers at all; the only thing that ever did was a room type the example uses
+    # for its islands and not for its own quays, so walking down the pier at Careenage
+    # produced an empty panel and walking onto an island produced a map.
+    #
+    # It belongs here rather than in a room hook, because this is the one place that knows
+    # the mode has just become `ashore` - and a transition is exactly when a client has
+    # nothing and needs everything.
+    if now.mode == ASHORE:
+        send_land(session)
+    return told
 
 
 def refresh_for(character, room=None):
@@ -217,11 +272,23 @@ def broadcast_status(vessel):
         if status is None:
             continue
 
-        message = status.as_message()
+        # Her place on the sheet *this* session is holding, which is why it cannot be
+        # part of the shared board above: two captains looking at different scales, or one
+        # of them having dragged his chart, are holding sheets centred on different water.
+        from .state import own_on_sheet
+
+        message = dict(status.as_message())
+        message["own"] = own_on_sheet(vessel, session.ndb.maritime_sheet_middle)
         if message == session.ndb.maritime_status:
             continue
         session.ndb.maritime_status = message
-        if announce(session, status, "status"):
+        # The payload's own kind, and the capability it always had. Passing "status" as
+        # the *name* sent a message no client has a listener for, and an Evennia client
+        # prints an unknown message name straight into the player's window - so every tick
+        # dumped the whole status payload as text over the top of the game. The name is
+        # `maritime_status`; "status" is the capability. Two arguments, one of them nearly
+        # the other's value.
+        if _announce_message(session, status.kind, message, "status"):
             told += 1
 
     # What the lookout has, on the same step. Sent unconditionally rather than
@@ -259,7 +326,7 @@ def broadcast_status(vessel):
     # be paying for the saving with a worse interface. Asking which chart covers her
     # is a scan of the few aboard; drawing one is nine thousand soundings.
     from .. import config
-    from .state import chart_revision
+    from .state import chart_revision, sheet_middle
 
     revision = chart_revision(config.time_provider().now())
     here = getattr(vessel.chart_here(), "key", None)
@@ -277,6 +344,10 @@ def broadcast_status(vessel):
             drawn[(reach, centre)] = chart_for(vessel, reach, centre)
 
         session.ndb.maritime_chart_stamp = stamp
+        # Remembered so that every tick from now on can say where she is *on this sheet*.
+        # Without it her drawn position is whatever the sheet said when it arrived, which
+        # is the middle of it, for ever.
+        session.ndb.maritime_sheet_middle = sheet_middle(vessel, centre)
         announce(session, drawn[(reach, centre)], "chart")
     return told
 
@@ -301,7 +372,7 @@ def send_land(session):
     """
     from .context import ASHORE, resolve_maritime_ui_context
     from .landmap import sheet_for
-    from .payloads import LAND, LandSheet
+    from .payloads import LandSheet
 
     character = getattr(session, "puppet", None)
     if character is None:
@@ -318,7 +389,13 @@ def send_land(session):
             rooms=tuple(drawn["rooms"]),
             edges=tuple(drawn["edges"]),
         ),
-        LAND,
+        # The *capability*, which is "land". `LAND` is the message name - "maritime_land" -
+        # and passing it here meant `announce` asked whether the client had declared a
+        # capability called "maritime_land", which nothing ever will. So the land map was
+        # never sent to anybody, and the panel said "nowhere to map" for as long as it has
+        # existed. The status payload had the same confusion the other way round on the same
+        # afternoon: two arguments, one of them nearly the other's value.
+        "land",
     )
 
 

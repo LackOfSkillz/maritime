@@ -10,6 +10,7 @@ context too; they simply have nothing that draws it.
 
 """
 
+from .. import switches
 from ..ownership import may_command
 from ..vessel import vessel_in
 
@@ -65,6 +66,22 @@ CONTEXTS = (NONE, PASSENGER, COMMAND, WATER, ASHORE)
 #: category it lives under.
 ASHORE_TAG = "ashore"
 ASHORE_CATEGORY = "maritime"
+
+#: Re-exported so that everything asking "which interface" has one module to import from.
+#:
+#: The values and their persistence live in `switches`, because they are set by a command
+#: and read by half the contrib, and because `uncharted` and the per-account choice are set
+#: the same way and belong beside them. What lives *here* is what the modes mean for a
+#: person standing in a particular room, which is a different question and the only one this
+#: module has ever answered.
+UI_ON = switches.UI_ON
+UI_OFF = switches.UI_OFF
+UI_HYBRID = switches.UI_HYBRID
+UI_MODES = switches.UI_MODES
+
+ui_mode = switches.ui_mode
+set_ui_mode = switches.set_ui_mode
+ui_mode_for = switches.ui_mode_for
 
 #: Sentinel for "wherever they actually are", so that `None` can mean the void.
 _WHERE_THEY_ARE = object()
@@ -156,6 +173,13 @@ def resolve_maritime_ui_context(character, room=_WHERE_THEY_ARE):
     if character is None:
         return NONE
 
+    # Asked *for this person*, which is the server's mode unless the game has allowed
+    # people to choose and this one has. The permission is checked inside `ui_mode_for`
+    # rather than here, so there is exactly one place that decides whose answer wins.
+    wanted = switches.ui_mode_for(character)
+    if wanted == UI_OFF:
+        return NONE
+
     where = getattr(character, "location", None) if room is _WHERE_THEY_ARE else room
 
     vessel = vessel_in(where)
@@ -165,7 +189,32 @@ def resolve_maritime_ui_context(character, room=_WHERE_THEY_ARE):
     if bool(getattr(where, "is_open_water", False)):
         return WATER
 
-    if wants_ashore_panel() and is_ashore(where):
+    if wanted == UI_ON:
+        return ASHORE
+
+    if wanted == UI_HYBRID and wants_ashore_panel() and is_ashore(where):
         return ASHORE
 
     return NONE
+
+
+__all__ = (
+    "NONE",
+    "PASSENGER",
+    "COMMAND",
+    "WATER",
+    "ASHORE",
+    "CONTEXTS",
+    "ASHORE_TAG",
+    "ASHORE_CATEGORY",
+    "UI_ON",
+    "UI_OFF",
+    "UI_HYBRID",
+    "UI_MODES",
+    "ui_mode",
+    "set_ui_mode",
+    "ui_mode_for",
+    "wants_ashore_panel",
+    "is_ashore",
+    "resolve_maritime_ui_context",
+)

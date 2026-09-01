@@ -28,13 +28,15 @@ quietly becoming a second source of truth that the next transfer overwrites.
 
 """
 
+from dataclasses import dataclass, replace
+
 from .cargo import (
     DEFAULT_BROKEN_STOWAGE,
     DEPTH_TO_DRAFT,
     NEITHER,
+    TOLERANCE,
     VOLUME,
     Parcel,
-    TOLERANCE,
     Stowage,
     binding_limit,
     combine,
@@ -54,8 +56,6 @@ from .cargo import (
 )
 from .results import Result
 from .vessel import VesselCapacity
-
-from dataclasses import dataclass, replace
 
 # Why a transfer did not happen, or did not happen in full.
 NO_HOLD = "no_hold"

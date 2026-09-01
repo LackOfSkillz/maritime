@@ -39,8 +39,14 @@ REACH = 14
 #: three-second pause and an unreadable one.
 MOST_ROOMS = 120
 
-#: Compass directions, and what they do to a position on the map. Two units across for one
-#: down, so a row of rooms reads as a row rather than as a diagonal smear.
+#: Compass directions, and what they do to a position on the map.
+#:
+#: **Up and down are not in here, and used to be.** They were `(0, 1)` and `(0, -1)` - the
+#: same as north and south - so on a waterfront with thirteen ups and twelve downs in it,
+#: a quarter of the map was drawn as though every ladder were a street running north. Rooms
+#: landed on top of each other, the collision search flung them across the sheet to find
+#: space, and the result was a cat's cradle of long diagonal lines over a town that is
+#: actually a grid.
 STEPS = {
     "north": (0, 1),
     "south": (0, -1),
@@ -58,9 +64,47 @@ STEPS = {
     "s": (0, -1),
     "e": (1, 0),
     "w": (-1, 0),
-    "up": (0, 1),
-    "down": (0, -1),
 }
+
+#: Exit names that go up or down rather than across.
+#:
+#: **Followed, but not stepped along.** They were `(0, 1)` and `(0, -1)` - the same as north
+#: and south - so a waterfront with thirteen ladders in it drew a quarter of its exits as
+#: streets running north, piled rooms on top of each other, and sent the collision search
+#: across the sheet looking for space.
+#:
+#: Not followed at all was the next attempt, and it was worse: a town behind a beach is
+#: reached *up* the shore, so refusing to follow them cut Careenage off from its own quay
+#: and left a map of twenty-five rooms in a strip. A map cannot tell a hill from a ladder,
+#: and guessing wrong in that direction loses the town.
+#:
+#: So the room beyond is drawn beside its parent, as a door is, and the edge is marked so
+#: the drawing can say what it is. That is honest about both cases: neither a ladder nor a
+#: slope moves you along the street plan, and both of them get you somewhere real.
+VERTICAL = ("up", "down", "u", "d")
+
+#: Where a door goes when it is not a direction, in the order they are tried.
+#:
+#: `bar`, `chandlery`, `out` - twenty of them on one waterfront, and every one used to go
+#: east, because that was the single fallback. Forty doors stacked into one column of cells
+#: is most of what the collision search was working around, and it is why a ship reached by
+#: a `gangway` sat to starboard of the pier no matter which way the sea was.
+#:
+#: A door does not move you across a town, it moves you inside something, so it goes in the
+#: first free cell beside its parent. Which one hardly matters; that it is *beside* is the
+#: whole point.
+BESIDE = ((1, 0), (0, -1), (-1, 0), (0, 1), (1, -1), (-1, -1), (1, 1), (-1, 1))
+
+#: How many cells a street runs before the next street cell.
+#:
+#: Two, so that every room on a street has a free ring around it for its doors. At one, a
+#: shop and the street outside it competed for the same square: the first door placed took
+#: the cell the next street cell wanted, and half a waterfront could not be drawn at all.
+#:
+#: It is also the truth about the place. A row of buildings stands *between* two streets,
+#: which is exactly the gap this opens up, and putting the chandlery in it rather than on
+#: the road is a better picture as well as a possible one.
+STREET = 2
 
 #: What a room is for, in the order it is asked. First match wins, so the more specific
 #: markers are listed first.
@@ -83,7 +127,9 @@ def sheet_for(character, reach=REACH):
         reach (int, optional): How many rooms to walk before stopping.
 
     Returns:
-        sheet (dict): `rooms`, `edges`, `here` and `title`, ready to send.
+        sheet (dict): `rooms`, `edges`, `here` and `title`, ready to send. A room also says
+            whether it has `stairs` - a way off this level, drawn as a mark rather than
+            followed.
 
     Notes:
         Empty for somebody standing nowhere, which is the honest answer and keeps this
@@ -94,7 +140,7 @@ def sheet_for(character, reach=REACH):
     if here is None:
         return {"rooms": [], "edges": [], "here": None, "title": ""}
 
-    placed, edges = _walk(here, reach)
+    placed, edges, stairs = _walk(here, reach)
     return {
         "title": str(getattr(here, "key", "")),
         "here": here.id,
@@ -105,10 +151,11 @@ def sheet_for(character, reach=REACH):
                 "x": x,
                 "y": y,
                 "marker": _marker_for(room, here, placed),
+                "stairs": room in stairs,
             }
             for room, (x, y) in placed.items()
         ],
-        "edges": edges,
+        "edges": [edge for edge in edges if edge["from"] in {room.id for room in placed}],
     }
 
 
@@ -144,6 +191,7 @@ def _walk(start, reach):
     taken = {(0, 0)}
     edges = []
     seen_exits = set()
+    stairs = set()
     queue = [(start, 0)]
 
     while queue and len(placed) < MOST_ROOMS:
@@ -154,59 +202,143 @@ def _walk(start, reach):
                 continue
             name = str(getattr(way, "key", "")).lower()
 
+            climbs = name in VERTICAL
+            if climbs:
+                stairs.add(here)
+
             # The edge is recorded even when the room beyond it is too far to draw, so a
             # room at the rim can still tell that a way leads off the map.
             pair = (here.id, target.id, name)
             if pair not in seen_exits:
                 seen_exits.add(pair)
-                edges.append({"from": here.id, "to": target.id, "dir": name})
+                edges.append({"from": here.id, "to": target.id, "dir": name, "climbs": climbs})
 
             if target in placed or len(placed) >= MOST_ROOMS:
                 continue
             if steps + 1 > reach:
                 continue
 
-            spot = _spot_for(placed[here], name, taken)
+            spot = _spot_for(placed[here], name, taken, here, target)
+            if spot is None:
+                # Nowhere beside its parent, so it is not drawn. A room placed six cells
+                # away to find space is a room joined to the map by a line across half the
+                # town, which is worse than a room that is simply not on it.
+                continue
             placed[target] = spot
             taken.add(spot)
             queue.append((target, steps + 1))
 
-    return placed, edges
+    return placed, edges, stairs
 
 
-def _spot_for(origin, direction, taken):
+def _spot_for(origin, direction, taken, here=None, target=None):
     """
     Args:
         origin (tuple): Where the room we came from sits.
         direction (str): What the exit was called.
         taken (set): Squares already used.
+        here (Object, optional): The room we came from, for its position if it has one.
+        target (Object, optional): The room being placed, likewise.
 
     Returns:
-        spot (tuple): Where to put the new room.
+        spot (tuple or None): Where to put the new room, or None if there is nowhere
+            beside its parent.
 
     Notes:
-        An exit whose name is not a direction - `bar`, `chandlery`, `out` - puts its room
-        beside its parent rather than nowhere. That is what a door does: it does not move
-        you across the town, it moves you inside something, and drawing it adjacent says so
-        without needing a second kind of map.
+        **A door goes beside its parent, not east of it.** An exit whose name is not a
+        direction - `bar`, `chandlery`, `out`, `gangway` - used to be given `(1, 0)`, so
+        every door in a town went into the same column and the collision search spent the
+        rest of the map working around them. It also meant a vessel reached by a gangway
+        was drawn to the east of her berth whatever the coast was doing, which is how a
+        harbour ended up with its sea on the wrong side.
+
+        **Anything that knows where it really is, is placed where it really is.** A quay
+        and a ship both carry a world position, so the bearing between them is a fact
+        rather than a guess, and using it puts the ship seaward of the pier because that is
+        where she is. Streets have no positions and never will; they fall back to the exit
+        name, which is the only thing anybody knows about them.
+
+        **Never more than one cell from its parent.** Searching outward until something was
+        free is what drew the long diagonals: a room five cells adrift is joined to the map
+        by a line across half the town, and a line that long stops meaning "you can walk
+        this way" and starts meaning nothing at all. If there is no room beside it, it does
+        not go on the sheet.
 
     """
-    step = STEPS.get(direction)
+    step = _bearing_step(here, target)
     if step is None:
-        step = (1, 0)
-    spot = (origin[0] + step[0], origin[1] + step[1])
-    if spot not in taken:
-        return spot
+        step = STEPS.get(direction)
 
-    # Nudged outward in a ring until something is free. Rare, and better than two rooms
-    # drawn on the same square.
-    for ring in range(1, 6):
-        for dx in range(-ring, ring + 1):
-            for dy in range(-ring, ring + 1):
-                candidate = (spot[0] + dx, spot[1] + dy)
-                if candidate not in taken:
-                    return candidate
-    return spot
+    if direction in VERTICAL:
+        # Up and down go nowhere on a street plan. Beside its parent, like a door.
+        step = None
+
+    # **A street stays on the street lattice, or it does not go on the map.**
+    #
+    # Falling back to a cell beside the parent was what left a knot of long parallel
+    # diagonals across the middle of a waterfront: one street cell placed half a stride out
+    # puts every cell beyond it out of phase with the grid, and every exit that later joins
+    # the two halves is drawn as a line across the town. Staying in line and looking further
+    # along the same street is what a street does.
+    if step is not None and direction in STEPS:
+        for out in range(1, 4):
+            spot = (origin[0] + step[0] * STREET * out, origin[1] + step[1] * STREET * out)
+            if spot not in taken:
+                return spot
+        return None
+
+    if step is not None:
+        spot = (origin[0] + step[0], origin[1] + step[1])
+        if spot not in taken:
+            return spot
+
+    # A door, which opens into the gap the lattice leaves between two streets.
+    for beside in BESIDE:
+        spot = (origin[0] + beside[0], origin[1] + beside[1])
+        if spot not in taken:
+            return spot
+    return None
+
+
+def _bearing_step(here, target):
+    """
+    Args:
+        here (Object or None): The room we came from.
+        target (Object or None): The room being placed.
+
+    Returns:
+        step (tuple or None): The compass step the true bearing between them falls in, or
+            None if either of them is not on the water.
+
+    Notes:
+        Only for rooms that hold a `WorldPosition` - which on land means quays, and afloat
+        means ships. Two rooms that both know where they are can be drawn in their true
+        relation to each other, and a map that draws a pier and the vessel lying at it in
+        the wrong relative direction is worse than one that admits it is a diagram.
+
+        Rounded to the eight points, because the map has eight neighbours. A bearing is
+        only being used to pick a cell.
+
+    """
+    if here is None or target is None:
+        return None
+    first = getattr(here, "maritime_position", None)
+    second = getattr(target, "maritime_position", None)
+    if first is None or second is None:
+        return None
+    if getattr(first, "region", None) != getattr(second, "region", None):
+        return None
+
+    east = second.x - first.x
+    north = second.y - first.y
+    if not east and not north:
+        return None
+
+    import math
+
+    bearing = (math.degrees(math.atan2(east, north)) + 360.0) % 360.0
+    point = int((bearing + 22.5) // 45) % 8
+    return ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))[point]
 
 
 def _exits_of(room):
@@ -334,6 +466,9 @@ def _leaves_the_map(room, placed):
 
 __all__ = (
     "REACH",
+    "VERTICAL",
+    "BESIDE",
+    "STREET",
     "MOST_ROOMS",
     "MARKERS",
     "HERE",

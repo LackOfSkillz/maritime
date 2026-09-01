@@ -3,14 +3,12 @@ Tests for what a ship's company is told while she is under way.
 
 """
 
+from django.test import override_settings
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 
-from .base import EmptySeaMixin
-
-from django.test import override_settings
-
-from ..commands import CmdAllStop, CmdHelm
+from ..commands import CmdAllStop, CmdHelm, CmdPlot
+from ..formatting import format_range
 from ..messaging import (
     COMING_ROUND,
     HELM_ORDER,
@@ -19,14 +17,13 @@ from ..messaging import (
     compass_point,
     spell_bearing,
 )
-from ..formatting import format_range
 from ..motion import HelmOrders, MotionLimits
-from ..commands import CmdPlot
 from ..observation import IDENTIFIED, Sighting
-from ..routes import Route, Waypoint
 from ..position import WorldPosition
+from ..routes import Route, Waypoint
 from ..typeclasses import ShipRoom, Vessel
 from ..vessel import BELOW_WATERLINE, OPEN
+from .base import EmptySeaMixin
 
 
 class TestSpellBearing(EmptySeaMixin, BaseEvenniaTest):

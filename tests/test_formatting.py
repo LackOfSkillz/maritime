@@ -4,7 +4,6 @@ Tests for rendering positions the way a navigator would write them.
 """
 
 from django.test import override_settings
-
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from ..formatting import (
@@ -14,9 +13,9 @@ from ..formatting import (
     RAW,
     format_position,
     format_range,
-    pick_scale,
     latitude_of,
     longitude_of,
+    pick_scale,
 )
 from ..position import WorldPosition
 from ..resolver import NoWorldPosition

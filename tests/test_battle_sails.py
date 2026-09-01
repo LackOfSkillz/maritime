@@ -8,7 +8,6 @@ captain has to judge whether he still needs the speed.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
@@ -26,13 +25,13 @@ from ..sailing import (
     SAIL_PLANS,
     WEATHER_PLANS,
     WORKING,
+    WindVector,
     hands_aloft,
     rigging_exposed,
 )
-from ..voyage import sail_for_wind
-from ..sailing import WindVector
 from ..typeclasses import Vessel
 from ..vessel import OPEN
+from ..voyage import sail_for_wind
 from .base import EmptySeaMixin
 
 BREEZE = {"MARITIME_WIND_BEARING": 180.0, "MARITIME_WIND_SPEED": 8.0}

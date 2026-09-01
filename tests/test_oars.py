@@ -4,7 +4,6 @@ Tests for human propulsion: oars, paddles, and the arms behind them.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import (
     BaseEvenniaCommandTest,

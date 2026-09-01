@@ -8,7 +8,6 @@ whatever crosses it. Most of what follows is about keeping that difference sharp
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 

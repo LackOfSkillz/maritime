@@ -3,12 +3,12 @@ What she carries aloft.
 
 """
 
+from ..config import time_provider
 from ..messaging import (
     SAIL_CARRIED_HARD,
     SAIL_ORDER,
     spell_bearing,
 )
-from ..config import time_provider
 from ..sailing import SAIL_PLANS, relative_wind_angle, sail_plan
 from .base import MaritimeCommand, ms_to_knots
 

@@ -89,6 +89,29 @@ class Route:
             for first, second in zip(self.waypoints, self.waypoints[1:])
         )
 
+    def extended(self, waypoint):
+        """
+        The same route with one more mark on the end of it.
+
+        Args:
+            waypoint (Waypoint): Where to finish.
+
+        Returns:
+            route (Route): A new route. This one is unchanged.
+
+        Notes:
+            A new object, because a `Route` is frozen and because a course that mutated
+            under whoever was already sailing it would be a course nobody could reason
+            about. Cheap: a route is a handful of marks.
+
+            The last leg of a passage is often somewhere no mark stands - a berth at the
+            head of a pier, an anchorage, a rendezvous. Building that leg by hand out of
+            the waypoint tuple is the kind of thing three callers would each do slightly
+            differently.
+
+        """
+        return Route(tuple(self.waypoints) + (waypoint,))
+
     def mark(self, index):
         """
         The mark at a given point in the route.

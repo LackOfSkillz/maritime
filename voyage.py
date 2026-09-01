@@ -23,9 +23,9 @@ so rather than cheating.
 
 """
 
+from .buoyage import Clearance, keep_clear
 from .config import time_provider
 from .currents import course_to_steer
-from .buoyage import Clearance, keep_clear
 from .motion import HelmOrders
 from .sailing import FURLED, WEATHER_PLANS
 
@@ -102,6 +102,44 @@ def sail_for_wind(wind, plans=WEATHER_PLANS):
     if not carriable:
         return FURLED
     return max(carriable, key=lambda plan: plan.area)
+
+
+#: How far ahead the sailing master sounds, in seconds of running.
+#:
+#: A minute and a half. Long enough that a ship doing six metres a second has five hundred
+#: metres and most of two minutes to take the way off her, which is comfortable for a hull
+#: whose deceleration is measured in tenths of a metre per second squared. Short enough that
+#: he is reading the water he is about to cross rather than navigating - the difference
+#: between a leadsman and a chart table.
+LOOKAHEAD_SECONDS = 90.0
+
+#: How much water the sailing master wants beyond what she draws, in metres.
+#:
+#: Two metres, on top of the metre `passage.UNDER_KEEL` already asks for. That is not
+#: timidity: he is sounding water she will not reach for a minute and a half, and the tide
+#: moves about two metres here in that direction over an afternoon. He looked at one state
+#: of tide and grounded at another, in three point seven eight metres of water drawing two,
+#: with a recorded clearance of minus fifteen centimetres.
+#:
+#: Deliberately more than the bare passability check. "Could a ship get through here" and
+#: "would a prudent mate take her through here" are different questions, and he is asked
+#: the second one. A captain who wants the first can take the con.
+MASTER_MARGIN = 2.0
+
+#: How far he will come off his course to find water, in degrees, and in what steps.
+#:
+#: Sixty degrees, five at a time. Beyond about that he is not avoiding an obstacle any
+#: more - a ship steered ninety degrees off her course is going somewhere else - and the
+#: honest thing at that point is to stop and say so rather than to wander.
+FALL_OFF_LIMIT = 60.0
+FALL_OFF_STEP = 5.0
+
+#: And the least he looks, in metres, however slowly she is going.
+#:
+#: Two hundred. A ship stopped in the water is still being set by the stream and blown by
+#: the wind, and a look-ahead that shrank to nothing as she slowed would go blind exactly
+#: when she was least able to do anything about what it found.
+LOOKAHEAD_METRES = 200.0
 
 
 def approach_speed(distance, cruising, final=False):
@@ -184,6 +222,13 @@ class Conned:
         if not self.under_con:
             return False
 
+        # He has no private channel to the hull. Made fast, anchored or aground, he is as
+        # stuck as anybody - and this has to be asked here as well as in the tick, because
+        # he now brings her up himself when the water shuts in front of her. Without it he
+        # would let go the anchor and then go on giving helm orders to a ship riding to it.
+        if self.held_by():
+            return False
+
         mark = self.next_mark()
         if mark is None:
             # Furl before handing back the con. Ordering no speed stops a boat
@@ -196,7 +241,19 @@ class Conned:
                 self.sail_plan = FURLED
             self.orders = HelmOrders(heading=self.heading, speed=0.0)
             self.under_con = False
+
+            # The one standing order he takes. Everything else he does is steering,
+            # carrying sail and taking the way off her; going alongside is a decision, and
+            # he makes it only because somebody told him to before the passage began - see
+            # `passage.make_for`. Carried out *after* the con is given back, so that a
+            # berth he cannot take leaves her lying off under the captain's hand rather
+            # than under a mate who has already reported the passage made.
+            from .passage import take_her_alongside
+
+            berth = take_her_alongside(self)
             self.narrator.passage_made()
+            if berth is not None:
+                self.narrator.gone_alongside(berth)
             return False
 
         wind = self.wind_here()
@@ -232,8 +289,180 @@ class Conned:
         # it once rather than every two seconds.
         self.narrator.giving_a_berth(clearance.watching, clearance.altered)
 
+        # **He does not sail her onto ground he can see.**
+        #
+        # Everything above is about where she is going; this is the one thing that
+        # overrides it. A master who runs the ship on because the course said so is not a
+        # master, and a game that puts a player aground on a passage it planned itself has
+        # no defence at all - which is exactly what happened, at six metres a second, two
+        # hundred metres from a spit that was on no chart because nobody had surveyed it.
+        # No margin on the last leg: see `water_ahead`. A berth is shallow on purpose.
+        spare = 0.0 if final else None
+        if not self.water_ahead(heading, wanted, margin=spare):
+            # He falls off, which is not pilotage. Working a way through a bank to a place
+            # on the far side of it is a judgement he is explicitly not given; declining to
+            # steer at ground and taking the nearest heading that is clear is what any
+            # helmsman does without being told, and stopping dead instead leaves a ship
+            # holding station off a rock for ever - which was the first version, and is a
+            # different way of being stuck.
+            fallen = self.fall_off(heading, wanted, margin=spare)
+            if fallen is None:
+                # **He lets go, rather than merely stopping.**
+                #
+                # Taking the way off her and doing nothing else was the first version, and
+                # it is not seamanship - it is a slower grounding. A ship stopped in a
+                # tideway off a lee shore is still going somewhere, and this one did: she
+                # came to rest in two fathoms, the stream set her down at eight tenths of a
+                # knot, and twenty minutes later she was on the beach with the mate's
+                # warning still the last thing anybody had been told.
+                #
+                # An anchor is what holds a ship that cannot sail. He brings her up where
+                # the water is, and there she stays until the captain has a better idea.
+                self.narrator.shoal_ahead()
+                self.orders = HelmOrders(heading=self.heading, speed=0.0)
+                self.bring_up_short()
+                return True
+            self.narrator.falling_off(heading, fallen)
+            heading = fallen
+
+        # Told every tick, including the ticks with nothing to report, so the warning is
+        # forgotten the moment the water opens and the next bank is announced properly.
+        self.narrator.shoal_ahead(clear=True)
+
         self.orders = HelmOrders(heading=heading, speed=wanted)
         return True
+
+    def bring_up_short(self):
+        """
+        Let go the anchor because there is nowhere to sail to.
+
+        Returns:
+            brought_up (bool): Whether she was anchored by this.
+
+        Notes:
+            Only once she has lost her way. Letting go with speed on her is how cables part
+            and anchors are left on the bottom, which the `anchor` command already refuses
+            for the same reason - so he waits, exactly as a captain would, and the tick
+            after next brings her up.
+
+            He keeps the con. The passage is not abandoned: the water may serve on the next
+            tide, and a mate who threw the order away because he had to anchor once would
+            have to be given it again every time. `belay` is how a captain takes it back.
+
+        """
+        from .commands.base import MAX_ANCHORING_SPEED
+
+        if self.anchored or abs(self.speed) > MAX_ANCHORING_SPEED:
+            return False
+        self.anchored = True
+        self.narrator.brought_up_short()
+        return True
+
+    def weigh_for_passage(self):
+        """
+        Bring the anchor home, because a passage was ordered.
+
+        Returns:
+            weighed (bool): Whether she was got under way.
+
+        Notes:
+            Through the ship's own property rather than through the command, so the capstan
+            turns for exactly the same reason and with exactly the same effect as when a
+            captain calls for it. A mate with a private way of weighing anchor is a mate who
+            can weigh one that is fouled.
+
+            Announced, and it has to be. Somebody who clicked a harbour on a chart and found
+            his ship under way with no word said would reasonably wonder what else had been
+            decided for him.
+
+        """
+        if not self.anchored:
+            return False
+        self.anchored = False
+        self.narrator.weighed_for_passage()
+        return True
+
+    def water_ahead(self, heading, speed, seconds=None, margin=None):
+        """
+        Whether there is water on the course she is about to be given.
+
+        Args:
+            heading (float): The course, in degrees.
+            speed (float): What she is about to be asked for, in metres per second.
+            seconds (float, optional): How far ahead to look, in seconds of running.
+            margin (float, optional): How much water he wants beyond her draught. Defaults
+                to `MASTER_MARGIN`; zero on the last leg, where the berth is a place
+                somebody has already said she fits.
+
+        Returns:
+            clear (bool): True if she can hold this course for the look-ahead.
+
+        Notes:
+            **A lead, not a chart.** He sounds the water he is about to sail over and no
+            further, which is what the man in the chains can actually tell him. The
+            distance is how far she runs in `LOOKAHEAD_SECONDS` at the speed she is being
+            given, with a floor under it so that a ship barely moving still looks far
+            enough ahead to stop.
+
+            **The margin comes off on the final approach.** A quay is in shallow water by
+            definition - that is what a quay is - so a mate carrying two metres of spare
+            water everywhere will not take a ship to her own berth, which is what happened:
+            he steered for the pier and refused to give her way, for ever. The last leg has
+            already been checked by `passage.can_reach` against the berth's own advertised
+            depth, which is somebody's statement that she fits. Beyond that it is his job to
+            go in slowly, and `approach_speed` is where he does.
+
+            True when there is no world to sound. A game with no ground has no banks, and
+            refusing to sail because nothing could be measured would be the wrong failure.
+
+        """
+        world = self.map_here()
+        here = self.maritime_position
+        if world is None or here is None:
+            return True
+
+        from .passage import water_along
+
+        look = max(
+            LOOKAHEAD_METRES,
+            abs(float(speed)) * (LOOKAHEAD_SECONDS if seconds is None else seconds),
+        )
+        wanted = MASTER_MARGIN if margin is None else float(margin)
+        return water_along(here, here.moved(heading, look), self.draft + wanted, world)
+
+    def fall_off(self, heading, speed, margin=None):
+        """
+        The nearest heading either side of this one with water on it.
+
+        Args:
+            heading (float): The course he would have steered.
+            speed (float): What she is being asked for, in metres per second.
+            margin (float, optional): How much water he wants beyond her draught.
+
+        Returns:
+            course (float or None): A clear heading, or None if the water is foul all
+                round the arc he is allowed to look through.
+
+        Notes:
+            Tried in pairs, nearest first, so the answer is the smallest alteration that
+            works and she does not swing forty degrees to avoid something ten would have
+            cleared. Both sides at each step, because which way is better depends on where
+            the deep water is and he has no way of knowing without looking.
+
+            Bounded to `FALL_OFF_LIMIT`. A mate who would put the ship on any heading at
+            all to keep moving is a mate who will sail her away from where she is going,
+            and past a right angle he is no longer avoiding an obstacle - he is choosing a
+            different voyage.
+
+        """
+        step = FALL_OFF_STEP
+        while step <= FALL_OFF_LIMIT:
+            for side in (1.0, -1.0):
+                tried = (heading + side * step) % 360.0
+                if self.water_ahead(tried, speed, margin=margin):
+                    return tried
+            step += FALL_OFF_STEP
+        return None
 
     def clear_of_marks(self, heading, berth=None):
         """

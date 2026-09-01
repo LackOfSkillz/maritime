@@ -34,18 +34,17 @@ Those are Gary's, and a scenario that pretended to exercise them would be worse 
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
-from ..bathymetry import MaritimeMapProvider, ROCK, SAND
+from ..bathymetry import ROCK, SAND, MaritimeMapProvider
 from ..motion import MotionLimits
 from ..position import WorldPosition
 from ..rooms import ShipRoom
 from ..sailing import FURLED, PolarCurve
+from ..traffic import traffic
 from ..typeclasses import Vessel
 from ..vessel import OPEN, VesselCapacity
-from ..traffic import traffic
 from .base import EmptySeaMixin
 
 #: A steady working breeze from the south, so an easterly course is a beam reach.

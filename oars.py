@@ -418,8 +418,8 @@ class Oared:
             test could tell from its absence.
 
         """
-        from .floating import drift
         from .currents import CurrentVector
+        from .floating import drift
 
         return drift(position, CurrentVector(), self.wind_here(), self.windage, elapsed)
 

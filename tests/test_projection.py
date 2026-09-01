@@ -6,7 +6,6 @@ These touch the database, so they use the object-creating test base.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 

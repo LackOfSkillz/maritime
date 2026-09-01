@@ -30,8 +30,8 @@ from dataclasses import dataclass, replace
 
 from .ammunition import DEFAULT_SHOT, in_range, told_by
 from .damage import guns_serviceable
-from .results import Result
 from .observation import IDENTIFIED
+from .results import Result
 from .tactical import aspect, bears, raking, raking_weight
 from .weather import SEA_STATES
 

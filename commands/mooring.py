@@ -13,6 +13,7 @@ from ..messaging import (
     SINGLE_UP,
     WEIGH_ORDER,
 )
+from ..motion import HelmOrders
 from ..ports import (
     BADLY_ALIGNED,
     OCCUPIED,
@@ -24,7 +25,6 @@ from ..ports import (
     can_dock,
 )
 from ..rooms import berths_near, rig_gangway
-from ..motion import HelmOrders
 from ..vessel import WEATHER_DECKS
 from .base import MAX_ANCHORING_SPEED, MaritimeCommand, ms_to_knots
 
@@ -138,6 +138,47 @@ class CmdDock(MaritimeCommand):
         if not decks:
             return None
         return min(decks, key=lambda room: room.height_of_eye)
+
+
+class CmdKedge(MaritimeCommand):
+    """
+    Run an anchor out astern and haul her off the ground.
+
+    Usage:
+      kedge
+
+    A boat carries an anchor out into the water she came from, drops it, and the hands walk
+    the capstan round until she is dragged off her own keel by her own cable. It is the
+    thing that was actually done, and it is work: one heave brings her part of the way, and
+    a ship driven well up a bank will not come off today whatever anybody does.
+
+    A soft bottom lets her slide; rock holds her, and the same labour moves her half as far.
+    A hull that has been opened cannot be kedged at all - she is not held by the ground, she
+    is sitting on it because the sea is inside her.
+
+    """
+
+    key = "kedge"
+    aliases = ("warp off", "heave off")
+
+    def at_helm(self, vessel):
+        """
+        Args:
+            vessel (Vessel): The hull the caller is aboard.
+
+        """
+        from ..kedging import CAME_OFF, MOVED, heave
+
+        result = heave(vessel)
+        self.caller.msg(result.said)
+
+        if result.outcome in (CAME_OFF, MOVED):
+            # Said to the whole ship, because everybody aboard feels it. The messages that
+            # report a refusal are the captain's business and go to him alone; a hull
+            # grinding astern is not news anybody has to be told twice.
+            self.aboard(vessel, result.said)
+        if result:
+            self.aboard(vessel, "The mate reports her afloat and answering.")
 
 
 class CmdCastOff(MaritimeCommand):

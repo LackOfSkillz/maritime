@@ -1,10 +1,10 @@
 """
 Tests that read the browser scripts as text, because nothing else here can.
 
-The client is five JavaScript files and this repository has no JavaScript test runner. That
-is a deliberate position - a Python contrib that needs node installed to go green is a
+The client is six JavaScript files and this repository has no JavaScript test runner. That
+is a deliberate position - a Python contrib that *needs* node installed to go green is a
 contrib with a second toolchain, and Evennia would be right to object - but it leaves the
-interface untested, and one bug has already used the gap.
+interface untested, and two bugs have now used the gap.
 
 **Two functions in one file were both called `has`.** Both took a state and a string, both
 were declared at module scope in the same closure, and the later declaration silently
@@ -20,9 +20,30 @@ this codebase, whatever it happens to be called.
 
 Every function declaration in every client script sits at exactly four spaces - one file,
 one closure, one scope - so the check is unambiguous rather than a guess at nesting.
+
+**And one of them would not parse at all.** Wiring a new handler in, a second argument to
+`Evennia.emitter.on` was written as though the argument list were an object literal:
+
+    Evennia.emitter.on(CHART, function (args, kwargs) {
+        MaritimeState.applyChart(kwargs);
+    },
+    [LAND]: function (args, kwargs) {        // <- a key, in a call
+
+Brackets balance, braces balance, every name is declared once, and every check in this file
+passed. The browser said `SyntaxError: missing ) after argument list`, refused the whole
+file, and `MaritimeTransport` never existed - so the interface did not merely lose the land
+map, it never started at all, in any mode. It shipped, and it was found by a player looking
+at a webclient with no panel in it.
+
+No amount of reading a file as text catches that: it is a grammar error, and finding it
+needs a parser. So `TestTheScriptsParse` uses `node --check` **when node happens to be
+installed**, which is not the same as requiring it - nothing here fails without node, and
+the skip says exactly what is going unchecked. Evennia's own CI runners have node.
 """
 
 import re
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -131,3 +152,103 @@ class TestNothingIsDeclaredTwice(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+#: The parser, if this machine happens to have one. See the module docstring: its
+#: absence is a gap that is reported rather than a failure, and its presence is a real
+#: gate.
+NODE = shutil.which("node")
+
+
+class TestTheScriptsParse(unittest.TestCase):
+    """
+    Every client script is valid JavaScript.
+
+    Notes:
+        The one check here that a human reading the file reliably fails at, and the one
+        the whole interface depends on: a file that does not parse defines nothing, so a
+        single misplaced bracket takes down every panel rather than one feature.
+
+    """
+
+    @unittest.skipUnless(NODE, "node is not installed - the scripts are NOT parsed")
+    def test_every_script_parses(self):
+        for path in scripts():
+            done = subprocess.run([NODE, "--check", str(path)], capture_output=True, text=True)
+            self.assertEqual(
+                done.returncode,
+                0,
+                "{0} does not parse:\n{1}".format(path.name, done.stderr.strip()),
+            )
+
+    @unittest.skipUnless(NODE, "node is not installed - the check is NOT verified")
+    def test_the_check_would_notice_a_broken_file(self):
+        """
+        The other half of the measurement.
+
+        Notes:
+            A subprocess that silently succeeded - wrong flag, wrong path, a `node` on
+            PATH that is not node - would pass the test above on every file for ever.
+            The file written here is the exact mistake that shipped.
+
+        """
+        import tempfile
+
+        broken = "window.X = (function () {\n    f(a, [B]: c);\n})();\n"
+        with tempfile.TemporaryDirectory() as where:
+            path = Path(where) / "broken.js"
+            path.write_text(broken)
+            done = subprocess.run([NODE, "--check", str(path)], capture_output=True, text=True)
+            self.assertNotEqual(done.returncode, 0)
+
+
+#: The capability list the browser declares, read out of the script as text.
+DECLARED = re.compile(r"var CAPABILITIES = \[([^\]]*)\]", re.MULTILINE)
+
+
+class TestBothEndsAgreeOnCapabilities(unittest.TestCase):
+    """
+    What the client says it can draw, and what the server is willing to send.
+
+    Notes:
+        These are two lists in two languages in two files, and the server *declines* to send
+        a capability the client has not declared - on purpose, because an Evennia client
+        prints a message it has no listener for straight into the player's window.
+
+        So a name missing from the client list is not a warning or an error. It is a feature
+        that is built at both ends, drawn for, tested, and silently never sent. `land` was
+        missing for as long as the land map existed: stepping ashore produced a panel that
+        said "nowhere to map" and stayed that way, with nothing wrong except that the two
+        ends had never been introduced.
+
+    """
+
+    def test_the_client_declares_every_capability_the_server_offers(self):
+        from ..client.payloads import CAPABILITIES
+
+        text = (CLIENT_SCRIPTS / "maritime-transport.js").read_text(encoding="utf-8")
+        found = DECLARED.search(text)
+        self.assertIsNotNone(found, "no CAPABILITIES list in maritime-transport.js")
+
+        declared = {part.strip().strip('"').strip("'") for part in found.group(1).split(",")}
+        declared.discard("")
+        self.assertEqual(
+            set(CAPABILITIES) - declared,
+            set(),
+            "the server offers these and the browser never asks for them",
+        )
+
+    def test_it_does_not_declare_capabilities_the_server_has_never_heard_of(self):
+        """
+        The other direction, which fails more loudly and so has never happened - but a
+        client asking for something the server does not send is a client waiting for a
+        message that is not coming.
+        """
+        from ..client.payloads import CAPABILITIES
+
+        text = (CLIENT_SCRIPTS / "maritime-transport.js").read_text(encoding="utf-8")
+        declared = {
+            part.strip().strip('"').strip("'") for part in DECLARED.search(text).group(1).split(",")
+        }
+        declared.discard("")
+        self.assertEqual(declared - set(CAPABILITIES), set())

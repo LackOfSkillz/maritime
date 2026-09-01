@@ -19,165 +19,18 @@ from .bathymetry import (
     MaritimeMapProvider,
     MaritimeTideProvider,
 )
-from .charts import (
-    Chart,
-    best_chart_for,
-    charted_bottom_at,
-    charted_depth_at,
-    charted_terrain_z_at,
-)
-from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
-from .crew import (
-    ABLE,
-    CRACK,
-    DEFAULT_QUALITY,
-    LANDSMEN,
-    ORDINARY,
-    PICKED,
-    PRESSED,
-    QUALITIES,
-    SEASONED,
-    CrewQuality,
-    Crewed,
-    ShipsCompany,
-    blended,
-    spend,
-)
-
-# The five morale bands are deliberately *not* re-exported here. "steady" is already a
-# helm order in this package - "steady as she goes" - and a flat namespace that exports
-# both gives whoever writes `from maritime import STEADY` whichever one happened to be
-# imported second. Band names live in `maritime.morale` and are reached through it.
-from .morale import (
-    Factor,
-    band_of,
-    grievances,
-    hesitation,
-    mutinies,
-    reading,
-    settle,
-    strikes,
-    when_asked,
-)
-from .currents import (
-    STILL,
-    CurrentVector,
-    FlatCurrentProvider,
-    MaritimeCurrentProvider,
-    carried,
-    course_to_steer,
-    drift_offset,
-    made_good,
-)
-from .events import bus, Delivery, Event, EventBus
-from .cmdsets import HelmCmdSet, ShipwrightCmdSet
-from .commands import CmdAllStop, CmdCrew, CmdHelm, CmdPosition, CmdSpeed
-from .formatting import (
-    METRES_PER_SECOND_PER_KNOT,
-    DEPTH_UNITS,
-    DISTANCE_UNITS,
-    FATHOMS,
-    LEAGUES,
-    METRES,
-    METRIC,
-    NAUTICAL,
-    RAW,
-    format_depth,
-    format_position,
-    format_range,
-)
-from .messaging import (
-    LEAD_LINE_FATHOMS,
-    LEAD_MARKS,
-    leadsman_call,
-    AT_SPEED,
-    COMING_ROUND,
-    HULL_HOLED,
-    RUN_AGROUND,
-    SHOALING,
-    STEADY,
-    WAY_OFF,
-    VesselNarrator,
-    compass_point,
-    spell_bearing,
-)
-from .grounding import (
-    check_swept_grounding,
-    hull_points,
-    sweep_positions,
-    AGROUND,
-    HOLED,
-    TOUCHED,
-    GroundingResult,
-    check_grounding,
-    is_shoaling,
-    keel_clearance,
-    refloats_on_tide,
-)
-from .motion import HelmOrders, MotionLimits, MotionState, advance
-from .navigation import (
-    FIX_UNCERTAINTY,
-    DeadReckoning,
-    error_of,
-    reckon,
-    set_and_drift,
-    take_fix,
-)
-from .observation import (
-    CLASSIFIED,
-    CONTACT,
-    DETECTION_LEVELS,
-    IDENTIFIED,
-    Sighting,
-    bearing_in_points,
-    detection_level,
-    detection_limit,
-    geographic_range,
-    horizon_distance,
-    scan,
-    sight,
-)
-from .tactical import (
-    ARCS,
-    arcs_bearing,
-    aspect,
-    aspect_name,
-    bears,
-    closure,
-    crossing_the_t,
-    range_band,
-    relative_heading,
-    time_to_close,
-)
-from .traffic import VesselTraffic, traffic
-from .position import (
-    DEFAULT_REGION,
-    METRES_PER_CABLE,
-    METRES_PER_FATHOM,
-    METRES_PER_LEAGUE,
-    METRES_PER_NAUTICAL_MILE,
-    WorldPosition,
-    bearing_difference,
-    normalize_bearing,
-)
-from .resolver import (
-    NoWorldPosition,
-    get_world_position,
-    has_world_position,
-    resolve_chain,
-)
-from .voyage import approach_speed, course_for_mark, sail_for_wind
-from .weapons import (
-    Mount,
-    ShotResult,
-    WeaponType,
-    aim_point,
-    can_fire,
-    discharge,
-    fire,
-    hit_chance,
-    serve,
-    time_of_flight,
+from .boarding import (
+    GRAPNEL_RANGE,
+    MAX_BOARDING_CLOSURE,
+    MAX_HOLDING_CLOSURE,
+    Boarded,
+    GrappleResult,
+    bears_alongside,
+    can_grapple,
+    relative_speed,
+    still_holding,
+    velocity,
+    within_reach,
 )
 from .cargo import (
     DEFAULT_BROKEN_STOWAGE,
@@ -205,109 +58,122 @@ from .cargo import (
     tonnes_per_centimetre,
     total_tonnes,
 )
-from .stowage import Laden, Stowed, TransferResult
+from .charts import (
+    Chart,
+    best_chart_for,
+    charted_bottom_at,
+    charted_depth_at,
+    charted_terrain_z_at,
+)
+from .clock import GameTimeProvider, ManualTimeProvider, MaritimeTimeProvider
+from .cmdsets import HelmCmdSet, ShipwrightCmdSet
+from .commands import CmdAllStop, CmdCrew, CmdHelm, CmdPosition, CmdSpeed
+from .crew import (
+    ABLE,
+    CRACK,
+    DEFAULT_QUALITY,
+    LANDSMEN,
+    ORDINARY,
+    PICKED,
+    PRESSED,
+    QUALITIES,
+    SEASONED,
+    Crewed,
+    CrewQuality,
+    ShipsCompany,
+    blended,
+    spend,
+)
+from .currents import (
+    STILL,
+    CurrentVector,
+    FlatCurrentProvider,
+    MaritimeCurrentProvider,
+    carried,
+    course_to_steer,
+    drift_offset,
+    made_good,
+)
+from .events import Delivery, Event, EventBus, bus
 from .floating import (
-    Buoyancy,
-    Floating,
     BARREL_WINDAGE,
     DEBRIS_WINDAGE,
     RAFT_WINDAGE,
     SWIMMER_WINDAGE,
     UPTURNED_HULL_WINDAGE,
+    Buoyancy,
+    Floating,
     drift,
     separation,
     sinking_depth,
     wind_drift,
 )
-from .projection import CELL_SIZE, OceanProjection, OceanRoom
-from .weather import (
-    SEA_STATES,
-    FlatWeatherProvider,
-    MaritimeWeatherProvider,
-    Weather,
-    sea_drag,
-    sea_state_for,
+from .formatting import (
+    DEPTH_UNITS,
+    DISTANCE_UNITS,
+    FATHOMS,
+    LEAGUES,
+    METRES,
+    METRES_PER_SECOND_PER_KNOT,
+    METRIC,
+    NAUTICAL,
+    RAW,
+    format_depth,
+    format_position,
+    format_range,
 )
-from .vessel import (
-    BELOW_WATERLINE,
-    EXPOSURES,
-    INTERIOR,
-    MAIN_DECK,
-    OPEN,
-    SEMI_EXPOSED,
-    DeckLevel,
-    DeckPlan,
-    VesselCapacity,
-    VesselTemplate,
+from .grounding import (
+    AGROUND,
+    HOLED,
+    TOUCHED,
+    GroundingResult,
+    check_grounding,
+    check_swept_grounding,
+    hull_points,
+    is_shoaling,
+    keel_clearance,
+    refloats_on_tide,
+    sweep_positions,
 )
-from .ports import (
-    ALONGSIDE_SPEED,
-    APPROACH_RANGE,
-    Berth,
-    DockingResult,
-    alongside_side,
-    can_dock,
-    nearest_berth,
+from .messaging import (
+    AT_SPEED,
+    COMING_ROUND,
+    HULL_HOLED,
+    LEAD_LINE_FATHOMS,
+    LEAD_MARKS,
+    RUN_AGROUND,
+    SHOALING,
+    STEADY,
+    WAY_OFF,
+    VesselNarrator,
+    compass_point,
+    leadsman_call,
+    spell_bearing,
 )
-from .routes import NavigationNetwork, Route, Waypoint
-from .rooms import (
-    rig_grapples,
-    PortRoom,
-    ShipRoom,
-    absent_from,
-    berths_near,
-    everyone_in,
-    rig_gangway,
-    unrig_gangway,
+
+# The five morale bands are deliberately *not* re-exported here. "steady" is already a
+# helm order in this package - "steady as she goes" - and a flat namespace that exports
+# both gives whoever writes `from maritime import STEADY` whichever one happened to be
+# imported second. Band names live in `maritime.morale` and are reached through it.
+from .morale import (
+    Factor,
+    band_of,
+    grievances,
+    hesitation,
+    mutinies,
+    reading,
+    settle,
+    strikes,
+    when_asked,
 )
-from .scheduler import FairQueue
-from .sailing import (
-    FULL,
-    FURLED,
-    REEFED,
-    SAIL_PLANS,
-    WEATHER_PLANS,
-    STORM,
-    WORKING,
-    PolarCurve,
-    SailPlan,
-    WindVector,
-    achievable_speed,
-    leeway_angle,
-    relative_wind_angle,
-    sail_plan,
-)
-from .scripts import MaritimeDriver
-from .typeclasses import Flotsam, Vessel
-from .simulation import (
-    ACTIVE,
-    DORMANT,
-    STRATEGIC,
-    TACTICAL,
-    TIERS,
-    TIER_INTERVALS,
-    MaritimeSimulationService,
-)
-from .tiles import (
-    DEFAULT_TILE_SIZE,
-    UNMAPPED_TERRAIN_Z,
-    DictTileSource,
-    Hazard,
-    Tile,
-    TileSource,
-    TiledMapProvider,
-)
-from .spatial import (
-    ContactIndex,
-    ProximityIndex,
-    SpatialIndex,
-    cell_bounds,
-    cell_centre,
-    cell_of,
-    cells_touching,
-    distance_to_track,
-    nearest_on_track,
-    track_entry,
+from .motion import HelmOrders, MotionLimits, MotionState, advance
+from .navigation import (
+    FIX_UNCERTAINTY,
+    DeadReckoning,
+    error_of,
+    reckon,
+    set_and_drift,
+    take_fix,
 )
 from .oars import (
     EASY_OARS,
@@ -319,25 +185,26 @@ from .oars import (
     ROWED,
     STRETCH_OUT,
     STROKES,
-    OarPlan,
     Oared,
+    OarPlan,
     braking_limits,
     hands_available,
     reach,
     rowed_speed,
 )
-from .boarding import (
-    GRAPNEL_RANGE,
-    MAX_BOARDING_CLOSURE,
-    MAX_HOLDING_CLOSURE,
-    Boarded,
-    GrappleResult,
-    bears_alongside,
-    can_grapple,
-    relative_speed,
-    still_holding,
-    velocity,
-    within_reach,
+from .observation import (
+    CLASSIFIED,
+    CONTACT,
+    DETECTION_LEVELS,
+    IDENTIFIED,
+    Sighting,
+    bearing_in_points,
+    detection_level,
+    detection_limit,
+    geographic_range,
+    horizon_distance,
+    scan,
+    sight,
 )
 from .ownership import (
     ADMIRAL,
@@ -354,6 +221,32 @@ from .ownership import (
     may_command,
     rank_of,
 )
+from .ports import (
+    ALONGSIDE_SPEED,
+    APPROACH_RANGE,
+    Berth,
+    DockingResult,
+    alongside_side,
+    can_dock,
+    nearest_berth,
+)
+from .position import (
+    DEFAULT_REGION,
+    METRES_PER_CABLE,
+    METRES_PER_FATHOM,
+    METRES_PER_LEAGUE,
+    METRES_PER_NAUTICAL_MILE,
+    WorldPosition,
+    bearing_difference,
+    normalize_bearing,
+)
+from .projection import CELL_SIZE, OceanProjection, OceanRoom
+from .resolver import (
+    NoWorldPosition,
+    get_world_position,
+    has_world_position,
+    resolve_chain,
+)
 from .results import (
     INVALID_TARGET,
     NOT_PERMITTED,
@@ -362,6 +255,113 @@ from .results import (
     Result,
 )
 from .rng import AI, COMBAT, DAMAGE, NAVIGATION, WEATHER, RNGContext
+from .rooms import (
+    PortRoom,
+    ShipRoom,
+    absent_from,
+    berths_near,
+    everyone_in,
+    rig_gangway,
+    rig_grapples,
+    unrig_gangway,
+)
+from .routes import NavigationNetwork, Route, Waypoint
+from .sailing import (
+    FULL,
+    FURLED,
+    REEFED,
+    SAIL_PLANS,
+    STORM,
+    WEATHER_PLANS,
+    WORKING,
+    PolarCurve,
+    SailPlan,
+    WindVector,
+    achievable_speed,
+    leeway_angle,
+    relative_wind_angle,
+    sail_plan,
+)
+from .scheduler import FairQueue
+from .scripts import MaritimeDriver
+from .simulation import (
+    ACTIVE,
+    DORMANT,
+    STRATEGIC,
+    TACTICAL,
+    TIER_INTERVALS,
+    TIERS,
+    MaritimeSimulationService,
+)
+from .spatial import (
+    ContactIndex,
+    ProximityIndex,
+    SpatialIndex,
+    cell_bounds,
+    cell_centre,
+    cell_of,
+    cells_touching,
+    distance_to_track,
+    nearest_on_track,
+    track_entry,
+)
+from .stowage import Laden, Stowed, TransferResult
+from .tactical import (
+    ARCS,
+    arcs_bearing,
+    aspect,
+    aspect_name,
+    bears,
+    closure,
+    crossing_the_t,
+    range_band,
+    relative_heading,
+    time_to_close,
+)
+from .tiles import (
+    DEFAULT_TILE_SIZE,
+    UNMAPPED_TERRAIN_Z,
+    DictTileSource,
+    Hazard,
+    Tile,
+    TiledMapProvider,
+    TileSource,
+)
+from .traffic import VesselTraffic, traffic
+from .typeclasses import Flotsam, Vessel
+from .vessel import (
+    BELOW_WATERLINE,
+    EXPOSURES,
+    INTERIOR,
+    MAIN_DECK,
+    OPEN,
+    SEMI_EXPOSED,
+    DeckLevel,
+    DeckPlan,
+    VesselCapacity,
+    VesselTemplate,
+)
+from .voyage import approach_speed, course_for_mark, sail_for_wind
+from .weapons import (
+    Mount,
+    ShotResult,
+    WeaponType,
+    aim_point,
+    can_fire,
+    discharge,
+    fire,
+    hit_chance,
+    serve,
+    time_of_flight,
+)
+from .weather import (
+    SEA_STATES,
+    FlatWeatherProvider,
+    MaritimeWeatherProvider,
+    Weather,
+    sea_drag,
+    sea_state_for,
+)
 
 __all__ = (
     # configuration

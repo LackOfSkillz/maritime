@@ -9,7 +9,6 @@ there is nothing on the water at all.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 

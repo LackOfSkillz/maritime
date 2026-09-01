@@ -6,8 +6,6 @@ Tests for the helm commands.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTestCase
 
-from .base import EmptySeaMixin
-
 from ..commands import (
     CmdAllStop,
     CmdHelm,
@@ -20,6 +18,7 @@ from ..commands import (
 from ..motion import HelmOrders, MotionLimits
 from ..position import WorldPosition
 from ..typeclasses import ShipRoom, Vessel
+from .base import EmptySeaMixin
 
 
 class HelmTestCase(EmptySeaMixin, BaseEvenniaCommandTest):

@@ -6,8 +6,6 @@ Tests for the script that drives the simulation.
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
-from .base import EmptySeaMixin
-
 from ..clock import ManualTimeProvider
 from ..cmdsets import HelmCmdSet
 from ..motion import HelmOrders, MotionLimits
@@ -15,6 +13,7 @@ from ..position import WorldPosition
 from ..scripts import CHECKPOINT_EVERY, MaritimeDriver
 from ..simulation import ACTIVE, DORMANT
 from ..typeclasses import Vessel
+from .base import EmptySeaMixin
 
 
 class DriverTestCase(EmptySeaMixin, BaseEvenniaTest):
@@ -191,6 +190,9 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "drop anchor",
                 "weigh anchor",
                 "dock",
+                "kedge",
+                "ports",
+                "make for",
                 "fix",
                 "chart",
                 "plot",

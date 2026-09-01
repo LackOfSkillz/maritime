@@ -13,10 +13,11 @@ useful kind of failure: it is what would happen in a running game to any vessel 
 without telling the register, and it is why `Vessel.at_object_delete` now does.
 
 **The world's weather and ground come from settings**, and the tests run under the dev
-game's settings file. Every time that game configured something - a seabed, then a current -
-tests that had never mentioned it started quietly measuring it instead of the flat, still,
-empty sea they described. Twice is a pattern, so the neutral world is asserted here once
-rather than remembered in each test that happens to need it.
+game's settings file. Every time that game configured something - a seabed, then a current,
+then buoyage, then a tide - tests that had never mentioned it started quietly measuring it
+instead of the flat, still, empty sea they described. Four times is not a pattern any more,
+it is the rule: anything a game can configure will eventually be configured, and a test that
+did not say what world it wanted was always going to be measuring somebody else's.
 
 A test that wants ground, or a stream, or wind says so with its own `override_settings`,
 which nests over these perfectly well.
@@ -40,6 +41,16 @@ EMPTY_SEA = {
     # every test that thought it was sailing on blank water - which is how a test
     # named "an empty sea reports the horizon" ended up looking at a fairway buoy.
     "MARITIME_NAVIGATION_NETWORK": "",
+    # And it does not go up and down. The third time, and the same mistake: the host
+    # game's tide came through, so every test that measured a depth measured it at
+    # whatever hour it happened to be run at. "Shallow water can be stood in" put a
+    # swimmer over ground a metre down and asked whether his feet reached it - true at
+    # slack water, false at the top of a two-metre tide, and false in a different way at
+    # the bottom of one. It passed for weeks and then failed at four in the afternoon.
+    #
+    # A test that wants a tide says so with its own `override_settings`, which nests over
+    # this perfectly well.
+    "MARITIME_TIDE_PROVIDER": "",
 }
 
 

@@ -9,14 +9,14 @@ from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 
 from ..bathymetry import MaritimeMapProvider
+from ..cargo import VOLUME, WEIGHT, Commodity, Parcel, commodity_named
 from ..commands import CmdDischarge, CmdManifest, CmdStow
-from ..cargo import Commodity, Parcel, VOLUME, WEIGHT, commodity_named
 from ..grounding import keel_clearance
 from ..motion import MotionLimits
-from ..position import WorldPosition
 from ..ports import TOO_DEEP, Berth, can_dock
+from ..position import WorldPosition
 from ..rooms import PortRoom, ShipRoom
-from ..stowage import FULL, NOTHING_TO_MOVE, NOT_ABOARD, NO_HOLD, PART_ONLY
+from ..stowage import FULL, NO_HOLD, NOT_ABOARD, NOTHING_TO_MOVE, PART_ONLY
 from ..typeclasses import Vessel
 from ..vessel import BELOW_WATERLINE, OPEN, VesselCapacity
 from .base import EmptySeaMixin

@@ -15,12 +15,12 @@ from ..tactical import (
     BOW_RAKE,
     BOW_RAKE_WEIGHT,
     RAKE_ARC,
+    STARBOARD_BROADSIDE,
     STERN_RAKE,
     STERN_RAKE_WEIGHT,
     raking,
     raking_weight,
 )
-from ..tactical import STARBOARD_BROADSIDE
 from ..weapons import Mount, WeaponType, fire
 from ..weather import CALM
 

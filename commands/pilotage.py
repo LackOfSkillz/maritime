@@ -11,11 +11,11 @@ from ..messaging import (
     leadsman_call,
     spell_bearing,
 )
-from ..rooms import berths_near
 from ..navigation import FIX_UNCERTAINTY
-from ..sailing import relative_wind_angle
 from ..position import bearing_difference
 from ..resolver import get_world_position
+from ..rooms import berths_near
+from ..sailing import relative_wind_angle
 from .base import MaritimeCommand, ms_to_knots
 
 # One knot is one nautical mile per hour, and a nautical mile is 1852 metres.

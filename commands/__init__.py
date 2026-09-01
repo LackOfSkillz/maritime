@@ -17,12 +17,14 @@ package, which is exactly how the first attempt at this split broke.
 
 """
 
+from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
 from .boarding import (
     CmdCutGrapples,
     CmdGrapple,
     CmdGrapples,
     CmdStrike,
 )
+from .crew import CmdCrew
 from .gunnery import CmdFire, CmdGuns, CmdHoldFire, CmdLoad
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
 from .lading import CmdDischarge, CmdManifest, CmdStow
@@ -34,6 +36,15 @@ from .lookout import (
     CmdWatch,
     sightings_toward,
 )
+from .mooring import (
+    BERTH_REFUSALS,
+    CmdAnchor,
+    CmdCastOff,
+    CmdDock,
+    CmdKedge,
+    CmdWeighAnchor,
+)
+from .passage import CmdMakeFor, CmdPorts, PassageCmdSet
 from .pilotage import (
     CmdBelay,
     CmdChart,
@@ -55,11 +66,8 @@ from .rowing import (
     CmdPaddleStroke,
     CmdStretchOut,
 )
-from .mooring import BERTH_REFUSALS, CmdAnchor, CmdCastOff, CmdDock, CmdWeighAnchor
 from .sail import CmdSail
 from .shipwright import CmdShipwright
-from .crew import CmdCrew
-from .base import MaritimeCommand, knots_to_ms, ms_to_knots, vessel_of
 
 __all__ = (
     "MaritimeCommand",
@@ -99,6 +107,9 @@ __all__ = (
     "CmdFollow",
     "CmdBelay",
     "CmdPlot",
+    "CmdPorts",
+    "CmdMakeFor",
+    "PassageCmdSet",
     "CmdCurrent",
     "CmdFix",
     "CmdSound",
@@ -108,6 +119,7 @@ __all__ = (
     "CmdLookAround",
     "CmdWatch",
     "CmdDock",
+    "CmdKedge",
     "CmdCastOff",
     "CmdAnchor",
     "CmdWeighAnchor",

@@ -4,7 +4,6 @@ Tests for who owns her, who commands her, and who answers to whom.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaCommandTest, BaseEvenniaTest
 

@@ -7,6 +7,16 @@ from evennia.commands.default.general import CmdLook
 
 from ..formatting import format_range, pick_scale
 from ..messaging import spell_bearing
+from ..observation import (
+    DEFAULT_HEIGHT_OF_EYE,
+    IDENTIFIED,
+    QUARTER_ARC,
+    RELATIVE_ARCS,
+    bearing_in_points,
+    direction_named,
+    horizon_distance,
+    in_arc,
+)
 from ..tactical import (
     arcs_bearing,
     aspect,
@@ -15,16 +25,6 @@ from ..tactical import (
     crossing_the_t,
     range_band,
     time_to_close,
-)
-from ..observation import (
-    IDENTIFIED,
-    bearing_in_points,
-    QUARTER_ARC,
-    RELATIVE_ARCS,
-    direction_named,
-    in_arc,
-    DEFAULT_HEIGHT_OF_EYE,
-    horizon_distance,
 )
 from ..vessel import WEATHER_DECKS
 from .base import MaritimeCommand, vessel_of

@@ -4,7 +4,6 @@ Tests for what a static room says about a moving world.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 

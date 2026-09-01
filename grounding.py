@@ -43,10 +43,25 @@ HOLED = "holed"
 # be calling it and an officer should be worrying.
 SHOAL_WARNING_CLEARANCE = 3.0
 
-# Speed in metres per second above which finding foul ground opens the hull rather
-# than merely stopping her. Slow enough to be a real threshold, fast enough that a
-# careful approach is genuinely safer.
-HOLING_SPEED = 1.5
+# Speed in metres per second above which a contact is more than a touch.
+#
+# Two metres a second is about four knots. Below it she has *taken the ground* - which is
+# a thing ships did on purpose, every time they were careened, beached to work on the
+# bottom, or laid on a hard to load a cargo at low water. It is not an accident and it
+# should not read as one.
+TOUCHING_SPEED = 2.0
+
+# And the speed above which foul ground opens the hull rather than merely stopping her.
+#
+# Four metres a second, or about eight knots - a ship with real way on. This was one and a
+# half, which is under three knots, and it was much too low: it meant every grounding at
+# any speed anybody actually sails at was a holing, and a hull that touched a rock while
+# ghosting along under a reefed topsail was lost. A grounding should be a bad afternoon;
+# only a reckless one should be the end of the ship.
+#
+# Only foul ground holes her at all, at any speed - see `severity_of`. Sand and mud hold a
+# hull and give her back on the tide, which is why bottom type is worth modelling.
+HOLING_SPEED = 4.0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -146,6 +161,12 @@ def severity_of(speed, bottom):
         and rock struck with way on open her. That distinction is why bottom type
         is worth modelling at all - otherwise every grounding is the same event.
 
+        **Two thresholds, not one.** They were the same number, so the speed that turned a
+        touch into a grounding was also the speed that turned a grounding into a wreck -
+        which made every contact above three knots catastrophic and every one below it
+        trivial, with nothing in between. Taking the ground gently, being hard on and
+        waiting for the tide, and being opened on a reef are three different afternoons.
+
         Extracted so that terrain and authored hazards answer the same way. Two
         copies of this would drift, and the symptom would be a rock that holes
         her when she is sampled onto it and merely holds her when she is caught
@@ -154,7 +175,7 @@ def severity_of(speed, bottom):
     """
     if bottom in FOUL_GROUND and speed > HOLING_SPEED:
         return HOLED
-    if speed > HOLING_SPEED:
+    if speed > TOUCHING_SPEED:
         return AGROUND
     return TOUCHED
 
@@ -266,7 +287,29 @@ def refloats_on_tide(result):
         changing.
 
     """
-    return result.severity != HOLED and result.bottom not in FOUL_GROUND
+    return held_not_holed(result.severity, result.bottom)
+
+
+def held_not_holed(severity, bottom):
+    """
+    Whether a grounding was the kind a tide can undo.
+
+    Args:
+        severity (str): One of the severities in this module.
+        bottom (str): What she is sitting on.
+
+    Returns:
+        soft (bool): True if she is merely held.
+
+    Notes:
+        Split out of `refloats_on_tide` so the same question can be asked of a grounding
+        that was recorded rather than one that has just happened. A vessel keeps the two
+        facts on her - see `Vessel.floats_off` - and reconstructing a whole result object
+        from them only to ask one predicate of it would be ceremony, while writing the
+        predicate out a second time is how the two answers come to disagree.
+
+    """
+    return severity != HOLED and bottom not in FOUL_GROUND
 
 
 # Sample points on a hull, as fractions of half-length along her and half-beam

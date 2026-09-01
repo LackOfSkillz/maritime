@@ -18,10 +18,10 @@ one module instead of reading settings wherever a value happens to be needed.
 
 from . import config
 from .currents import STILL, carried, made_good
-from .weather import CALM
 from .grounding import keel_clearance
 from .observation import detection_limit, scan
 from .traffic import MAX_TARGET_HEIGHT, traffic
+from .weather import CALM
 
 
 def weather_at(position, game_time=None):

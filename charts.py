@@ -228,6 +228,56 @@ def _sounding_error(chart, position, quality):
     return signed * MAX_CHART_ERROR * (1.0 - quality)
 
 
+#: How far a ground-truth chart reaches from the origin, in metres.
+#:
+#: A thousand kilometres past a great circle of the largest planet anybody is going to
+#: sail - deliberately absurd, because the number's only job is to be larger than any
+#: coordinate a world can produce and a number chosen to be *plausible* would eventually
+#: be crossed by somebody's map and cut the world off at a straight line nobody put there.
+EVERYWHERE = 1.0e9
+
+
+def ground_truth(region="default", game_time=0.0):
+    """
+    A chart of everywhere, with nothing wrong on it.
+
+    Args:
+        region (str, optional): Which coordinate space it covers.
+        game_time (float, optional): Now, so it never reads as an old survey.
+
+    Returns:
+        chart (Chart): Perfect, unbounded, and not a thing anybody can own.
+
+    Notes:
+        **Not a chart a game should ever hand to a player.** It exists for the development
+        switch that draws the sea as it truly is: quality 1.0 makes `_sounding_error`
+        exactly zero rather than merely small, and bounds past any real coordinate make
+        `covers` always true, so what comes back is the world rather than a record of it.
+
+        Stamped with the time it is made rather than with zero, because `quality_at` decays
+        a survey from the moment it was taken and a chart surveyed at the beginning of time
+        would be worthless by the afternoon. There is no error to decay *into* at full
+        quality, but a chart whose quality is quietly 0.4 while claiming to be the truth is
+        the kind of thing that is discovered a year later.
+
+        Made fresh each time rather than kept as a constant, for that reason and because a
+        single shared instance would carry one region for a world that can have several.
+
+    """
+    return Chart(
+        key="the world itself",
+        region=region,
+        west=-EVERYWHERE,
+        east=EVERYWHERE,
+        south=-EVERYWHERE,
+        north=EVERYWHERE,
+        quality=1.0,
+        surveyed_at=game_time,
+        seed=0,
+        maker="nobody - this is the ground, not a survey of it",
+    )
+
+
 def charted_terrain_z_at(chart, position, game_time, world, seabed=None):
     """
     What the chart says the bottom is, here.

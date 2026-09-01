@@ -26,11 +26,110 @@ The two are independent and frequently different people, which is why a ship's c
 have sighted an island that none of them has ever set foot on.
 """
 
+from evennia.commands.cmdset import CmdSet
+from evennia.objects.objects import DefaultRoom
+
 from ...discovery import ISLAND, Landmark, set_foot
 from ...rooms import PortRoom
 
 
-class IslandLanding(PortRoom):
+class AshoreCmdSet(CmdSet):
+    """
+    The commands that only make sense standing in this town.
+
+    Notes:
+        Put on the rooms rather than on the player, so `buy` exists where there is
+        something to buy and nowhere else. A game that adds these to its character cmdset
+        gets a `buy` command that answers "there is nobody selling anything here" in every
+        forest on the map, which is a worse answer than no command at all.
+
+    """
+
+    key = "aetos_ashore"
+    priority = 1
+
+    def at_cmdset_creation(self):
+        """Add the commands a counter needs."""
+        from .commands import CmdBrowse, CmdBuy, CmdMarket, CmdSellCargo
+
+        self.add(CmdBrowse())
+        self.add(CmdBuy())
+        self.add(CmdMarket())
+        self.add(CmdSellCargo())
+
+
+class ShoreRoom:
+    """
+    Mixin: a room that keeps the land map current for anybody standing in it.
+
+    Notes:
+        **The map has to be redrawn when somebody arrives, and nothing else was doing it.**
+        A land map is a picture of where you are standing, so the one moment it certainly
+        changes is the moment you stand somewhere else. Without this the panel drew the
+        first room a player entered and then kept drawing it for ever, while they walked
+        away - and click-to-move would move them correctly into a map that no longer
+        described anywhere they were.
+
+        A mixin rather than a base class because the two rooms that need it already have
+        different parents: an ordinary street is a `DefaultRoom` and a pier is a
+        `PortRoom`, and neither should have to become the other for this.
+
+    """
+
+    def at_object_receive(self, arriving, source, **kwargs):
+        """
+        Args:
+            arriving (Object): Whoever turned up.
+            source (Object): Where they came from.
+
+        """
+        super().at_object_receive(arriving, source, **kwargs)
+        self._redraw_for(arriving)
+
+    def at_object_leave(self, leaving, target, **kwargs):
+        """
+        Args:
+            leaving (Object): Whoever is going.
+            target (Object): Where to.
+
+        Notes:
+            The far room redraws on arrival, so this exists for the case where it is not
+            one of ours - walking inland out of the town, where the panel should show the
+            last thing it honestly knew rather than a map of somewhere else.
+
+        """
+        super().at_object_leave(leaving, target, **kwargs)
+
+    @staticmethod
+    def _redraw_for(character):
+        """
+        Args:
+            character (Object): Who to redraw for.
+
+        Notes:
+            Quietly does nothing for anything without sessions - a crate, a vendor, an NPC
+            - which is most of what arrives in a room.
+
+        """
+        sessions = getattr(character, "sessions", None)
+        if sessions is None:
+            return
+        from ...client.transport import send_land
+
+        for session in sessions.all():
+            send_land(session)
+
+
+class ShoreStreet(ShoreRoom, DefaultRoom):
+    """An ordinary room ashore, which keeps the map current and carries the counters."""
+
+    def at_object_creation(self):
+        """Set up a street that knows about shops."""
+        super().at_object_creation()
+        self.cmdset.add(AshoreCmdSet, persistent=True)
+
+
+class IslandLanding(ShoreRoom, PortRoom):
     """
     A pier that notices who walks off it first.
 
@@ -45,6 +144,7 @@ class IslandLanding(PortRoom):
         super().at_object_creation()
         self.db.landmark = ""
         self.db.landmark_height = 0.0
+        self.cmdset.add(AshoreCmdSet, persistent=True)
 
     def at_object_receive(self, arriving, source, **kwargs):
         """
@@ -114,4 +214,4 @@ class IslandLanding(PortRoom):
         )
 
 
-__all__ = ("IslandLanding",)
+__all__ = ("AshoreCmdSet", "ShoreRoom", "ShoreStreet", "IslandLanding")

@@ -10,9 +10,9 @@ exactly why it is worth having as its own module.
 
 """
 
-from evennia.utils.test_resources import BaseEvenniaTestCase
-
 import math
+
+from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from ..bathymetry import MaritimeMapProvider
 from ..charts import Chart

@@ -4,7 +4,6 @@ Tests for settings resolution.
 """
 
 from django.test import override_settings
-
 from evennia.utils.test_resources import BaseEvenniaTestCase
 
 from .. import config

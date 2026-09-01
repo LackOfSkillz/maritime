@@ -18,7 +18,7 @@ water, and it has to be authored rather than guessed.
 
 """
 
-from ..buoyage import Buoyage, SAFE_WATER
+from ..buoyage import SAFE_WATER, Buoyage
 from ..position import WorldPosition
 from ..routes import NavigationNetwork, Waypoint
 from .geography import ISLANDS, harbour_position

@@ -7,25 +7,24 @@ scenario *is* and why the suite is worth its runtime.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 
+from ..bathymetry import ROCK
 from ..boarding import relative_speed
 from ..charts import Chart
 from ..clock import ManualTimeProvider
 from ..grounding import HOLED
 from ..motion import HelmOrders
 from ..navigation import DeadReckoning
-from ..position import WorldPosition
 from ..ports import Berth
+from ..position import WorldPosition
 from ..rooms import PortRoom, rig_gangway
 from ..routes import ARRIVAL_RANGE, NavigationNetwork, Waypoint
 from ..sailing import FULL, FURLED, WORKING
-from ..tactical import STARBOARD_BROADSIDE
 from ..simulation import ACTIVE, MaritimeSimulationService
+from ..tactical import STARBOARD_BROADSIDE
 from ..traffic import traffic
 from ..weapons import Mount, WeaponType, fire
-from ..bathymetry import ROCK
 from . import scenario_base
 from .scenario_base import BREEZE, GALE, ScenarioTestCase
 

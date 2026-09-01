@@ -24,7 +24,19 @@ window.MaritimeTransport = (function () {
 
     /* What this build of the client can draw. Sent so the server does not have to
      * assume; a capability it does not recognise is dropped rather than refused. */
-    var CAPABILITIES = ["mode", "status", "chart", "contacts", "controls"];
+    /* What this client can draw, and therefore what the server will send it.
+     *
+     * "land" was missing, and the server declines to send a capability a client has
+     * not declared - deliberately, because an Evennia client prints a message it has
+     * no listener for straight into the player window. So the land map was built,
+     * drawn for, and never sent: stepping ashore gave a panel that said "nowhere to
+     * map" and stayed that way, with nothing wrong at either end except that they
+     * had never been introduced.
+     *
+     * This list and `payloads.CAPABILITIES` have to agree. They are in two languages
+     * in two files and there is no way to check one against the other from here, so
+     * `tests/test_client_scripts.py` reads this one as text and compares them. */
+    var CAPABILITIES = ["mode", "status", "chart", "land", "contacts", "controls"];
 
     var started = false;
 
@@ -72,8 +84,9 @@ window.MaritimeTransport = (function () {
 
         Evennia.emitter.on(CHART, function (args, kwargs) {
             MaritimeState.applyChart(kwargs);
-        },
-        [LAND]: function (args, kwargs) {
+        });
+
+        Evennia.emitter.on(LAND, function (args, kwargs) {
             MaritimeState.applyLand(kwargs);
         });
 

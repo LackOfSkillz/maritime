@@ -7,7 +7,6 @@ most of these check what she is *still* under rather than what was ordered.
 """
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import (
     BaseEvenniaCommandTest,

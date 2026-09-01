@@ -9,7 +9,6 @@ position relative to the wind - which is why the weather gage was worth dying fo
 import math
 
 from django.test import override_settings
-
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest, BaseEvenniaTestCase
 
