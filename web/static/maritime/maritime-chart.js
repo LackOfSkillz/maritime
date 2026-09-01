@@ -430,6 +430,80 @@ window.MaritimeChart = (function () {
         });
     }
 
+    /* Rocks, wrecks and shoals the survey found, drawn as the chart draws them.
+     *
+     * Deliberately unlike a buoy. A buoy is a thing somebody moored and it can drag; a
+     * rock is a thing somebody found and it cannot. Real charts use a starred symbol
+     * for an isolated danger and print the least depth over it, so this does the same,
+     * and one that dries gets the same shape with the figure omitted - there is no
+     * depth over it to print.
+     *
+     * They are here rather than in the soundings because sampling cannot find them. A
+     * grid four hundred metres across steps straight over a rock a hundred wide, and
+     * whether it steps over this one depends on where the grid falls, so the danger
+     * would appear and vanish as she sailed. */
+    function drawDangers(into, dangers) {
+        (Array.isArray(dangers) ? dangers : []).forEach(function (danger) {
+            if (!danger || typeof danger.east !== "number") {
+                return;
+            }
+            var span = reach();
+            if (Math.abs(danger.east) > span * 1.05 || Math.abs(danger.north) > span * 1.05) {
+                return;
+            }
+
+            var at = toChart({ east: danger.east, north: danger.north });
+            var group = node("g", {
+                class: "maritime-chart-danger" + (danger.dries ? " maritime-danger-dries" : ""),
+                tabindex: "0",
+                role: "button"
+            });
+
+            /* A star: four strokes through the point, which is the symbol a chart uses
+             * and which reads at any size without needing a fill. */
+            [[0, -7, 0, 7], [-7, 0, 7, 0], [-5, -5, 5, 5], [-5, 5, 5, -5]].forEach(
+                function (arm) {
+                    group.appendChild(
+                        node("line", {
+                            x1: at.x + arm[0], y1: at.y + arm[1],
+                            x2: at.x + arm[2], y2: at.y + arm[3]
+                        })
+                    );
+                }
+            );
+
+            /* The least depth over it, which is the number that decides whether she
+             * may pass. Omitted where it dries, because there is no water to quote. */
+            if (!danger.dries && typeof danger.top_z === "number") {
+                var figure = node("text", {
+                    x: at.x + 9, y: at.y + 4, class: "maritime-danger-depth"
+                });
+                figure.textContent = fathomsOf(-danger.top_z);
+                group.appendChild(figure);
+            }
+
+            var told = node("title");
+            told.textContent =
+                (danger.label || "danger") +
+                (danger.dries
+                    ? " - dries " + Math.abs(danger.top_z).toFixed(1) + " m"
+                    : " - " + Math.abs(danger.top_z).toFixed(1) + " m over it") +
+                (danger.bottom ? ", " + danger.bottom : "");
+            group.appendChild(told);
+            into.appendChild(group);
+        });
+    }
+
+    /* Metres as a chart prints them, which is whatever unit the sheet is drawn in.
+     * Metres here, to one decimal under ten and whole numbers above, because a
+     * navigator reads "3.4" on a shoal and "27" in the deep. */
+    function fathomsOf(metres) {
+        if (!isFinite(metres)) {
+            return "";
+        }
+        return metres < 10 ? metres.toFixed(1) : String(Math.round(metres));
+    }
+
     /* Buoyage answers a bearing for where the safe water lies; a player wants a
      * point of the compass. */
     function compassOf(bearing) {
@@ -652,7 +726,7 @@ window.MaritimeChart = (function () {
         plot.appendChild(rose);
 
         var layers = {};
-        ["depths", "land", "soundings", "rings", "marks", "contacts", "own", "overlay"].forEach(function (name) {
+        ["depths", "land", "soundings", "rings", "dangers", "marks", "contacts", "own", "overlay"].forEach(function (name) {
             layers[name] = node("g", { class: "maritime-layer-" + name });
             svg.appendChild(layers[name]);
         });
@@ -668,6 +742,7 @@ window.MaritimeChart = (function () {
             drawSheet(layers, state.chart);
             if (state.chart) {
                 drawRoute(layers.marks, state.chart.route);
+                drawDangers(layers.dangers, state.chart.dangers);
                 drawMarks(layers.marks, state.chart.marks);
             }
             drawRings(layers.rings);

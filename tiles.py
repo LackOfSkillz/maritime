@@ -496,6 +496,47 @@ class TiledMapProvider(MaritimeMapProvider):
             found.extend(tile.hazards_near_track(before, after, margin))
         return tuple(sorted(found, key=lambda hazard: -hazard.top_z))
 
+    def charted_dangers(self, position, reach):
+        """
+        Every authored hazard inside the square a sheet covers.
+
+        Args:
+            position (WorldPosition): Where the sheet is centred.
+            reach (float): How far it extends from there, in metres.
+
+        Returns:
+            dangers (tuple): What the survey recorded, shallowest first.
+
+        Notes:
+            A square rather than a circle, because that is the shape of the sheet
+            and a rock just off the corner of the paper is still on the paper.
+
+            Walks the tiles the box covers rather than every tile aboard. A chart
+            is a few kilometres across and a world may be ten thousand tiles; the
+            ones outside the sheet cannot contribute to it, and loading them to
+            find that out would put the cost of a world into the cost of a chart.
+
+        """
+        reach = abs(reach)
+        _, west, south = cell_of(position.offset(-reach, -reach), self.tile_size)
+        _, east, north = cell_of(position.offset(reach, reach), self.tile_size)
+
+        found = []
+        for column in range(west, east + 1):
+            for row in range(south, north + 1):
+                tile = self.tile((position.region, column, row))
+                if tile is None:
+                    continue
+                for hazard in tile.hazards:
+                    if hazard.region != position.region:
+                        continue
+                    if abs(hazard.x - position.x) > reach:
+                        continue
+                    if abs(hazard.y - position.y) > reach:
+                        continue
+                    found.append(hazard)
+        return tuple(sorted(found, key=lambda hazard: -hazard.top_z))
+
     def __repr__(self):
         return (
             f"<TiledMapProvider: {self.tile_size:.0f} m tiles, "

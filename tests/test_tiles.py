@@ -492,3 +492,94 @@ class TestSamplingMissesIt(BaseEvenniaTestCase):
         ]
         self.assertGreater(len(points), 500)
         self.assertFalse(any(self.rock.covers(point) for point in points))
+
+
+class TestWhatBelongsOnTheChart(BaseEvenniaTestCase):
+    """
+    The other half of a hazard, and the half a captain actually gets to use.
+
+    `hazards_touching` answers what a hull would hit. This answers what the paper should
+    show, and without it a game could author a rock that holes a ship while its own chart
+    drew open water over the spot - which is worse than a rock drawn nowhere, because the
+    captain has looked and is entitled to believe what he saw.
+
+    The two must agree. A chart showing one set of rocks while the physics used another
+    would be a chart that lies in a new and more interesting way.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.sea = TiledMapProvider(DictTileSource([a_shelf()]))
+
+    def test_a_rock_on_the_sheet_is_reported(self):
+        found = self.sea.charted_dangers(WorldPosition(500.0, 500.0), 400.0)
+        self.assertEqual([hazard.key for hazard in found], ["the Whaleback"])
+
+    def test_one_off_the_sheet_is_not(self):
+        """Centred well clear of it - the rock sits at the middle of its own tile."""
+        found = self.sea.charted_dangers(WorldPosition(100.0, 100.0), 50.0)
+        self.assertEqual(found, ())
+
+    def test_the_box_is_square_because_the_paper_is(self):
+        """
+        A rock off the corner of the sheet is still on the sheet. Measured as a circle it
+        would drop out at the corners, which is where a captain planning a turn is
+        looking.
+
+        """
+        corner = WorldPosition(500.0 - 390.0, 500.0 - 390.0)
+        self.assertTrue(self.sea.charted_dangers(corner, 400.0))
+
+    def test_unmapped_water_contributes_nothing(self):
+        empty = TiledMapProvider(DictTileSource([]))
+        self.assertEqual(empty.charted_dangers(WorldPosition(0.0, 0.0), 5000.0), ())
+
+    def test_a_plain_provider_answers_with_nothing(self):
+        """Additive: a game with no authored hazards gets a chart exactly as it was."""
+        self.assertEqual(
+            FlatSeaMapProvider(30.0).charted_dangers(WorldPosition(0.0, 0.0), 5000.0), ()
+        )
+
+    def test_the_worst_news_is_first(self):
+        crowded = Tile(
+            cell=SHELF,
+            terrain_z=-10.0,
+            bottom=SAND,
+            hazards=(
+                a_rock(key="deep one", x=400.0, y=500.0, top_z=-9.0),
+                a_rock(key="shoal one", x=500.0, y=500.0, top_z=-1.5),
+                a_rock(key="middling", x=600.0, y=500.0, top_z=-4.0),
+            ),
+        )
+        found = TiledMapProvider(DictTileSource([crowded])).charted_dangers(
+            WorldPosition(500.0, 500.0), 400.0
+        )
+        self.assertEqual([hazard.key for hazard in found], ["shoal one", "middling", "deep one"])
+
+    def test_it_reads_the_tiles_the_sheet_covers_and_no_others(self):
+        """
+        A chart is a few kilometres and a world may be ten thousand tiles. Loading the
+        ones outside the sheet to discover they are outside the sheet would put the cost
+        of a world into the cost of a chart.
+
+        """
+        sea = TiledMapProvider(DictTileSource([a_shelf()]))
+        sea.charted_dangers(WorldPosition(500.0, 500.0), 200.0)
+        self.assertEqual(sea.loads, 1)
+
+    def test_and_it_reads_all_of_them_when_the_sheet_is_wide(self):
+        sea = TiledMapProvider(DictTileSource([a_shelf()]))
+        sea.charted_dangers(WorldPosition(500.0, 500.0), 2500.0)
+        self.assertGreater(sea.loads, 1)
+
+    def test_the_chart_and_the_physics_agree_about_the_same_rock(self):
+        """
+        The property that makes this worth having. What a hull sweeps through and what
+        the paper shows are two questions about one list.
+
+        """
+        drawn = self.sea.charted_dangers(WorldPosition(500.0, 500.0), 400.0)
+        struck = self.sea.hazards_touching(
+            WorldPosition(300.0, 500.0), WorldPosition(700.0, 500.0), width=6.0
+        )
+        self.assertEqual([h.key for h in drawn], [h.key for h in struck])

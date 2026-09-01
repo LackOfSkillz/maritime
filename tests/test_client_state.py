@@ -13,6 +13,8 @@ from django.test import override_settings
 from evennia.utils import create
 from evennia.utils.test_resources import BaseEvenniaTest
 
+from .. import config
+from ..bathymetry import MaritimeMapProvider, SAND
 from ..charts import Chart
 from ..client.state import chart_for, contacts_for, status_for
 from ..crew import ABLE
@@ -20,6 +22,7 @@ from ..damage import HULL, RIGGING
 from ..motion import HelmOrders, MotionLimits
 from ..observation import IDENTIFIED, VESSEL
 from ..position import WorldPosition
+from ..tiles import Hazard
 from ..rooms import ShipRoom
 from ..sailing import FULL
 from ..traffic import traffic
@@ -352,3 +355,175 @@ class TestThePaper(StateTestCase):
         near = chart_for(self.hull, 2000.0).as_message()
         far = chart_for(self.hull, 20000.0).as_message()
         self.assertGreater(far["reach"], near["reach"])
+
+
+#: What `RockyBottom` answers with, and what reach it was asked for.
+#:
+#: Module level because `override_settings` resolves a provider by dotted path, so the
+#: class it names cannot be handed anything by the test that wants it. The list is the
+#: seam instead.
+CHARTED_ROCKS = []
+ASKED_FOR = []
+
+
+class RockyBottom(MaritimeMapProvider):
+    """Forty metres of water, and whatever rocks a test has put on the bottom."""
+
+    def terrain_z_at(self, position):
+        return -40.0
+
+    def charted_dangers(self, position, reach):
+        ASKED_FOR.append(reach)
+        return tuple(CHARTED_ROCKS)
+
+
+class OlderProvider(MaritimeMapProvider):
+    """
+    A provider written before charted dangers existed.
+
+    A subclass, because the configuration refuses anything else - which is the answer to
+    whether a game could have a provider that has never heard of this. It cannot: it
+    inherits the base class, and the base class answers with nothing.
+    """
+
+    def terrain_z_at(self, position):
+        return -40.0
+
+
+# Derived rather than written out. This package targets a standalone repository as
+# well as the Evennia tree, so a dotted path spelled by hand hardcodes one of the two
+# homes - and CI checks for exactly that.
+ROCKY = f"{__name__}.RockyBottom"
+OLDER = f"{__name__}.OlderProvider"
+
+
+class TestTheRocksReachThePaper(StateTestCase):
+    """
+    The half of the charted layer that was designed and never drawn.
+
+    `docs/client.md` has said since the interface was specified that the charted layer
+    carries land, soundings, marks *and hazards*. The first three arrived. Grounding has
+    been asking providers for hazards the whole time, so a rock a game had authored would
+    hole a hull that sailed over it while the chart drew open water above it - which is
+    worse than a rock drawn nowhere, because the captain has looked at the paper and is
+    entitled to believe it.
+
+    It cannot come from the soundings. Those are sampled on a grid, and anything narrower
+    than the grid is missed rather than smoothed - and missed differently depending on
+    where the grid falls, so it would appear and vanish as she sailed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.hull.add_chart(Chart(key="the approaches", west=-9e4, east=9e4, south=-9e4, north=9e4))
+        CHARTED_ROCKS.clear()
+        ASKED_FOR.clear()
+        self.addCleanup(CHARTED_ROCKS.clear)
+        self.addCleanup(ASKED_FOR.clear)
+
+    def sheet(self, reach=6000.0):
+        return chart_for(self.hull, reach).as_message()
+
+    def rocky(self, *hazards):
+        """Put those rocks on the bottom, under a provider that reports them."""
+        CHARTED_ROCKS.extend(hazards)
+        override = override_settings(MARITIME_MAP_PROVIDER=ROCKY)
+        override.enable()
+        self.addCleanup(override.disable)
+        config.forget_map_provider()
+        self.addCleanup(config.forget_map_provider)
+
+    def test_a_world_with_no_rocks_publishes_none(self):
+        self.rocky()
+        self.assertEqual(self.sheet()["dangers"], [])
+
+    @override_settings(MARITIME_MAP_PROVIDER=OLDER)
+    def test_a_provider_that_never_heard_of_them_is_not_an_error(self):
+        """
+        Additive, like `hazards_touching` before it. A game whose provider predates this
+        overrides `terrain_z_at` and nothing else, inherits an answer of nothing, and gets
+        a chart exactly as it was.
+
+        This is also where it turned out a provider *cannot* simply not have the method:
+        the configuration checks the type, so anything a game points a setting at is a
+        subclass and has it. The guard in `_dangers_within` stays for a provider assigned
+        directly - a test double, or a game reaching past its own settings.
+
+        """
+        config.forget_map_provider()
+        self.addCleanup(config.forget_map_provider)
+        self.assertEqual(self.sheet()["dangers"], [])
+
+    def test_a_rock_arrives_as_an_offset(self):
+        """
+        Offsets, like everything else on the sheet. A browser is never handed a survey
+        of the world, and a chart that has drifted from the reckoning draws the rock in
+        the wrong place - which is what being lost looks like.
+
+        """
+        self.rocky(Hazard(key="the Whaleback", x=1200.0, y=-400.0, radius=70.0, top_z=-3.5))
+        drawn = self.sheet()["dangers"]
+        self.assertEqual(len(drawn), 1)
+        self.assertEqual(drawn[0]["east"], 1200.0)
+        self.assertEqual(drawn[0]["north"], -400.0)
+        self.assertEqual(drawn[0]["label"], "the Whaleback")
+        self.assertNotIn("x", drawn[0])
+
+    def test_it_carries_the_water_over_it(self):
+        """The number that decides whether she may pass."""
+        self.rocky(Hazard(key="the Whaleback", x=800.0, y=0.0, radius=70.0, top_z=-3.5))
+        self.assertEqual(self.sheet()["dangers"][0]["top_z"], -3.5)
+
+    def test_and_what_it_is_made_of(self):
+        self.rocky(Hazard(key="a shoal", x=800.0, y=0.0, radius=90.0, top_z=-2.0, bottom=SAND))
+        self.assertEqual(self.sheet()["dangers"][0]["bottom"], SAND)
+
+    def test_one_that_dries_says_so(self):
+        """
+        Land at chart datum reads differently from three metres of water, and the
+        interface has to be able to draw it differently without doing the arithmetic
+        itself.
+
+        """
+        self.rocky(
+            Hazard(key="the Brawn", x=500.0, y=0.0, radius=40.0, top_z=0.6),
+            Hazard(key="the Whaleback", x=900.0, y=0.0, radius=70.0, top_z=-3.5),
+        )
+        drying = {d["label"]: d["dries"] for d in self.sheet()["dangers"]}
+        self.assertEqual(drying, {"the Brawn": True, "the Whaleback": False})
+
+    def test_the_worst_news_is_first(self):
+        self.rocky(
+            Hazard(key="deep one", x=200.0, y=0.0, radius=50.0, top_z=-9.0),
+            Hazard(key="shoal one", x=400.0, y=0.0, radius=50.0, top_z=-1.5),
+            Hazard(key="middling", x=600.0, y=0.0, radius=50.0, top_z=-4.0),
+        )
+        self.assertEqual(
+            [d["label"] for d in self.sheet()["dangers"]],
+            ["shoal one", "middling", "deep one"],
+        )
+
+    def test_the_provider_is_asked_for_the_sheet_she_is_drawing(self):
+        """
+        Not a fixed radius. A captain zoomed out to twenty miles is asking about twenty
+        miles of rocks, and a sheet that answered for two would leave the rest of the
+        paper looking surveyed and empty.
+
+        """
+        self.rocky()
+        ASKED_FOR.clear()
+        self.sheet(reach=3000.0)
+        self.sheet(reach=18000.0)
+        self.assertEqual(ASKED_FOR, [3000.0, 18000.0])
+
+    def test_they_are_not_buoyage(self):
+        """
+        Two layers, drawn differently on purpose. A buoy is a thing somebody moored and
+        it can drag; a rock is a thing somebody found and it cannot, and a chart that
+        confused them would have a captain looking for a light on a reef.
+
+        """
+        self.rocky(Hazard(key="the Whaleback", x=800.0, y=0.0, radius=70.0, top_z=-3.5))
+        drawn = self.sheet()
+        self.assertEqual(len(drawn["dangers"]), 1)
+        self.assertEqual(drawn["marks"], [])

@@ -290,6 +290,7 @@ def chart_for(vessel, reach=10000.0):
         coastline=coast,
         depths=depths,
         marks=_marks_within(here, reach),
+        dangers=_dangers_within(world, here, reach),
         route=_route_of(vessel, here),
         soundings=cartography.soundings(grid, west, south, span, here),
         coverage=cartography.coverage(chart, here),
@@ -374,6 +375,70 @@ def _now():
     from .. import config
 
     return config.time_provider().now()
+
+
+def _dangers_within(world, here, reach):
+    """
+    The rocks on the paper, out to the edge of the sheet.
+
+    Args:
+        world (MaritimeMapProvider): The world's terrain.
+        here (WorldPosition): Where she reckons she is.
+        reach (float): How far the sheet extends, in metres.
+
+    Returns:
+        dangers (list): Each as an offset, with what is over it and what it is.
+
+    Notes:
+        **The half of the charted layer that was never drawn.** `docs/client.md` has
+        said since the interface was designed that the charted layer carries land,
+        soundings, marks *and hazards*; the first three arrived and the fourth did
+        not. Grounding has been asking providers for hazards all along, so a rock a
+        game had authored would hole a hull that sailed over it while the chart drew
+        open water above it - which is worse than a rock drawn nowhere, because the
+        captain has looked at the paper and is entitled to believe it.
+
+        It cannot come from the soundings. Those are sampled on a grid, and anything
+        narrower than the grid is not smoothed away but *missed* - and missed
+        differently depending on where the grid falls, so it would appear and vanish
+        as she sailed. A symbol is how a chart says "here, exactly", and it is what
+        real charts do with an isolated danger for the same reason.
+
+        Offsets, like everything else on the sheet, so a browser is never handed a
+        survey of the world.
+
+        Charted rather than sighted: this is what the survey recorded, so it stays on
+        the paper in fog and at night exactly as the coastline does.
+
+    """
+    if world is None:
+        return []
+
+    # Not every provider answers, and none has to. A game with no authored hazards
+    # gets an empty list and a chart exactly as it was.
+    dangers = getattr(world, "charted_dangers", None)
+    if dangers is None:
+        return []
+
+    # Sorted here rather than trusted from the provider. Shallowest first is a property
+    # of the *sheet* - a client taking the first entry is taking the worst news - and
+    # making it true at the point the sheet is built means it is true for every provider
+    # rather than for the ones that remembered.
+    out = []
+    for danger in sorted(dangers(here, reach), key=lambda found: -found.top_z):
+        out.append(
+            {
+                "id": danger.key,
+                "east": round(danger.x - here.x, 1),
+                "north": round(danger.y - here.y, 1),
+                "radius": round(danger.radius, 1),
+                "top_z": round(danger.top_z, 2),
+                "bottom": danger.bottom,
+                "label": danger.key,
+                "dries": danger.top_z >= 0.0,
+            }
+        )
+    return out
 
 
 def _marks_within(here, reach):

@@ -208,6 +208,10 @@ class ChartSheet(Payload):
         depths (dict): Fathom lines, keyed by the fathom they trace.
         soundings (list): `[east, north, fathoms]` figures to print.
         marks (list): Buoyage on the paper, each with its kind and its meaning.
+        dangers (list): Rocks, wrecks and shoals the survey recorded, each with what
+            water is over it and what it is made of. Distinct from `marks`, because a
+            buoy is a thing somebody moored and a rock is a thing somebody found, and
+            a chart draws them differently for the good reason that one can drag.
         route (list): The plotted course, as offsets in metres.
         coverage (dict): The edges of the sheet, so the interface can show where
             surveying stops.
@@ -227,6 +231,7 @@ class ChartSheet(Payload):
     depths: dict = field(default_factory=dict)
     soundings: list = field(default_factory=list)
     marks: list = field(default_factory=list)
+    dangers: list = field(default_factory=list)
     route: list = field(default_factory=list)
     coverage: dict = field(default_factory=dict)
     revision: int = 0
@@ -243,6 +248,7 @@ class ChartSheet(Payload):
             "depths": {str(line): paths for line, paths in self.depths.items()},
             "soundings": list(self.soundings),
             "marks": list(self.marks),
+            "dangers": list(self.dangers),
             "route": list(self.route),
             "coverage": dict(self.coverage),
             "revision": self.revision,

@@ -13,6 +13,23 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **Put the rocks on the chart.** `docs/client.md` has said since the interface was
+  specified that the charted layer carries land, soundings, marks *and hazards*. The first
+  three arrived and the fourth did not, while grounding went on asking providers for
+  hazards the whole time — so a rock a game had authored would hole a hull that sailed over
+  it while the chart drew open water above it. That is worse than a rock drawn nowhere,
+  because the captain has looked at the paper and is entitled to believe it.
+  `charted_dangers(position, reach)` joins `hazards_touching` on the base provider, on the
+  same additive terms: a game with no authored hazards answers with nothing and gets the
+  chart it had. `TiledMapProvider` reads the tiles the sheet covers and no others, because
+  a chart is a few kilometres and a world may be ten thousand tiles.
+- Draw them as a chart draws them — a starred symbol with the least depth over it beside
+  it, and no figure at all on one that dries, because there is no water to quote. Not as
+  buoyage: a buoy is a thing somebody moored and can drag, a rock is a thing somebody found
+  and cannot, and a captain looking for a light on a reef is a captain in trouble. They
+  cannot come from the soundings either, and that is the point of them — a grid four
+  hundred metres across steps over a rock a hundred wide, and whether it steps over *this*
+  one depends on where the grid falls, so the danger would appear and vanish as she sailed.
 - Give the interface a full-window layout, as an opt-in nobody else pays for. Every rule
   in it is scoped to `:root:has(#maritime-root.maritime-on)`, so a game that never boards
   a vessel sees the webclient it has always had, and a player who steps aboard gets a

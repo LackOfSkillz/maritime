@@ -657,6 +657,41 @@
     stroke-width: 3;
 }
 
+/* A rock, a wreck or a shoal the survey recorded.
+ *
+ * Struck rather than filled, and in the caution colour, because it is not a thing
+ * floating on the water that might have dragged - it is the ground, and it is where the
+ * chart says it is. Drawn under the buoyage layer so a danger mark moored on a rock sits
+ * over its own rock rather than beside it. */
+.maritime-chart-danger {
+    cursor: pointer;
+}
+
+.maritime-chart-danger line {
+    stroke: var(--maritime-caution);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+}
+
+/* One that dries is land at chart datum, and a captain reads that differently from
+ * three metres of water: heavier, and with no depth beside it to reassure him. */
+.maritime-danger-dries line {
+    stroke: var(--maritime-danger, var(--maritime-caution));
+    stroke-width: 2.4;
+}
+
+.maritime-danger-depth {
+    fill: var(--maritime-caution);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    dominant-baseline: middle;
+}
+
+.maritime-chart-danger:focus-visible line {
+    stroke: var(--maritime-accent);
+    stroke-width: 3;
+}
+
 /* The course as pencilled on the paper: a thin dashed run through the marks. */
 .maritime-chart-route {
     fill: none;

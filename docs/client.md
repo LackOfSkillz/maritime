@@ -190,6 +190,13 @@ fiction has not granted, because it is never told.
     charted   persistent   land, soundings, marks, hazards, from `charts`
     sighted   volatile     other vessels, from `contacts()`
 
+Hazards were the last of those to arrive and are the only ones that do not come from the
+soundings. They cannot: a chart samples the seabed on a grid, and anything narrower than
+the grid is *missed* rather than smoothed - and missed differently depending on where the
+grid falls, so the danger would appear and vanish as she sailed. The provider is asked for
+them directly, through `charted_dangers`, and a symbol is how a chart says "here, exactly".
+Which is what real charts do with an isolated danger, for the same reason.
+
 Charted things stay because somebody wrote them down. Sighted things exist only while the
 lookout has them. A contact that outlived the sighting would be a radar repeater and would
 undo detection exactly as a true-position marker would undo navigation.

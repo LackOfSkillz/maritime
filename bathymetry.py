@@ -188,6 +188,43 @@ class MaritimeMapProvider:
         """
         return ()
 
+    def charted_dangers(self, position, reach):
+        """
+        Discrete hazards near enough to belong on a chart, drawn as symbols.
+
+        Args:
+            position (WorldPosition): Where the sheet is centred.
+            reach (float): How far the sheet extends from there, in metres.
+
+        Returns:
+            dangers (tuple): What a survey would have recorded, shallowest first.
+
+        Notes:
+            Nothing, unless a provider authors real hazards - the same terms as
+            `hazards_touching`, and on the base class for the same reason: the
+            chart asks every provider unconditionally rather than guessing which
+            ones answer.
+
+            **The other half of a hazard, and the half that was missing.** A rock
+            that grounding knows about and the chart does not is worse than a rock
+            drawn nowhere at all, because the captain has looked at the paper, seen
+            open water, and is entitled to believe it.
+
+            It has to be a symbol rather than a sounding. A chart samples the
+            seabed on a grid, and something narrower than that grid is not smoothed
+            away - it is *missed*, and missed differently depending on where the
+            grid happens to fall relative to it, so it would appear and vanish as
+            she sailed. Which is why real charts give an isolated danger its own
+            mark instead of trusting a contour to imply one.
+
+            Charted, not sighted. This is what the survey recorded, so it stays on
+            the paper in fog and at night exactly as the coastline does. A game
+            that wants a rock to be a discovery should not answer with it here
+            until somebody has discovered it.
+
+        """
+        return ()
+
     def sea_surface_z_at(self, position, game_time):
         """
         Elevation of the water surface at a point and time.
