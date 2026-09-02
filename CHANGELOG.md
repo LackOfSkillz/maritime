@@ -85,6 +85,36 @@ weather, crew, combat and damage are not.
   topsail was lost. Taking the ground gently, being hard on and waiting for the tide, and
   being opened on a reef are three different afternoons.
 
+### Add
+
+- **Ramming, and it costs the ship doing it.** A hull driven into another is asked to
+  survive the same collision she is delivering, which is what makes it a decision rather
+  than a free attack. The energy is one half m vee squared off the reduced mass of the two
+  hulls and the closing speed along the line between them - so chasing her is a poor way to
+  hit her, meeting her is a violent one, and a heavy ship hurts more for no reason except
+  that she is heavy. None of that is tabulated.
+- Damage is energy *per tonne of the ship receiving it*, which is what makes the same
+  collision a third of a brig's hull and the end of a ship's boat. The first version divided
+  joules by a constant, and a frigate running down a boat barely scratched her - right
+  arithmetic, wrong question.
+- **Which face was struck decides what a square blow even is.** A stem is the strongest part
+  of a ship and her side the weakest, and the corner between them is her own proportions
+  rather than a fixed arc - so a beamy hull presents a wide bow from ahead and a fine one a
+  knife edge. The first version measured obliquity from her beam, which made running square
+  into her stem - the worst collision there is - read as a graze and refuse to resolve.
+- Bow fittings: a plain stem, a spur, or a ram. What a beak *is*, in two numbers: it drives
+  more of the blow into her and takes less of it back, because it is structure built forward
+  of the hull to be hit instead of the hull.
+- **Sheering**: running down an enemy's side to break the looms she has out, with her oars
+  breaking against your topsides as they go. How much of her side you ran down decides how
+  many, and a ship under sail alone cannot be sheered at all.
+- Contact is solved rather than sampled. Stepping along the track and testing each position
+  is what grounding does against the seabed, and it is wrong here for a reason grounding
+  does not have: a ship is a small object, and a coarse step walks straight past one. The
+  stem's track is clipped against the target's hull as an oriented box - exact, constant
+  time, and no step size to get wrong.
+- Both decks are told, and told different things. A collision has a rammer and a rammed.
+
 ### Fix
 
 - **Two rooms in Careenage had two exits of the same name, and one was unreachable.**

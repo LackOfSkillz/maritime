@@ -31,7 +31,7 @@ from evennia.objects.objects import DefaultObject
 from .boarding import Boarded
 from .charts import Charted
 from .crew import Crewed
-from .damage import Damaged
+from .damage import HULL, Damaged
 from .environment import Situated
 from .floating import Floating
 from .grounding import check_swept_grounding
@@ -39,6 +39,7 @@ from .handling import Handled
 from .motion import HelmOrders, MotionLimits, MotionState, advance
 from .navigation import Navigator, reckon
 from .oars import Oared, braking_limits
+from .ramming import Rams
 from .observation import Lookout
 from .ownership import Owned
 from .ports import Berthing
@@ -107,6 +108,7 @@ class Vessel(
     Handled,
     Damaged,
     Oared,
+    Rams,
     Armed,
     Laden,
     Charted,
@@ -126,6 +128,49 @@ class Vessel(
     hooks that let Evennia tell it when the server is going away.
 
     """
+
+    def _rammed(self, before, after, other, where, blow, world, now):
+        """
+        Stop her where she struck another ship, and share out what it cost.
+
+        Args:
+            before (MotionState): Where she began the step.
+            after (MotionState): Where she was heading.
+            other (Vessel): Who she hit.
+            where (WorldPosition): Where her centre was at the moment of contact.
+            blow (RamResult): What the collision came to.
+            world (MaritimeMapProvider): The ground, for the water's surface.
+            now (float): The game time.
+
+        Returns:
+            moved (bool): True, because she did move - up to the other ship.
+
+        Notes:
+            **Both hulls take it, and hers is not the smaller share by default.** Which of
+            them comes off worse is decided in `ram` by the angle, the fitting and the two
+            displacements, and this only delivers the answer.
+
+            The damage goes on the hull track for both. A collision is a structural event:
+            it does not cut rigging or dismount guns except by consequence, and consequence
+            is `damage.structural`'s business rather than this one's.
+
+        """
+        floating = where.with_z(world.sea_surface_z_at(where, now))
+
+        self.ndb.maritime_position = floating
+        self.ndb.heading = after.heading
+        self.ndb.maritime_dirty = True
+        self.ndb.speed = 0.0
+
+        if blow:
+            self.take_damage(HULL, blow.recoil)
+            self.take_crew_casualties(blow.recoil)
+            other.take_damage(HULL, blow.weight)
+            other.take_crew_casualties(blow.weight)
+
+        self.narrator.collision(other, blow, hers=False)
+        other.narrator.collision(self, blow, hers=True)
+        return True
 
     def at_object_creation(self):
         """
@@ -625,6 +670,20 @@ class Vessel(
             world,
             now,
         )
+
+        # **And whatever else is floating in the way.**
+        #
+        # The seabed is not the only thing a hull can find. Tested over the same track and
+        # the same tick, and whichever she reached first is what stopped her - a ship that
+        # rams and then grounds did the ramming, and one that grounds short of another ship
+        # never reached her at all.
+        struck = self.first_hull_along(before.position, floating, after.heading, after.speed)
+        if struck is not None:
+            other, where, blow = struck
+            if contact.position is None or before.position.horizontal_distance_to(
+                where
+            ) < before.position.horizontal_distance_to(contact.position):
+                return self._rammed(before, after, other, where, blow, world, now)
 
         # Where she actually got to, which on a contact is where she struck
         # rather than where she was going.

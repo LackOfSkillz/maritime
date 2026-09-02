@@ -65,6 +65,8 @@ SIGHTED = "sighted"
 CONTACT_LOST = "contact_lost"
 CONTACT_CLOSER = "contact_closer"
 HULL_HOLED = "hull_holed"
+RAMMED = "rammed"
+RAMMED_BY = "rammed_by"
 SHOALING = "shoaling"
 
 #: How much drive has to be gone before anybody aboard remarks on it. The edge of a
@@ -406,6 +408,22 @@ class VesselNarrator:
                 f"The hull grinds and settles. She is aground on {bottom}.",
             )
 
+        if event == RAMMED:
+            # Told from the deck of the ship doing it. She feels the blow through her own
+            # frames, which is the whole point of the item and worth saying out loud.
+            return (
+                f"Her stem drives into {detail['other']} {detail['where']} with a crash "
+                f"that runs the length of the ship. Timbers give somewhere below.",
+                f"She strikes {detail['other']} {detail['where']} and stops dead.",
+            )
+
+        if event == RAMMED_BY:
+            return (
+                f"{detail['other']} comes on and strikes her {detail['where']}. The deck "
+                f"jumps underfoot and the sea shows white where her side has gone in.",
+                f"{detail['other']} strikes her {detail['where']}.",
+            )
+
         if event == SIGHTED:
             where = bearing_in_points(detail["relative"])
             return (
@@ -463,6 +481,30 @@ class VesselNarrator:
             self.deliver(*self.phrase_for(HULL_HOLED))
         else:
             self.deliver(*self.phrase_for(RUN_AGROUND, bottom=contact.bottom))
+
+    def collision(self, other, blow, hers):
+        """
+        Tell the ship she has run into another one, or been run into.
+
+        Args:
+            other (Vessel): The other ship.
+            blow (RamResult): What the collision came to.
+            hers (bool): True when telling the ship that was struck, False when telling
+                the one that struck her.
+
+        Notes:
+            Both decks hear about it, and they hear different things - which is not
+            decoration. A collision has a rammer and a rammed, and a report that read the
+            same on both decks would lose the one fact that matters most to whoever is
+            standing on them.
+
+        """
+        where = {
+            "bow": "on the bow",
+            "stern": "on the quarter",
+            "side": "square on the beam",
+        }.get(blow.struck, "a glancing blow")
+        self.deliver(*self.phrase_for(RAMMED_BY if hers else RAMMED, other=other.key, where=where))
 
     def soundings(self, contact):
         """

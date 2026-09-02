@@ -12,15 +12,29 @@ moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 
 ## Status
 
-**Early development.** Working and tested: the foundations, the spatial model and a tiled
-seabed, vessels and their interiors, the simulation service, sailing, currents, grounding, observation, ports,
-dead reckoning and fixes, charts, routes and the sailing master, weather and sea state,
-tactical geometry, weapons, the projected ocean for anyone in the water, cargo, oars,
-boarding, who owns and commands a ship, her company - quality, morale, exhaustion and
-mutiny with marines, seamen and oarsmen as distinct divisions - buoyage with safe-water
-steering, damage tracks, ammunition and raking. Not built: the rest of
-ship combat, the strategic layer, and the service economy.
-Nothing here is API-stable.
+**Early development.** Nothing here is API-stable.
+
+Working and tested:
+
+- **The world.** Foundations, the spatial model and a tiled seabed, tides, currents,
+  weather and sea state, dredged channels, meridians and parallels, shaded relief.
+- **The ship.** Vessels and their interiors, the simulation service, sailing, oars,
+  grounding and kedging off it again, cargo and stowage, seven hulls to build from, laying
+  her up in ordinary and bringing her forward.
+- **Getting about.** Observation, dead reckoning and fixes, charts, buoyage with safe-water
+  steering, routes and the sailing master, ordering a passage to a named port, ports and
+  berths, discovery of what nobody had seen before.
+- **Fighting.** Tactical geometry, weapons, ammunition as intent, point of impact and
+  raking, damage tracks, battle sails, wind shadow, opportunity fire, how fast a crew
+  answers, ramming and sheering, boarding and grappling.
+- **People.** Who owns and commands a ship; her company - quality, morale, exhaustion and
+  mutiny, with marines, seamen and oarsmen as distinct divisions.
+- **The screen.** An optional graphical interface for web clients, which shows a chart at
+  sea and a clickable map of the town ashore, and runtime switches for whoever runs the
+  game.
+
+Not built: fire, flooding, boarding melee and capture, the strategic layer, and the
+service economy.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
 sail continuous water, sound your way through a channel past a rock ledge, come alongside
@@ -158,8 +172,10 @@ build_aetos
 That builds Careenage and the six islands: 79 rooms, 154 exits, eighteen people behind
 counters. It prints the dbref of the room new players should start in, for `START_LOCATION`.
 
-Ashore you get `browse`, `buy`, `market` and `sell` — installed on the rooms themselves, so
-they exist where there is a counter and nowhere else. Islands trade by the ton: each wants
+Ashore you get `browse`, `buy`, `market` and `sell` — installed on the shore rooms
+themselves, so they exist on land and never on a deck. A street with nobody trading in it
+answers "There is nobody selling anything here", which is the honest answer and cheaper than
+working out which rooms deserve the verbs. Islands trade by the ton: each wants
 one cargo and offers another, and the six of them make a round a captain can run. It is the worked example of the question this contrib gets asked most - how does an
 ordinary Evennia area sit inside a world with coordinates in it?
 
@@ -192,6 +208,19 @@ A game with its own room typeclass mixes in `NoticesTheWaterline` instead; the m
 contract and `ShoreRoom` is the convenience. A room that does neither still works — the
 player can walk through it — but the panel keeps the last map it was sent, so its dot sits
 on a room they have left, and clicking works out a route from there.
+
+**She can run into other ships, and it hurts her too.** Ramming is resolved on movement
+against the hull she reaches first, from the closing speed and the angle and the two
+displacements — so meeting a ship is violent, chasing one is not, and a beam strike is the
+one worth manoeuvring for. What is on her bow decides how the cost is split:
+
+```python
+vessel.bow_fitting = "ram"      # or "spur", or "plain"
+```
+
+A beak drives more of the blow into her and takes less of it back, which is what a beak is
+for. Running down an oared ship's side shears off the looms she has out, and she breaks them
+against your topsides on the way past.
 
 **Every line on the map is one move.** Flattening a graph of rooms onto a grid always leaves
 some pairs a long way apart — two ends of a street reached by different routes, a lane that
@@ -854,7 +883,9 @@ All optional. Every one is prefixed `MARITIME_`.
 
 ## Usage
 
-Commands are on the ship's rooms, so they work with a deck under you and nowhere else.
+Commands are on the ship's rooms, so they work with a deck under you and nowhere else — with
+two deliberate exceptions. The shopkeeping verbs ashore (`browse`, `buy`, `market`, `sell`)
+live on the shore rooms, and the runtime switches are on the account.
 
 | Command | Effect |
 | --- | --- |
@@ -880,6 +911,13 @@ Commands are on the ship's rooms, so they work with a deck under you and nowhere
 | `scan` | The whole horizon, quarter by quarter |
 | `target <name>` | Range, aspect, closure and which arcs bear |
 | `guns` / `load [shot]` / `fire <name>` | The battery, serving it with ball, chain or grape, and firing what bears |
+| `hold fire <name>` | Lay a gun and wait; it speaks the moment she bears |
+| `oars` | What her looms are doing, and how many hands are on them |
+| `give way` / `stretch out` / `easy` / `hold water` | Rowing: a working stroke, everything they have, gently, and stop her |
+| `paddle` | For craft that are paddled rather than rowed |
+| `grapple <name>` / `grapples` / `cut grapples` | Throw lines to hold her alongside, see what is holding, and let go |
+| `strike` | Haul your colours down |
+| `stow` / `discharge` / `manifest` | Load cargo, put it ashore, and read what she is carrying |
 | `look <direction>` | One quarter or compass point - `look se`, `look port` |
 | `watch <direction>` | A standing watch; told as things come and go |
 | `look` | A weather deck also describes the sea outside it |
@@ -1038,14 +1076,16 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-Sixteen of those are **scenarios** rather than unit tests — named voyages in
-`tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
-the slowest part of the suite and worth it: writing them found a sailing master who handed
-back the con at his last mark and then sailed twelve kilometres past it, which every unit
-test in the repository had passed over.
+**3134 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
+the slowest part of the suite and worth it twice over: writing them found a sailing master
+who handed back the con at his last mark and then sailed twelve kilometres past it, and they
+later caught a gale leg beating a breeze leg by exactly eighteen metres — half of one sloop
+plus half of another, because the second leg was now running into the first one lying
+stopped at the end of her run. Every unit test in the repository passed over both.
 
-Roughly 1800 tests. `ManualTimeProvider` advances game time on demand, so a voyage that
-would take half an hour of wall time runs in milliseconds.
+`ManualTimeProvider` advances game time on demand, so a voyage that would take half an hour
+of wall time runs in milliseconds.
 
 ## Limitations
 
@@ -1058,7 +1098,13 @@ would take half an hour of wall time runs in milliseconds.
 - Capture does not yet transfer anything. She can be grappled and she can strike, and the
   machinery to hand her over exists, but the four conditions that make a capture — held
   alongside, struck, her deck carried, her captain subdued — need the boarding melee that is
-  not built. The ruling on what capture means is in `DECISIONS.md`.
+  not built. What a captor may do with a prize has been ruled on — ownership transfers, and
+  command with it — and is written up in `DECISIONS.md`.
+- A ship with way still ordered on will grind into the ship she has rammed again on the next
+  tick, and again after that. That is arguably what she would do, and it is not a decision
+  anybody made. Nothing yet tells the helm that the way ahead is now occupied.
+- Nothing fires at a rammer as she comes on. Defensive fire into a closing ship is the next
+  combat item and needs the ramming that now exists.
 - Cargo has no price. Contracts, freight rates, who is buying and what a voyage is worth
   are the game's own economy, and shipping an opinion about them would collide with
   whatever it already has. Recorded in `DECISIONS.md`.
@@ -1107,9 +1153,6 @@ would take half an hour of wall time runs in milliseconds.
   actually sailed.
 - Spatial indexes are a linear scan. The interface is settled; the structure behind it
   lands when there is real traffic to measure it against.
-- Capture confers nothing. A ship can be boarded and can strike, and what a captor may
-  then do with her - who may give her orders, who owns her - is a question about authority,
-  which is phase 14. In `DECISIONS.md`.
 - Two lashed hulls do not move as one. Each is simulated separately and the lines part if
   their motion diverges far enough, which is the honest half; a coupled two-body model is
   not built.

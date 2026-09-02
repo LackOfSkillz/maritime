@@ -352,7 +352,7 @@ your consort is a genuine mistake you can make.
     M   blocked wind / wind shadow   DONE
     P   how fast a crew answers      DONE
     N   opportunity fire             DONE
-    E   ramming and sheering         needs B and D
+    E   ramming and sheering         DONE
     Q   defensive fire               needs E - there is no rammer to fire at without it
     L   grappling as a count         small, precedes H
     H   boarding melee               needs R

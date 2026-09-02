@@ -436,16 +436,37 @@ class TestStormDelay(ScenarioTestCase):
 
     """
 
-    def run_leg(self, sky, key):
+    def run_leg(self, sky, key, lane=0.0):
+        """
+        Args:
+            sky (dict): The weather to sail it in.
+            key (str): A name for the hull.
+            lane (float, optional): How far north to put her, in metres.
+
+        Returns:
+            easting (float): How far east she got.
+
+        Notes:
+            **Each leg gets its own water.** This scenario is the same passage sailed
+            twice in two weathers, not two ships in company - but both legs used to start
+            at the origin and steer east, so the second one overhauled the first lying
+            stopped at the end of her run and hit her. Ships used to pass through each
+            other and now do not, which is the point of the ramming work; it also means a
+            test cannot leave one parked across another's track.
+
+        """
         with override_settings(**sky):
-            hull = self.a_sloop(key=key)
+            hull = self.a_sloop(key=key, position=WorldPosition(0.0, lane))
             hull.sail_plan = WORKING
             hull.orders = HelmOrders(heading=90.0, speed=0.0)
             self.sail(hull, 900.0)
             return hull.maritime_position.x
 
     def test_a_gale_costs_her_ground(self):
-        self.assertLess(self.run_leg(GALE, "Gale"), self.run_leg(BREEZE, "Breeze"))
+        self.assertLess(
+            self.run_leg(GALE, "Gale", lane=0.0),
+            self.run_leg(BREEZE, "Breeze", lane=5000.0),
+        )
 
     def test_the_sea_is_what_does_it(self):
         with override_settings(**GALE):
