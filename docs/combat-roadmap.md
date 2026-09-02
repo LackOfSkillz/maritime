@@ -357,8 +357,8 @@ your consort is a genuine mistake you can make.
     L   grappling as a count         DONE
     H   boarding melee               DONE
     I   capture                      DONE
-    O   springing on a cable         independent, small
-    F   fire                         large, independent
+    O   springing on a cable         DONE
+    F   fire                         DONE
     G   flooding and pumping         pairs with F
     S   consorts and station-keeping independent
     J   post-battle casualties       closes the loop into morale

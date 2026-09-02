@@ -13,6 +13,52 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **Fire, and it is a situation rather than a debuff.** Three rules do all the work. It
+  escalates while you ignore it - and the clock **resets each time it spreads**, so a ship
+  left burning for a quarter of an hour is not facing one fire that got worse but several,
+  each with its own clock. Ignoring it compounds instead of accumulating.
+- Fighting it costs hands with diminishing returns, so past a point sending more people is
+  simply disarming yourself. The men on the buckets are men not at the guns.
+- **The pumps will not draw unless she stops**, because the hoses go over the side and a ship
+  with way on drags them. That is the whole thing: a burning ship must choose between running
+  and surviving, and no hit-point model can produce that dilemma, because in one of those
+  damage never asks you to give up your ability to manoeuvre in order to fix it.
+- Canvas aloft is more fire to catch, so handing your sails helps twice - and she cannot run
+  under bare poles either, which is the same choice from the other side.
+- It is not a damage track. It **writes into the tracks that already exist**: hull, rigging,
+  and the people. Casualties route through `take_crew_casualties` like everything else that
+  hurts a company, so morale, exhaustion, striking and mutiny all answer to a fire with no
+  new wiring.
+- She burns whether she is held fast or not. A ship alongside a quay with a fire in her hold
+  is the classic way to lose a ship and a pier together, and an anchored one cannot run from
+  it at all.
+- `fires` reports what is alight, who is on it, and whether the pumps are drawing.
+  `fight fire <hands>` commits a party.
+
+- **Springing on a cable: an anchored ship is a battery, not a target.** A spring is a line
+  from the capstan to the anchor cable; haul on it and she comes round about her own anchor,
+  without way, without wind, and without answering her helm. It is how a broadside was laid
+  across a channel and kept there, and it is why an anchored squadron was a serious thing to
+  sail past.
+- **The mechanism was already here and nobody had noticed.** `motion.advance` has always
+  taken a `turn_floor` - "degrees per second of turning available regardless of speed - a
+  backed sail, a sweep, a warp, a tug" - which is a spring described without naming it. This
+  did not add a way to turn. It added a reason, and supplied the number.
+- It is deliberately slow: about ninety degrees in a quarter of an hour for a middling hull,
+  and inverse in her length. Lay yourself before somebody arrives, not after. A quick version
+  would be a button rather than a tactic.
+- **An anchored ship shoots better**, because the deck is still. Modelled as a fraction of
+  the *sea's* penalty rather than as a bonus, so a flat calm is worth exactly the same at
+  anchor as under way - a cable cannot make a still sea stiller, and paying out for anchoring
+  in a calm would be paying for nothing.
+- **Cutting the cable is the decision with teeth.** A ship that must be under way *now* can
+  be free of the ground in the time it takes to swing an axe - and then she has no anchor.
+  She cannot bring up, ride out a blow, or hold herself off a lee shore, and getting a spare
+  over the bows is most of a day's work with most of the watch. `drop anchor` refuses and
+  says how long is left. The consequence outlives the fight, which is what makes it a
+  decision rather than a button.
+- Having no anchor is stored as "ready at a time that never comes" rather than as a flag
+  beside a clock, so there is no second piece of state to disagree with the first.
 - **Capture, on four conditions and no partial credit.** Held alongside, struck to that
   same hull, her deck carried in the exchange just fought, and her captain beaten. They are
   not four ways of saying one thing: a ship can be lashed to you with her colours up, can

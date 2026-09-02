@@ -39,6 +39,8 @@ ship's rooms, so they exist where a ship is and nowhere else.
 | `drop anchor` | Bring up |
 | `weigh anchor` | Get the anchor off the ground |
 | `kedge` | Run an anchor out astern and haul her off a grounding |
+| `spring <bearing>` | Haul her head round on her cable, to lay a broadside |
+| `cut cable` | Free of the ground at once - and no anchor until a spare is rigged |
 
 ## Where you are
 
@@ -94,6 +96,16 @@ ship's rooms, so they exist where a ship is and nowhere else.
 | `grapples` | What is holding, and how many |
 | `cut grapples` | Clear them. Takes longer the more are fast |
 | `strike` | Haul your colours down — or, typed again, put them back up |
+
+## Fire
+
+| Command | Effect |
+| --- | --- |
+| `fires` | What is burning, who is on it, and whether the pumps draw |
+| `fight fire <hands>` | Commit a party. They are hands not at the guns |
+
+The pumps take their water over the side, so they will not draw while she has way
+on. A burning ship chooses between running and putting it out.
 
 ## Her people and her hold
 

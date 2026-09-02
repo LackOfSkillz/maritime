@@ -16,6 +16,9 @@ from evennia.commands.cmdset import CmdSet
 from .commands import (
     CmdAllStop,
     CmdAnchor,
+    CmdFightFire,
+    CmdFires,
+    CmdCutCable,
     CmdBelay,
     CmdCastOff,
     CmdChart,
@@ -58,6 +61,7 @@ from .commands import (
     CmdTarget,
     CmdWatch,
     CmdWeather,
+    CmdSpring,
     CmdWeighAnchor,
     CmdWind,
 )
@@ -92,6 +96,9 @@ class HelmCmdSet(CmdSet):
         self.add(CmdScan())
         self.add(CmdTarget())
         self.add(CmdAnchor())
+        self.add(CmdFightFire())
+        self.add(CmdFires())
+        self.add(CmdCutCable())
         self.add(CmdDock())
         self.add(CmdKedge())
         self.add(CmdStow())
@@ -111,6 +118,7 @@ class HelmCmdSet(CmdSet):
         self.add(CmdLookAround())
         self.add(CmdWatch())
         self.add(CmdCastOff())
+        self.add(CmdSpring())
         self.add(CmdWeighAnchor())
         self.add(CmdWind())
         self.add(CmdWeather())

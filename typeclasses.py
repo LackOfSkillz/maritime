@@ -29,6 +29,8 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject
 
 from .boarding import Boarded
+from .burning import Burns
+from .cables import Springs
 from .charts import Charted
 from .crew import Crewed
 from .damage import HULL, Damaged
@@ -104,6 +106,8 @@ class Vessel(
     Conned,
     Owned,
     Boarded,
+    Burns,
+    Springs,
     Crewed,
     Handled,
     Damaged,
@@ -566,8 +570,22 @@ class Vessel(
         if self.under_con and self.anchored and self.next_mark() is not None:
             self.weigh_for_passage()
 
-        if self.held_by():
+        # **She burns whether she is held fast or not.** A ship alongside a quay with a
+        # fire in her hold is the classic way to lose a ship and a pier together, and an
+        # anchored one cannot even run from it. So this goes above the early return that
+        # everything else about movement lives below.
+        if self.alight:
+            self.work_fire(elapsed)
+
+        holding = self.held_by()
+        if holding:
             self.take_way_off()
+            # The one place a ship changes her heading without changing her position. A
+            # spring is a line from the capstan to the anchor cable, so it works only on
+            # the thing holding her: warping round a quay or a grounding is a different
+            # job with different tackle and is not this.
+            if holding == "anchored":
+                self.work_spring(elapsed)
             return False
 
         self.work_her()

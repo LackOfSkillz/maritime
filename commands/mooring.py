@@ -240,6 +240,18 @@ class CmdAnchor(MaritimeCommand):
         if vessel.anchored:
             self.caller.msg("She already lies to her anchor.")
             return
+        if not vessel.has_anchor:
+            pending = vessel.rigging_a_spare
+            if pending == float("inf"):
+                self.caller.msg(
+                    "She has no anchor - the cable was cut and no spare is being rigged."
+                )
+            else:
+                self.caller.msg(
+                    f"The spare is not over the bows yet; about "
+                    f"{pending / 3600.0:.1f} hours of work left."
+                )
+            return
         if vessel.speed > MAX_ANCHORING_SPEED:
             self.caller.msg(
                 f"She has too much way on - {ms_to_knots(vessel.speed):.1f} knots. "
@@ -275,3 +287,98 @@ class CmdWeighAnchor(MaritimeCommand):
 
         vessel.anchored = False
         self.order(vessel, WEIGH_ORDER)
+
+
+class CmdSpring(MaritimeCommand):
+    """
+    Haul her head round on a spring, without getting under way.
+
+    Usage:
+      spring <bearing>
+      spring off
+
+    A spring is a line from the capstan to the anchor cable. Hauling on it brings
+    her round about her own anchor, so a broadside can be laid across a channel
+    and kept there - which is how anchored ships defended harbours, and why one
+    is not the sitting target she looks.
+
+    It is slow. A big ship takes the better part of half an hour to come round
+    ninety degrees, so lay yourself before somebody arrives, not after.
+    """
+
+    key = "spring"
+    aliases = ("spring on the cable", "spring cable")
+
+    def at_helm(self, vessel):
+        """Rig a spring, or take one off."""
+        wanted = self.args.strip().lower()
+        if wanted in ("off", "none", "belay"):
+            if vessel.unrig_spring():
+                self.caller.msg("The spring is cast off; she lies as she is.")
+            else:
+                self.caller.msg("There is no spring rigged.")
+            return
+
+        if not wanted:
+            bearing = vessel.sprung_to
+            if bearing is None:
+                self.caller.msg(
+                    f"No spring is rigged. Her head lies {vessel.heading:03.0f}. "
+                    "Give a bearing to haul her round to."
+                )
+            else:
+                self.caller.msg(
+                    f"She is being sprung to {bearing:03.0f}, and her head lies "
+                    f"{vessel.heading:03.0f}."
+                )
+            return
+
+        try:
+            bearing = float(wanted)
+        except ValueError:
+            self.caller.msg("Give a bearing in degrees, as 'spring 270'.")
+            return
+
+        result = vessel.spring(bearing)
+        if not result:
+            self.caller.msg("She is not lying to her anchor. A spring wants a cable.")
+            return
+
+        if not result.remaining:
+            self.caller.msg(f"Her head already lies {result.wanted:03.0f}.")
+            return
+        self.caller.msg(
+            f"The spring is rigged and the hands are on the capstan. "
+            f"{result.remaining:.0f} degrees to come round, about "
+            f"{result.seconds_more / 60.0:.0f} minutes."
+        )
+
+
+class CmdCutCable(MaritimeCommand):
+    """
+    Cut the cable and be free of the ground at once.
+
+    Usage:
+      cut cable
+
+    Weighing an anchor properly takes time she may not have. An axe takes none -
+    but the anchor stays on the bottom, and until a spare is over the bows she
+    cannot bring up anywhere, ride out a blow, or hold herself off a lee shore.
+
+    Getting a spare over is most of a day's work with most of the watch. Do not
+    do this because you are in a hurry; do it because staying is worse.
+    """
+
+    key = "cut cable"
+    aliases = ("cut the cable", "slip cable")
+
+    def at_helm(self, vessel):
+        """Swing the axe."""
+        result = vessel.cut_cable()
+        if not result:
+            self.caller.msg("She is not lying to her anchor. There is nothing to cut.")
+            return
+        self.caller.msg(
+            "The cable is cut and she is free of the ground. The anchor is gone - "
+            "she has none aboard until a spare is rigged."
+        )

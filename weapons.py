@@ -45,6 +45,15 @@ LONG_RANGE_ACCURACY = 0.15
 # known to fire on the roll.
 MAX_SEA_PENALTY = 0.7
 
+#: How much of the sea's penalty a cable takes out, for a ship lying to her anchor.
+#:
+#: Not all of it. An anchored ship still rises to a swell - she is not on land - but she
+#: is not rolling to her own way through the water, she lies head to wind and tide rather
+#: than across it, and the gun crews are working a deck that moves predictably. It is why
+#: anchored batteries outshot ships under way, and why laying yourself where your broadside
+#: bears and *staying* there was worth the hours it took.
+ANCHORED_STEADINESS = 0.5
+
 # How much smaller a bow-on target is than a beam-on one. A hull end-on presents
 # her width; broadside she presents her length, which for most vessels is three
 # or four times as much.
@@ -225,15 +234,18 @@ def range_accuracy(distance, max_range):
     return 1.0 - (1.0 - LONG_RANGE_ACCURACY) * reach
 
 
-def sea_accuracy(sea_state):
+def sea_accuracy(sea_state, steady=False):
     """
     How much of it survives the motion of the deck.
 
     Args:
         sea_state (str): One of `SEA_STATES`.
+        steady (bool, optional): Whether she is firing from a steady platform - lying to
+            her anchor rather than under way.
 
     Returns:
-        fraction (float): From 1 in a calm down to `1 - MAX_SEA_PENALTY`.
+        fraction (float): From 1 in a calm down to `1 - MAX_SEA_PENALTY`, and less of a
+            fall than that from a steady platform.
 
     Notes:
         The largest single thing between a gun and its target. Gunners have
@@ -245,7 +257,13 @@ def sea_accuracy(sea_state):
     if sea_state not in SEA_STATES:
         return 1.0
     worst = max(1, len(SEA_STATES) - 1)
-    return 1.0 - MAX_SEA_PENALTY * (SEA_STATES.index(sea_state) / worst)
+    penalty = MAX_SEA_PENALTY * (SEA_STATES.index(sea_state) / worst)
+    if steady:
+        # Scales the penalty rather than adding a bonus, so a flat calm is worth exactly
+        # the same at anchor as under way. A cable cannot make a still sea stiller, and a
+        # model that paid out for anchoring in a calm would be paying for nothing.
+        penalty *= 1.0 - ANCHORED_STEADINESS
+    return 1.0 - penalty
 
 
 def aspect_accuracy(angle):
@@ -269,7 +287,7 @@ def aspect_accuracy(angle):
     return END_ON_FRACTION + (1.0 - END_ON_FRACTION) * broadside
 
 
-def hit_chance(weapon, distance, sea_state, target_aspect):
+def hit_chance(weapon, distance, sea_state, target_aspect, steady=False):
     """
     The chance this shot connects.
 
@@ -278,6 +296,7 @@ def hit_chance(weapon, distance, sea_state, target_aspect):
         distance (float): Range in metres.
         sea_state (str): The sea she is shooting from.
         target_aspect (float): The target's aspect, in degrees.
+        steady (bool, optional): Whether she is firing from a steady platform.
 
     Returns:
         chance (float): From 0 to 1.
@@ -295,7 +314,7 @@ def hit_chance(weapon, distance, sea_state, target_aspect):
             1.0,
             weapon.accuracy
             * range_accuracy(distance, weapon.max_range)
-            * sea_accuracy(sea_state)
+            * sea_accuracy(sea_state, steady)
             * aspect_accuracy(target_aspect),
         ),
     )
@@ -393,6 +412,7 @@ def fire(
     now,
     roll,
     steadiness=1.0,
+    steady=False,
 ):
     """
     Lay the gun and pull the lanyard.
@@ -411,6 +431,9 @@ def fire(
         steadiness (float, optional): How well laid the gun is, 1.0 for a shot
             taken deliberately. Below that for one snatched as a target crosses,
             and lower again for a crew too frightened to take their time.
+        steady (bool, optional): Whether the *platform* is steady - she lies to her
+            anchor. A different thing from `steadiness`, which is about the gun and
+            the men on it; this is about the deck under them.
 
     Returns:
         result (ShotResult): Successful on a hit, failed on a miss or a refusal,
@@ -436,7 +459,7 @@ def fire(
     laid = aim_point(target_position, target_heading, target_speed, flight)
     showing = aspect(position, target_position, target_heading)
     chance = (
-        hit_chance(mount.weapon, distance, sea_state, showing)
+        hit_chance(mount.weapon, distance, sea_state, showing, steady)
         * mount.shot.accuracy
         * max(0.0, steadiness)
     )
@@ -806,6 +829,10 @@ class Armed:
                 now,
                 roll,
                 steadiness,
+                # She is a battery rather than a ship while she lies to her anchor, and
+                # her guns are correspondingly better served. This is the return on
+                # having laid her where her broadside bears.
+                steady=bool(getattr(self, "anchored", False)),
             )
             # Every refusal where she never went off, not just the two obvious
             # ones. A gun that will not reach is a gun that did not fire, and

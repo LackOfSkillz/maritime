@@ -1110,7 +1110,7 @@ command that exists**.
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3230 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3307 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1123,9 +1123,17 @@ of wall time runs in milliseconds.
 
 ## Limitations
 
-- Fire is not modelled, and nor is flooding. A ship is reduced by her tracks running down
-  rather than by burning or filling, which are both later items — and both are the ways ships
-  of the age actually went quickly.
+- An anchored ship can be sprung round on her cable to lay her broadside where she wants
+  it, and shoots better for lying still. Cutting the cable frees her at once and costs her
+  the anchor until a spare is rigged, which is hours.
+- **Fire is a situation rather than a debuff.** It escalates on its own clock while you
+  ignore it — and resets that clock each time it spreads, so a ship left burning faces
+  several fires rather than one that got worse. Fighting it costs hands with diminishing
+  returns, and **the pumps will not draw unless she stops**, because the hoses go over the
+  side. A burning ship chooses between running and surviving, which is a dilemma no
+  hit-point model can produce.
+- Flooding is not modelled yet. A ship is reduced by her tracks running down or by burning,
+  and filling is the other way ships of the age went quickly.
 - A ship has no price either, and ownership carries no money. `transfer_ownership` moves
   the property and publishes why — sold, granted, captured, inherited — and a game wires its
   own purchase to that event. What a ship is worth is the host game's economy.

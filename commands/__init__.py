@@ -37,12 +37,15 @@ from .lookout import (
     CmdWatch,
     sightings_toward,
 )
+from .firefighting import CmdFightFire, CmdFires
 from .mooring import (
     BERTH_REFUSALS,
     CmdAnchor,
+    CmdCutCable,
     CmdCastOff,
     CmdDock,
     CmdKedge,
+    CmdSpring,
     CmdWeighAnchor,
 )
 from .passage import CmdMakeFor, CmdPorts, PassageCmdSet
@@ -125,5 +128,9 @@ __all__ = (
     "CmdKedge",
     "CmdCastOff",
     "CmdAnchor",
+    "CmdFightFire",
+    "CmdFires",
+    "CmdCutCable",
+    "CmdSpring",
     "CmdWeighAnchor",
 )
