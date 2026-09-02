@@ -84,7 +84,7 @@ class CmdFightFire(MaritimeCommand):
     """
 
     key = "fight fire"
-    aliases = ("fire party", "man the pumps", "douse fire")
+    aliases = ("fire party", "douse fire", "beat it out")
 
     def at_helm(self, vessel):
         """Send the party, or call them off."""

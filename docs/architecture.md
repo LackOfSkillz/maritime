@@ -1298,7 +1298,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 14 | Crew and authority | — | Roles, staffing, skill hooks, command succession |
 | 15 | Tactical geometry | partial | Range, bearing, aspect, closure, arcs and `target` are built. The pacing decision is recorded in `DECISIONS.md` and is Gary's |
 | 16 | Weapons | done | Generic mounts, reload clocks, time of flight, aiming off, and a hit chance built from range, sea and aspect. Damage is phase 17 and is not touched |
-| 17 | Damage | partial | Fire is built: it escalates on its own clock, competes for hands, writes into the hull, the rigging and the people, and wants her stopped for the pumps to draw. Flooding, sinking and occupant transition are next, and the shape they will take is in `docs/damage-model.md` |
+| 17 | Damage | partial | Fire and flooding are built, and they compete: both want hands and both want her slowed, for opposite reasons. Sinking is a process fought with pumps and a fothered sail rather than a threshold, and a foundered hull stops floating with somewhere to go. Hull sections, breaches, repair and occupant transition remain; the shape is in `docs/damage-model.md` |
 | 18 | Boarding and capture | done | Grapples as a count, lines that part on the tick, the crossing as two ordinary exits, a melee fought across measured contact, striking as a recorded fact, and capture on four conditions - held, struck, her deck carried, her captain beaten - with ownership moving and a seam for whether a player captain is beaten at all |
 | 19 | Strategic maritime world | — | Merchants, patrols, pirates, fishing, strategic encounters |
 | 20 | Standing orders | — | Conditions, priorities, conflict resolution, replanning |

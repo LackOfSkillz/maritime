@@ -38,6 +38,7 @@ from .lookout import (
     sightings_toward,
 )
 from .firefighting import CmdFightFire, CmdFires
+from .pumping import CmdFother, CmdManPumps, CmdPumps
 from .mooring import (
     BERTH_REFUSALS,
     CmdAnchor,
@@ -129,6 +130,9 @@ __all__ = (
     "CmdCastOff",
     "CmdAnchor",
     "CmdFightFire",
+    "CmdFother",
+    "CmdManPumps",
+    "CmdPumps",
     "CmdFires",
     "CmdCutCable",
     "CmdSpring",

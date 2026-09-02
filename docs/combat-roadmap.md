@@ -359,7 +359,7 @@ your consort is a genuine mistake you can make.
     I   capture                      DONE
     O   springing on a cable         DONE
     F   fire                         DONE
-    G   flooding and pumping         pairs with F
+    G   flooding and pumping         DONE
     S   consorts and station-keeping independent
     J   post-battle casualties       closes the loop into morale
     K2  battle repairs               last

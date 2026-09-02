@@ -17,6 +17,9 @@ from .commands import (
     CmdAllStop,
     CmdAnchor,
     CmdFightFire,
+    CmdFother,
+    CmdManPumps,
+    CmdPumps,
     CmdFires,
     CmdCutCable,
     CmdBelay,
@@ -97,6 +100,9 @@ class HelmCmdSet(CmdSet):
         self.add(CmdTarget())
         self.add(CmdAnchor())
         self.add(CmdFightFire())
+        self.add(CmdFother())
+        self.add(CmdManPumps())
+        self.add(CmdPumps())
         self.add(CmdFires())
         self.add(CmdCutCable())
         self.add(CmdDock())

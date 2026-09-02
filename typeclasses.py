@@ -30,6 +30,7 @@ from evennia.objects.objects import DefaultObject
 
 from .boarding import Boarded
 from .burning import Burns
+from .flooding import MakesWater
 from .cables import Springs
 from .charts import Charted
 from .crew import Crewed
@@ -107,6 +108,7 @@ class Vessel(
     Owned,
     Boarded,
     Burns,
+    MakesWater,
     Springs,
     Crewed,
     Handled,
@@ -576,6 +578,12 @@ class Vessel(
         # everything else about movement lives below.
         if self.alight:
             self.work_fire(elapsed)
+
+        # And she fills wherever she is, for the same reason. The two run side by side
+        # because they compete: both want hands, and both want her slowed - fire so the
+        # pumps will draw, water because way through it forces more in. One crew, two
+        # jobs, and a single decision about her speed that cannot satisfy both.
+        self.work_water(elapsed)
 
         holding = self.held_by()
         if holding:

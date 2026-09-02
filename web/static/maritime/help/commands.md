@@ -107,6 +107,18 @@ ship's rooms, so they exist where a ship is and nowhere else.
 The pumps take their water over the side, so they will not draw while she has way
 on. A burning ship chooses between running and putting it out.
 
+## Making water
+
+| Command | Effect |
+| --- | --- |
+| `pumps` | What is in her, what is coming in, and how long she has |
+| `man pumps <hands>` | Put hands on them |
+| `fother` | Draw a sail under the hull to slow the leak |
+
+Way through the water forces more of it in, so slowing her slows the leak. Fire
+wants her stopped too, for the opposite reason - one crew, two jobs, one decision
+about her speed.
+
 ## Her people and her hold
 
 | Command | Effect |

@@ -13,6 +13,30 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **Flooding, and it is the mirror of fire rather than a copy of it.** Fire wants her stopped
+  because the hoses go over the side. Water wants her stopped for a different reason
+  entirely: **way through the sea forces more of it in.** So a ship that is both alight and
+  filling has one crew, two jobs, and a single decision about her speed that makes one of them
+  worse whichever way she takes it. That is the best thing in the damage model and it cost
+  nothing extra to build, because both halves were built for their own reasons.
+- The leak is **squared in her hull damage**, so a scraped hull weeps and an opened one
+  floods. A linear leak would leave every damaged ship slowly sinking, which makes the model a
+  nuisance rather than a crisis - the interesting states are dry and drowning, not permanently
+  damp.
+- **Fothering**: draw a sail under the hull and let the sea press it into the hole. It does
+  not mend her. It turns a leak she cannot outpump into one she can, which is exactly what it
+  did for the ships that survived to report it.
+- `Buoyancy` has carried a sink rate since the spatial work with nothing to drive it. This is
+  what drives it. A foundered hull stops floating and **still has somewhere to go**, because
+  collapsing that into a boolean would delete every wreck before anybody could dive on it.
+- What becomes of the people is *not* decided here. `Foundered` carries how many were aboard
+  and a game decides; the ruling that they take to the boats is in `DECISIONS.md`, and the
+  boats are their own item.
+- `pumps` says what is in her, what is coming in, and the number that actually decides
+  anything - how long she has at this rate. `man pumps <hands>`, and `fother`.
+- `man the pumps` was an alias on the fire command and is now on the pumps, where anybody
+  would look for it.
+
 - **Fire, and it is a situation rather than a debuff.** Three rules do all the work. It
   escalates while you ignore it - and the clock **resets each time it spreads**, so a ship
   left burning for a quarter of an hour is not facing one fire that got worse but several,
