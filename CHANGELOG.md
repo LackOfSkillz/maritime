@@ -104,6 +104,13 @@ weather, crew, combat and damage are not.
 - A test holds it to the game: links resolve, the contents is complete, the command's topic
   list and the files agree, and every command it tells somebody to type exists. Writing that
   test found the handbook claiming `rehoist` was a verb - it is not, `strike` is a toggle.
+- **`maritime help` has a set of its own**, which goes on the character class so that it
+  works everywhere. It went into the runtime switches set first, which quietly broke that
+  set's contract - a game can install it and put nothing in front of its players, and an
+  all-access command in it is not nothing. Then it went into the helm set, which asserts
+  exactly which verbs handle a ship and is the wrong home for a different reason: a manual
+  on a deck is one that a lost player, who is usually ashore, cannot reach. Four tests
+  between the two sets caught both placements.
 - Writing the developer pages against the real modules found three more: `OarPlan` does not
   take `benches`, the current setting is `MARITIME_CURRENT_SET` rather than `_BEARING`, there
   is no `ENCLOSED` exposure, and the integration steps omitted the driver script - without

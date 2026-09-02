@@ -259,3 +259,53 @@ class TestPointingSomebodyAtIt(BaseEvenniaTest):
         said = self.said_by(CmdMaritimeHelp, "submarines")
         self.assertIn("no handbook page", said)
         self.assertIn("boarding", said)
+
+
+class TestWhereTheWayInLives(BaseEvenniaTest):
+    """
+    **Reachable by everybody, and not in the administrators' set.**
+
+    It went in with the runtime switches first, which was wrong in a way worth keeping a
+    test about: that set's contract is that a game can install it and put *nothing* in front
+    of its players, and an all-access command in it quietly breaks that. Three tests
+    guarding the contract caught it.
+
+    So the handbook has its own set, and rides on the helm set too - because somebody who
+    does not know the game is exactly the person who cannot be relied upon to be standing on
+    a deck when they need the manual.
+    """
+
+    def test_it_is_not_in_the_administrators_set(self):
+        from ..commands.interface import MaritimeInterfaceCmdSet
+
+        made = MaritimeInterfaceCmdSet()
+        made.at_cmdset_creation()
+        self.assertNotIn("maritime help", {command.key for command in made.commands})
+
+    def test_it_has_a_set_of_its_own(self):
+        from ..commands.handbook import MaritimeHandbookCmdSet
+
+        made = MaritimeHandbookCmdSet()
+        made.at_cmdset_creation()
+        self.assertEqual({command.key for command in made.commands}, {"maritime help"})
+
+    def test_it_is_not_in_the_helm_set_either(self):
+        """
+        **A manual is not a helm command**, and the helm set is the verbs for handling a
+        ship. Putting it there also puts it only where a player is least likely to need it:
+        somebody who cannot find the word for the thing they want is usually standing in a
+        street, not at the wheel.
+
+        """
+        from ..cmdsets import HelmCmdSet
+
+        made = HelmCmdSet()
+        made.at_cmdset_creation()
+        self.assertNotIn("maritime help", {command.key for command in made.commands})
+
+    def test_an_ordinary_player_can_reach_it(self):
+        """The whole point. A manual behind a permission is a manual for people who do not
+        need one."""
+        from ..commands.handbook import CmdMaritimeHelp
+
+        self.assertTrue(CmdMaritimeHelp().access(self.char2, "cmd"))

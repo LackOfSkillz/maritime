@@ -26,6 +26,7 @@ from .boarding import (
 )
 from .crew import CmdCrew
 from .gunnery import CmdFire, CmdGuns, CmdHoldFire, CmdLoad
+from .handbook import CmdMaritimeHelp, MaritimeHandbookCmdSet
 from .helm import CmdAllStop, CmdHelm, CmdSpeed
 from .lading import CmdDischarge, CmdManifest, CmdStow
 from .lookout import (
@@ -70,6 +71,8 @@ from .sail import CmdSail
 from .shipwright import CmdShipwright
 
 __all__ = (
+    "CmdMaritimeHelp",
+    "MaritimeHandbookCmdSet",
     "MaritimeCommand",
     "CmdStow",
     "CmdShipwright",

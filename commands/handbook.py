@@ -13,6 +13,7 @@ open while they try what it told them.
 """
 
 from django.conf import settings
+from evennia.commands.cmdset import CmdSet
 from evennia.commands.command import Command
 
 #: Where the handbook lives, under whatever the game serves its static files from.
@@ -143,4 +144,30 @@ class CmdMaritimeHelp(Command):
         )
 
 
-__all__ = ("HANDBOOK_PATH", "handbook_url", "CmdMaritimeHelp")
+class MaritimeHandbookCmdSet(CmdSet):
+    """
+    One command: the way into the handbook.
+
+    Notes:
+        **Its own set, and not in with the switches.** The interface set holds the runtime
+        controls and is locked to administrators, so that a game can install it and put
+        nothing in front of its players. `maritime help` is open to everybody on purpose,
+        and putting it in there quietly broke that promise - three tests that guard it
+        caught the contradiction.
+
+        Add this wherever the handbook should be reachable. On a character class is the
+        usual answer, because somebody who does not know the game is exactly the person who
+        cannot be relied upon to be standing on a deck when they need the manual. The helm
+        set carries it as well, so a ship has it with no extra step.
+
+    """
+
+    key = "maritime_handbook"
+    priority = 1
+
+    def at_cmdset_creation(self):
+        """Populate the set."""
+        self.add(CmdMaritimeHelp())
+
+
+__all__ = ("HANDBOOK_PATH", "handbook_url", "CmdMaritimeHelp", "MaritimeHandbookCmdSet")

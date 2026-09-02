@@ -119,8 +119,14 @@ Installed on the shore rooms rather than on a deck.
 
 | Command | Effect |
 | --- | --- |
-| `maritime help` | A link to this handbook. Works anywhere |
+| `maritime help` | A link to this handbook. Open to everybody |
 | `maritime help <topic>` | Opens it at that page |
+
+It lives in `MaritimeHandbookCmdSet`, which goes on the character class so that it works
+everywhere — a player needs the manual ashore at least as much as at the helm. It is
+deliberately *not* in the administrators' set, and not in the helm set: a manual behind a
+permission is a manual for the people who least need one, and a manual on a deck is one the
+lost cannot reach.
 
 ## For whoever runs the game
 

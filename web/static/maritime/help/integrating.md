@@ -50,6 +50,19 @@ class Character(DefaultCharacter):
         self.cmdset.add(ShipwrightCmdSet, persistent=True)
 ```
 
+And the handbook, wherever you want it reachable:
+
+```python
+from evennia.contrib.full_systems.maritime.commands import MaritimeHandbookCmdSet
+
+self.cmdset.add(MaritimeHandbookCmdSet, persistent=True)
+```
+
+**Put it on the character class**, not on a ship's rooms. A manual is not a helm command,
+and somebody who cannot find the word for the thing they want is usually standing in a
+street rather than at the wheel — so the handbook has to be reachable everywhere, which is
+the one thing a set on a deck cannot be.
+
 Only want some of them? See [taking only part of it](adopting-a-part.md).
 
 ## 3. Describe your coast
