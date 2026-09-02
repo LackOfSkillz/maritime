@@ -11,6 +11,33 @@ Nothing released yet. Foundations, the spatial model, vessels, the simulation
 service, sailing, grounding and who owns a ship are in place; ports, navigation,
 weather, crew, combat and damage are not.
 
+### Feat
+
+- **Capture, on four conditions and no partial credit.** Held alongside, struck to that
+  same hull, her deck carried in the exchange just fought, and her captain beaten. They are
+  not four ways of saying one thing: a ship can be lashed to you with her colours up, can
+  strike and be retaken, and can have her deck carried while her captain fights on. The
+  fourth is what stops a capture being paperwork.
+- The four are read **at one moment**, because three of them are momentary. Carrying a deck
+  is the outcome of one exchange rather than a state a ship sits in, so it is tested in the
+  exchange that produced it or not at all. Reading them at different times would let a
+  capture be assembled out of conditions that were never simultaneously true.
+- **Command is vacated, not handed across - and a test is why.** The obvious reading of
+  "command passes with her" hands the prize to the captor's captain, which collides with a
+  rule the contrib already keeps: one ship per captain, because a man cannot be on two
+  decks. So taking a prize made him give up the ship he had just won her with, and she came
+  away from a victory uncommanded. A prize now arrives with nobody commanding her, which is
+  also what happened at sea - you put a **prize master** aboard, and appointing one is the
+  owner's decision rather than something a capture makes for him.
+- **`MARITIME_SUBDUED_POLICY`: whether a player captain is beaten is not ours to say.**
+  Deciding that at ship scale would be this contrib reaching into a character system it does
+  not own, and reaching in to take away a possession. The default settles NPC captains at
+  ship scale so that NPC ships can be taken at all, and answers no for anybody with an
+  account attached. Answering no is the safe direction to be wrong in: a capture that does
+  not happen is a fight that continues, and one that happens wrongly cannot be undone.
+- Striking is not undone by being taken. That she was beaten is a matter of history and
+  survives changing hands.
+
 ### Docs
 
 - **Every open decision is answered, and `DECISIONS.md` has nothing outstanding for the

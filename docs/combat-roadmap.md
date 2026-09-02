@@ -356,7 +356,7 @@ your consort is a genuine mistake you can make.
     Q   defensive fire               DONE
     L   grappling as a count         DONE
     H   boarding melee               DONE
-    I   capture                      completes H and item 1
+    I   capture                      DONE
     O   springing on a cable         independent, small
     F   fire                         large, independent
     G   flooding and pumping         pairs with F

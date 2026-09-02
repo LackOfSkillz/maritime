@@ -52,6 +52,7 @@ DEFAULT_CURRENT_PROVIDER = f"{__package__}.currents.FlatCurrentProvider"
 DEFAULT_WATER_NARRATOR = f"{__package__}.messaging.WaterNarrator"
 DEFAULT_OCEAN_ROOM = f"{__package__}.projection.OceanRoom"
 DEFAULT_COMMAND_POLICY = f"{__package__}.ownership.may_command"
+DEFAULT_SUBDUED_POLICY = f"{__package__}.capture.captain_subdued"
 
 
 def get_setting(name, default=None):
@@ -509,5 +510,39 @@ def command_policy():
         raise TypeError(
             f"MARITIME_COMMAND_POLICY must point at a callable taking "
             f"(character, vessel), got {type(policy).__name__}."
+        )
+    return policy
+
+
+def subdued_policy():
+    """
+    The function that decides whether a beaten ship's captain is beaten with her.
+
+    Returns:
+        policy (callable): Takes `(captain, prize, captor)` and returns a bool.
+
+    Raises:
+        TypeError: If the configured value is not callable.
+
+    Notes:
+        The fourth condition of a capture, and the only one this contrib cannot answer
+        for itself. A ship whose captain is still on her feet has not been taken, and
+        deciding that somebody's character is no longer on their feet is a character
+        system's business - the same rule that keeps combat, stamina and money out.
+
+        The shipped default settles NPC captains at ship scale, so that NPC ships can be
+        taken at all, and answers no for anybody with an account attached. A game that
+        wants players' ships takeable replaces this and decides in its own terms.
+
+        Answering no is the safe direction to be wrong in: a capture that does not happen
+        is a fight that continues, and a capture that happens wrongly has taken a ship
+        off somebody who never agreed to lose it.
+
+    """
+    policy = load_class(get_setting("SUBDUED_POLICY", DEFAULT_SUBDUED_POLICY))
+    if not callable(policy):
+        raise TypeError(
+            f"MARITIME_SUBDUED_POLICY must point at a callable taking "
+            f"(captain, prize, captor), got {type(policy).__name__}."
         )
     return policy

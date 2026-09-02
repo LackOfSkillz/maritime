@@ -703,7 +703,12 @@ class Boarded:
             alongside decides how many can cross, so laying yourself properly alongside is
             worth doing and is a thing a player does with the helm rather than a button.
 
+            **An exchange that carries her deck may take her.** Carrying it is one of the
+            four conditions a capture wants, so this offers the other three a chance to be
+            true at the same moment. Usually they are not and the fight simply continues.
+
         """
+        from .capture import take
         from .melee import fight
 
         other = self.grappled_to
@@ -715,12 +720,22 @@ class Boarded:
             return None
 
         mine, hers = self.company, other.company
-        return fight(
+        result = fight(
             boarding=mine.fighting_divisions if mine else (),
             repelling=hers.fighting_divisions if hers else (),
             overlap=alongside(here, self.heading, self.length, there, other.heading, other.length),
             shorter_length=min(self.length, other.length),
         )
+
+        # Carrying her deck is the only one of the four conditions that is true for an
+        # instant rather than for a while, so it is tested here - in the exchange that
+        # produced it - or not at all. The other three are read at the same moment. Nothing
+        # guards this call because `take` is the guard: if any condition is missing it
+        # changes nothing and the boarding goes on.
+        if result and result.taken:
+            take(other, self, carried=True)
+
+        return result
 
     # --- striking -----------------------------------------------------------
 
@@ -754,10 +769,11 @@ class Boarded:
             struck (bool): True if she had not already struck.
 
         Notes:
-            Records a fact and confers nothing. That she has struck is a matter of
-            history; what it entitles her captor to *do* - who may give her orders,
-            who owns her, what happens to the people aboard - is a question about
-            authority, which is phase 14 and is Gary's. See `DECISIONS.md`.
+            Records a fact and confers nothing *by itself*. Striking is one of the four
+            conditions a capture wants, and on its own it is the weakest of them: a ship
+            can strike and be retaken, or strike and never be boarded at all. What
+            surrendering entitles her captor to do is in `capture`, and it wants three
+            more things to be true at the same moment.
 
         """
         if self.struck:

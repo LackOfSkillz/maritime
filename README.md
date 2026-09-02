@@ -33,8 +33,7 @@ Working and tested:
   sea and a clickable map of the town ashore, and runtime switches for whoever runs the
   game.
 
-Not built: fire, flooding, boarding melee and capture, the strategic layer, and the
-service economy.
+Not built: fire, flooding, the strategic layer, and the service economy.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
 sail continuous water, sound your way through a channel past a rock ledge, come alongside
@@ -1111,7 +1110,7 @@ command that exists**.
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3157 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3230 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1130,11 +1129,15 @@ of wall time runs in milliseconds.
 - A ship has no price either, and ownership carries no money. `transfer_ownership` moves
   the property and publishes why — sold, granted, captured, inherited — and a game wires its
   own purchase to that event. What a ship is worth is the host game's economy.
-- Capture does not yet transfer anything. She can be grappled and she can strike, and the
-  machinery to hand her over exists, but the four conditions that make a capture — held
-  alongside, struck, her deck carried, her captain subdued — need the boarding melee that is
-  not built. What a captor may do with a prize has been ruled on — ownership transfers, and
-  command with it — and is written up in `DECISIONS.md`.
+- Capture wants four conditions and takes none of them on trust: held alongside, struck
+  to *that* hull, her deck carried in the exchange just fought, and her captain beaten.
+  Ownership moves to the captor's owner. Command is **vacated rather than handed across** —
+  a prize waits for a prize master, because one ship per captain is a rule this contrib
+  keeps and handing him the prize would make him abandon the ship he won her with.
+- Whether a *player* captain is beaten is not ours to say. `MARITIME_SUBDUED_POLICY` is
+  the seam; the default settles NPC captains at ship scale so NPC ships can be taken, and
+  answers no for anybody with an account. A capture that does not happen is a fight that
+  continues, and that is the safe direction to be wrong in.
 - A ship with way still ordered on will grind into the ship she has rammed again on the next
   tick, and again after that. That is arguably what she would do, and it is not a decision
   anybody made. Nothing yet tells the helm that the way ahead is now occupied.

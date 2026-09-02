@@ -1299,7 +1299,7 @@ complete while a named deliverable is absent is how a plan stops being a plan.
 | 15 | Tactical geometry | partial | Range, bearing, aspect, closure, arcs and `target` are built. The pacing decision is recorded in `DECISIONS.md` and is Gary's |
 | 16 | Weapons | done | Generic mounts, reload clocks, time of flight, aiming off, and a hit chance built from range, sea and aspect. Damage is phase 17 and is not touched |
 | 17 | Damage | — | Hull sections, breaches, flooding, fire, repair, sinking, occupant transition |
-| 18 | Boarding and capture | partial | Grapples, relative velocity, lines that part on the tick, the crossing as two ordinary exits, and striking as a recorded fact. Control transfer is authority and is recorded in `DECISIONS.md` |
+| 18 | Boarding and capture | done | Grapples as a count, lines that part on the tick, the crossing as two ordinary exits, a melee fought across measured contact, striking as a recorded fact, and capture on four conditions - held, struck, her deck carried, her captain beaten - with ownership moving and a seam for whether a player captain is beaten at all |
 | 19 | Strategic maritime world | — | Merchants, patrols, pirates, fishing, strategic encounters |
 | 20 | Standing orders | — | Conditions, priorities, conflict resolution, replanning |
 | 21 | Passenger services | — | Timetables, cycle validation, fares, contracts, manifest, purser, disembarkation |
