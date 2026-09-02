@@ -155,6 +155,17 @@ class Vessel(
             is `damage.structural`'s business rather than this one's.
 
         """
+        # **Her guns speak first.**
+        #
+        # The one moment a broadside is certain of its target is the moment before that
+        # target arrives, and a crew watching a bow come at them do not wait to be told. It
+        # happens here rather than after the damage because a ship reduced by the collision
+        # would lay her guns worse for it - and she laid them before it, not after.
+        #
+        # Free damage, except that it is not: every gun that speaks starts its reload, so
+        # she meets whatever follows the collision with an empty battery.
+        other.defensive_fire(self)
+
         floating = where.with_z(world.sea_surface_z_at(where, now))
 
         self.ndb.maritime_position = floating

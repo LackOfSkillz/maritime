@@ -67,6 +67,7 @@ CONTACT_CLOSER = "contact_closer"
 HULL_HOLED = "hull_holed"
 RAMMED = "rammed"
 RAMMED_BY = "rammed_by"
+DEFENSIVE_FIRE = "defensive_fire"
 SHOALING = "shoaling"
 
 #: How much drive has to be gone before anybody aboard remarks on it. The edge of a
@@ -424,6 +425,13 @@ class VesselNarrator:
                 f"{detail['other']} strikes her {detail['where']}.",
             )
 
+        if event == DEFENSIVE_FIRE:
+            return (
+                f"\"Fire! Fire as she bears!\" Every gun that will reach {detail['other']} "
+                f"goes off at once, so close there is no aiming in it.",
+                f"She empties what bears into {detail['other']} as she comes on.",
+            )
+
         if event == SIGHTED:
             where = bearing_in_points(detail["relative"])
             return (
@@ -505,6 +513,22 @@ class VesselNarrator:
             "side": "square on the beam",
         }.get(blow.struck, "a glancing blow")
         self.deliver(*self.phrase_for(RAMMED_BY if hers else RAMMED, other=other.key, where=where))
+
+    def defensive_fire(self, rammer, broadside):
+        """
+        Tell the ship she has fired into something about to hit her.
+
+        Args:
+            rammer (Vessel): The ship coming on.
+            broadside (Broadside): What the guns did.
+
+        Notes:
+            Said before the collision is narrated, because that is the order it happened
+            in, and a deck that heard the crash first and the guns second would be reading
+            the fight backwards.
+
+        """
+        self.deliver(*self.phrase_for(DEFENSIVE_FIRE, other=rammer.key))
 
     def soundings(self, contact):
         """

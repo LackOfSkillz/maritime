@@ -474,6 +474,20 @@ def fire(
 #: the lanyard on a bearing rather than on a considered solution.
 OPPORTUNITY_ACCURACY = 0.7
 
+#: How well a gun is laid at a ship that is about to hit you.
+#:
+#: Worse than a snatched shot and much worse than a considered one. A crew who can see a
+#: bow coming at them are firing at the last moment at something they cannot miss and
+#: cannot stop, and the range is nothing - so the penalty is not about the difficulty of the
+#: shot. It is about the men.
+#:
+#: **It is not free, and the reload is the price.** The source makes those guns unavailable
+#: for the next phase; a continuous simulation does not have phases, and does not need the
+#: rule - firing starts every one of those reload clocks, so a captain who empties his
+#: battery into a rammer meets whatever comes next with nothing loaded. The cost is the same
+#: cost, arrived at by not adding anything.
+POINT_BLANK_ACCURACY = 0.5
+
 #: How much of that is lost again by a wholly shaken crew, on the same terms as
 #: the serving and handling penalties. Frightened people snatch harder.
 HESITATION_ON_LAYING = 0.5
@@ -862,6 +876,59 @@ class Armed:
         self.narrator.opportunity_fire(seen, self.holding)
         self.narrator.broadside(result)
         return result
+
+    def defensive_fire(self, rammer):
+        """
+        Fire everything that bears at a ship driving at her, in the moment before she hits.
+
+        Args:
+            rammer (Vessel): The ship about to strike her.
+
+        Returns:
+            broadside (Broadside or None): What happened, or None if nothing bore, nothing
+                was loaded, or she never saw her coming.
+
+        Notes:
+            **Not a standing order and not a reaction anybody has to declare.** A gun crew
+            watching a bow come at them fire. What makes it a decision rather than free
+            damage is on the other side of the ledger: every gun that speaks here begins
+            its reload, so she meets whatever follows the collision with an empty battery.
+
+            She has to have seen her. Ranging on a ship close enough to ram is not the hard
+            part - if the guns bear and are loaded, they go off - but a ship that is not on
+            her lookout's list is one nobody aboard is looking at, and firing at her would
+            be the battery serving a contact the ship does not have.
+
+        """
+        from . import config
+        from .rng import COMBAT
+
+        seen = next((sighting for sighting in self.contacts() if sighting.target is rammer), None)
+        if seen is None:
+            return None
+
+        now = config.time_provider().now()
+        roll = config.rng_context().stream(COMBAT).random
+        result = self.fire_broadside(seen, now, roll, self.point_blank_steadiness())
+        if not result.fired:
+            return None
+
+        self.narrator.defensive_fire(rammer, result)
+        self.narrator.broadside(result)
+        return result
+
+    def point_blank_steadiness(self):
+        """
+        Returns:
+            steadiness (float): How well the battery lays a shot at an oncoming bow.
+
+        Notes:
+            Worse than a snatched shot, and degraded again by whatever her people are
+            feeling. A frightened crew still fire - they fire badly, which is the same rule
+            that governs serving the guns and working the rigging.
+
+        """
+        return POINT_BLANK_ACCURACY * (1.0 - HESITATION_ON_LAYING * self.hesitation)
 
     def laying_steadiness(self):
         """

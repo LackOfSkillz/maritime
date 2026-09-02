@@ -23,7 +23,9 @@ from ..damage import resilience
 from ..motion import HelmOrders, MotionLimits
 from ..position import WorldPosition
 from ..rooms import ShipRoom
+from ..tactical import PORT_BROADSIDE, STARBOARD_BROADSIDE
 from ..typeclasses import Vessel
+from ..weapons import Mount, WeaponType
 from ..vessel import OPEN
 from .base import EmptySeaMixin
 
@@ -659,3 +661,145 @@ class TestOneShipActuallyRunsIntoAnother(EmptySeaMixin, BaseEvenniaTest):
 
         self.assertLess(beaked[0], plain_rammer.damage.hull, "the beak did not spare her stem")
         self.assertGreater(beaked[1], fresh.damage.hull, "the beak did not bite any deeper")
+
+
+class TestSheFiresIntoWhatIsAboutToHitHer(EmptySeaMixin, BaseEvenniaTest):
+    """
+    Roadmap item Q. The one moment a broadside is certain of its target is the moment before
+    that target arrives.
+
+    What makes it a decision rather than free damage is the reload: every gun that speaks
+    starts its clock, so she meets whatever follows the collision with nothing loaded. The
+    source makes those guns unavailable for a phase; a continuous simulation gets the same
+    cost by not adding a rule at all.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.rammer = self.hull_at(WorldPosition(0.0, -120.0), heading=0.0, key="Rammer")
+        self.rammer.motion_limits = MotionLimits(max_speed=10.0, acceleration=4.0, turn_rate=8.0)
+        self.rammer.orders = HelmOrders(heading=0.0, speed=2.0)
+        self.target = self.hull_at(WorldPosition(0.0, 0.0), heading=90.0, key="Target")
+
+    hull_at = TestOneShipActuallyRunsIntoAnother.hull_at
+    steam_in = TestOneShipActuallyRunsIntoAnother.steam_in
+
+    def every_shot_tells(self):
+        """
+        Returns:
+            patch (context manager): One in which every gun that can hit, does.
+
+        Notes:
+            **The dice are not what this class is testing.** A ship driving at you presents
+            her bow, which is the narrowest she has - `aspect_accuracy` makes her a fraction
+            of the target she would be broadside on - so a defensive broadside genuinely
+            misses most of the time, and four guns at forty metres scoring nothing is an
+            ordinary afternoon rather than a bug.
+
+            That is a design property worth keeping: it is why ramming is worth attempting
+            at all. But a test of the wiring cannot be built on it, so the roll is pinned
+            and what is asserted is the accounting.
+
+        """
+        from unittest import mock
+
+        from .. import config
+
+        class Certain:
+            def stream(self, name):
+                return type("S", (), {"random": staticmethod(lambda: 0.0)})()
+
+        return mock.patch.object(config, "rng_context", lambda: Certain())
+
+    def arm(self, hull, count=4):
+        """
+        Args:
+            hull (Vessel): Who to give guns to.
+            count (int, optional): How many guns a side.
+
+        Returns:
+            hull (Vessel): The same ship, with a loaded broadside each side.
+
+        Notes:
+            Both sides, because which one bears depends on which way the rammer comes in
+            and a test that armed one side would pass or fail on the geometry rather than
+            on the thing it is asking about.
+
+        """
+        for side in (STARBOARD_BROADSIDE, PORT_BROADSIDE):
+            gun = WeaponType(
+                key=f"{side} nine",
+                name="nine pounder",
+                arc=side,
+                max_range=800.0,
+                reload_time=90.0,
+                projectile_speed=250.0,
+                accuracy=0.6,
+                damage=10.0,
+            )
+            for index in range(count):
+                hull.add_mount(Mount(key=f"{side} {index}", weapon=gun, loaded=True, ready_at=0.0))
+        return hull
+
+    def test_a_bow_on_rammer_is_a_hard_target(self):
+        """
+        Not an accident, and worth stating. She is coming at you end-on, which is the
+        smallest she will ever look, so the last broadside is a poor bet - and that is why
+        ramming is worth attempting in the first place.
+
+        """
+        from ..weapons import aspect_accuracy
+
+        self.assertLess(aspect_accuracy(0.0), aspect_accuracy(90.0))
+
+    def test_she_fires_at_a_ship_driving_at_her(self):
+        """
+        **Armed against unarmed, because the rammer is hurt either way.**
+
+        The collision alone damages the ship delivering it, so "the rammer took damage"
+        proves nothing at all - it is true with no guns on the board. What proves the
+        broadside happened is that running at a ship with a loaded battery costs more than
+        running at the same ship without one.
+
+        """
+        self.arm(self.target)
+        with self.every_shot_tells():
+            self.steam_in()
+        shot_at = self.rammer.damage.hull + self.rammer.damage.rigging
+
+        quiet_rammer = self.hull_at(WorldPosition(4000.0, -120.0), heading=0.0, key="Quiet")
+        quiet_rammer.motion_limits = MotionLimits(max_speed=10.0, acceleration=4.0, turn_rate=8.0)
+        quiet_rammer.orders = HelmOrders(heading=0.0, speed=2.0)
+        unarmed = self.hull_at(WorldPosition(4000.0, 0.0), heading=90.0, key="Unarmed")
+        with self.every_shot_tells():
+            self.steam_in(hulls=(quiet_rammer, unarmed))
+
+        self.assertGreater(
+            shot_at,
+            quiet_rammer.damage.hull + quiet_rammer.damage.rigging,
+            "running at a loaded battery cost no more than running at an empty ship",
+        )
+
+    def test_an_unarmed_ship_simply_takes_it(self):
+        """No guns, no reaction, and no error either."""
+        self.steam_in()
+        self.assertTrue(self.target.damage.hull > 0.0)
+
+    def test_firing_leaves_her_battery_empty(self):
+        """
+        The whole cost of the item. She spends her broadside on the ship hitting her, and
+        has nothing for whatever comes next.
+
+        """
+        self.arm(self.target)
+        loaded_before = sum(1 for mount in self.target.mounts if mount.loaded)
+        with self.every_shot_tells():
+            self.steam_in()
+        loaded_after = sum(1 for mount in self.target.mounts if mount.loaded)
+        self.assertGreater(loaded_before, 0)
+        self.assertLess(loaded_after, loaded_before, "not a gun was spent")
+
+    def test_a_point_blank_shot_is_laid_worse_than_a_snatched_one(self):
+        """Worse than opportunity fire, which is itself worse than a considered shot."""
+        self.arm(self.target)
+        self.assertLess(self.target.point_blank_steadiness(), self.target.laying_steadiness())

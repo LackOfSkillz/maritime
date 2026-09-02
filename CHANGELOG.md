@@ -87,6 +87,17 @@ weather, crew, combat and damage are not.
 
 ### Add
 
+- **A last broadside into an oncoming rammer.** The ship about to be struck fires everything
+  that bears in the moment before impact - not a standing order and nothing to declare,
+  because a gun crew watching a bow come at them fire.
+- It is not free damage. Every gun that speaks starts its reload, so she meets whatever
+  follows the collision with an empty battery. The source makes those guns unavailable for
+  the next phase; a continuous simulation gets the same cost by adding no rule at all.
+- **And it is a poor bet, which is the point.** A ship driving at you is end-on, the
+  narrowest she will ever look, and `aspect_accuracy` already says what that is worth - so
+  most of the shots miss. That is not a shortfall to be tuned away: it is why ramming is
+  worth attempting, and it fell out of geometry that was already there.
+
 - **Ramming, and it costs the ship doing it.** A hull driven into another is asked to
   survive the same collision she is delivering, which is what makes it a decision rather
   than a free attack. The energy is one half m vee squared off the reduced mass of the two

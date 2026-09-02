@@ -219,7 +219,10 @@ vessel.bow_fitting = "ram"      # or "spur", or "plain"
 ```
 
 A beak drives more of the blow into her and takes less of it back, which is what a beak is
-for. Running down an oared ship's side shears off the looms she has out, and she breaks them
+for. The ship being run at fires everything that bears in the moment before impact — and
+mostly misses, because a bow-on ship is the narrowest target there is, which is why ramming
+is worth attempting. Every gun that speaks starts its reload, so she meets what follows with
+an empty battery. Running down an oared ship's side shears off the looms she has out, and she breaks them
 against your topsides on the way past.
 
 **Every line on the map is one move.** Flattening a graph of rooms onto a grid always leaves
@@ -1076,7 +1079,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3134 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3139 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1103,8 +1106,7 @@ of wall time runs in milliseconds.
 - A ship with way still ordered on will grind into the ship she has rammed again on the next
   tick, and again after that. That is arguably what she would do, and it is not a decision
   anybody made. Nothing yet tells the helm that the way ahead is now occupied.
-- Nothing fires at a rammer as she comes on. Defensive fire into a closing ship is the next
-  combat item and needs the ramming that now exists.
+- Boarding melee is not built, so a fight that ends alongside ends there.
 - Cargo has no price. Contracts, freight rates, who is buying and what a voyage is worth
   are the game's own economy, and shipping an opinion about them would collide with
   whatever it already has. Recorded in `DECISIONS.md`.
