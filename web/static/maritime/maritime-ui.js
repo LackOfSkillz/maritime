@@ -18,6 +18,15 @@
 window.MaritimeUI = (function () {
     "use strict";
 
+    /* Where a game hangs its own panel.
+     *
+     * One element with a documented id, created once and preserved across every
+     * redraw. A game finds it by that id and renders whatever it likes into it - see
+     * `docs/client.md`. The contrib gives it a place and a share of the height and
+     * takes no interest at all in what goes in.
+     */
+    var HOST_SLOT = "maritime-host";
+
     var ROOT_ID = "maritime-root";
 
     var root = null;
@@ -101,17 +110,53 @@ window.MaritimeUI = (function () {
         }
         lastDrawn = now;
 
+        /* THE HOST GAME’S OWN PANEL, CARRIED ACROSS THE REDRAW.
+         *
+         * A game gets a slot under the map for its own things - a character sheet,
+         * vitals, a quest log, whatever it has - and this panel redraws itself on every
+         * tick. Wiping the root would take the game’s markup and its listeners with it
+         * several times a minute, so the slot is lifted out first and put back after.
+         *
+         * That is the whole contract: the contrib decides where it goes and how much
+         * room it gets, and never looks inside it. */
+        var host = document.getElementById(HOST_SLOT);
+        if (host && host.parentNode) {
+            host.parentNode.removeChild(host);
+        }
+
         root.innerHTML = "";
         root.classList.add("maritime-on");
 
-        root.appendChild(MaritimePanels.renderStrip(state));
+        var ashore = state.mode === "ashore";
+        root.classList.toggle("maritime-ashore", ashore);
+
+        /* ASHORE, THE PANEL IS A MAP AND ALMOST NOTHING ELSE.
+         *
+         * Standing on a quay it was showing heading, ordered course, course made good,
+         * sail plan, anchor, hull, and a board of orders reading TURN PORT, REEF SAILS,
+         * FIRE WEAPONS - the whole helm, for a ship a hundred yards off with nobody on
+         * her. Two thirds of the panel, every bit of it meaningless or actively
+         * misleading: her heading read three hundred and fifteen degrees because that is
+         * the line of the quay she is tied to.
+         *
+         * It also squeezed the one useful thing into a letterbox. `context.ASHORE` says
+         * exactly what this is for - "there is no ship to give orders to and no chart to
+         * read, but there is somewhere to walk and a ship to walk back to" - and a panel
+         * that keeps the helm up ashore has not read its own definition.
+         *
+         * So: who and where, the map, and out of the way. */
+        root.appendChild(
+            ashore
+                ? MaritimePanels.renderAshoreStrip(state)
+                : MaritimePanels.renderStrip(state)
+        );
 
         var pane = document.createElement("div");
         pane.className = "maritime-pane";
         /* Ashore there is no chart to draw and no sense in drawing one: the panel shows
          * the place instead. Aboard it goes back to the sea, and the two never share a
          * pane because they are not two views of one thing. */
-        if (state.mode === "ashore" && window.MaritimeLandMap) {
+        if (ashore && window.MaritimeLandMap) {
             pane.appendChild(MaritimeLandMap.render(state, function () {
                 lastDrawn = null;
                 render(MaritimeState.get());
@@ -126,20 +171,32 @@ window.MaritimeUI = (function () {
         } else {
             pane.appendChild(MaritimePanels.renderChartPlaceholder());
         }
-        pane.appendChild(
-            MaritimePanels.renderTabs(state, function (panel) {
-                MaritimeState.setPreference("panel", panel);
-            })
-        );
-        pane.appendChild(MaritimePanels.renderPanelBody(state));
+        if (!ashore) {
+            pane.appendChild(
+                MaritimePanels.renderTabs(state, function (panel) {
+                    MaritimeState.setPreference("panel", panel);
+                })
+            );
+            pane.appendChild(MaritimePanels.renderPanelBody(state));
 
-        /* The board sits under everything rather than inside a panel, because the
-         * orders on it are the ones a captain gives while looking at the chart - and
-         * an order that needs a tab found first is an order given late. */
-        var board = MaritimePanels.renderControlGrid(state);
-        if (board) {
-            pane.appendChild(board);
+            /* The board sits under everything rather than inside a panel, because the
+             * orders on it are the ones a captain gives while looking at the chart - and
+             * an order that needs a tab found first is an order given late. */
+            var board = MaritimePanels.renderControlGrid(state);
+            if (board) {
+                pane.appendChild(board);
+            }
         }
+        /* Under the map. A game that has hung something here gets half the panel for
+         * it; a game that has not gets a map that fills the space, rather than an empty
+         * box that says nothing. See `maritime-layout.css`. */
+        if (!host) {
+            host = document.createElement("div");
+            host.id = HOST_SLOT;
+        }
+        host.className = "maritime-host-slot";
+        pane.appendChild(host);
+
         root.appendChild(pane);
     }
 

@@ -44,13 +44,20 @@ window.MaritimeLandMap = (function () {
      * a player looks for first, and it is the only one that also gets a ring - so it is
      * findable without reading a colour at all. */
     var MARKERS = {
-        here: { fill: "#df564a", ring: true, size: 6 },
-        ship: { fill: "#7ee0a1", ring: false, size: 5 },
-        berth: { fill: "#79a4cc", ring: false, size: 5 },
-        trade: { fill: "#e8b64c", ring: false, size: 5 },
-        way_out: { fill: "#b08fd0", ring: false, size: 4 },
-        plain: { fill: "#8a7560", ring: false, size: 3.5 }
+        here: { fill: "#df564a", ring: true, size: 7 },
+        ship: { fill: "#7ee0a1", ring: false, size: 5.5 },
+        berth: { fill: "#79a4cc", ring: false, size: 5.5 },
+        trade: { fill: "#e8b64c", ring: false, size: 5.5 },
+        way_out: { fill: "#b08fd0", ring: false, size: 4.5 },
+        plain: { fill: "#8a7560", ring: false, size: 4 }
     };
+
+    /* How big the thing you click is, whatever size the dot is drawn.
+     *
+     * Half a street, so every room on the lattice has a target that reaches most of the way
+     * to its neighbours and none of them overlap. The dot stays the size the picture wants;
+     * hitting it stops being a test of aim. */
+    var CATCH = 13;
 
     /* What each marker means, for the legend and for a room's tooltip. */
     var MEANS = {
@@ -68,6 +75,11 @@ window.MaritimeLandMap = (function () {
 
     /* How far apart two rooms can be drawn and still have a line between them.
      *
+     * One street, and not a step more. A town has no bridges and no subways, so every line
+     * on it has to be a move a player could make in one go from one room to the next -
+     * anything longer is a jump over three or four blocks that nothing in the world lets
+     * anybody take.
+     *
      * **The drawing and the routing do not need the same edges.** Flattening a graph onto
      * a grid always leaves some pairs a long way apart - two ends of a street reached by
      * different routes, a lane that comes back on itself - and the line joining them is an
@@ -77,7 +89,7 @@ window.MaritimeLandMap = (function () {
      *
      * One street and a half, so a normal street and its diagonal both draw and nothing
      * else does. Twenty lines came off a fifty-five room waterfront this way. */
-    var LONGEST_WAY = 3.1;
+    var LONGEST_WAY = 2.05;
 
     /* How far apart to draw two rooms that are one step apart, in pixels, before zoom. */
     var SPACING = 34;
@@ -290,11 +302,21 @@ window.MaritimeLandMap = (function () {
 
     /* Which drawing the camera is a view of.
      *
-     * The room you are in and how many rooms there are: between them they change whenever
-     * the picture does, and not when it merely gains a passer-by. Comparing the whole sheet
-     * would reset the view every time somebody walked past. */
+     * **Not the room you are standing in.** That was in here, so every step re-fitted the
+     * view - and since the layout was also being redrawn from the player's own room, the
+     * town appeared to reshape itself under somebody who had walked one street. A map is
+     * the thing that stays still while you move across it.
+     *
+     * The rooms it contains, and where they are: that changes when the drawing changes and
+     * not when the player does. Sampled rather than hashed in full, because this runs on
+     * every tick and a town is fifty rooms. */
     function signature(sheet) {
-        return sheet.here + ":" + sheet.rooms.length + ":" + (sheet.title || "");
+        var rooms = sheet.rooms || [];
+        var mark = "";
+        for (var i = 0; i < rooms.length; i += 7) {
+            mark += rooms[i].id + "," + rooms[i].x + "," + rooms[i].y + ";";
+        }
+        return rooms.length + ":" + (sheet.title || "") + ":" + mark;
     }
 
     /* The buttons, in the order every map of this kind puts them.
@@ -339,23 +361,50 @@ window.MaritimeLandMap = (function () {
         return bar;
     }
 
+    /* How far a pointer has to move before it is a drag rather than a click, in pixels. */
+    var DRAG_SLOP = 4;
+
+    /* Whether the last gesture on the map was a drag. Read by the room click handler. */
+    var dragged = false;
+
     /* Dragging moves the camera, not the drawing.
      *
      * One number changes and the browser re-renders the same picture through a different
      * window, rather than every element being given new coordinates. It is also why a drag
-     * does not disturb a walk in progress. */
+     * does not disturb a walk in progress.
+     *
+     * **The pointer is captured only once it has actually moved.** Capturing on pointerdown
+     * redirects every later pointer event to the element that captured it, so a click on a
+     * room never reached the room and click-to-walk simply stopped working the day drag
+     * arrived. It was checked, and the check passed, because it dispatched a synthetic
+     * `click` straight at the element - which is not what a mouse does. A gesture is only a
+     * drag once it has gone somewhere; until then it is a click that has not finished.
+     */
     function makeDraggable(svg, plan, redraw) {
         var from = null;
 
         svg.addEventListener("pointerdown", function (event) {
             from = { x: event.clientX, y: event.clientY, cx: camera.x, cy: camera.y };
-            svg.classList.add("is-dragging");
-            svg.setPointerCapture(event.pointerId);
+            dragged = false;
         });
 
         svg.addEventListener("pointermove", function (event) {
             if (!from) {
                 return;
+            }
+            var moved = Math.max(
+                Math.abs(event.clientX - from.x),
+                Math.abs(event.clientY - from.y)
+            );
+            if (!dragged && moved < DRAG_SLOP) {
+                return;
+            }
+            if (!dragged) {
+                dragged = true;
+                svg.classList.add("is-dragging");
+                if (svg.setPointerCapture) {
+                    svg.setPointerCapture(event.pointerId);
+                }
             }
             event.preventDefault();
             /* Pixels to drawing units, taken from the box the browser has actually laid
@@ -373,12 +422,40 @@ window.MaritimeLandMap = (function () {
             }
             from = null;
             svg.classList.remove("is-dragging");
-            if (event && event.pointerId !== undefined && svg.hasPointerCapture(event.pointerId)) {
+            if (
+                event
+                && event.pointerId !== undefined
+                && svg.hasPointerCapture
+                && svg.hasPointerCapture(event.pointerId)
+            ) {
                 svg.releasePointerCapture(event.pointerId);
             }
         }
         svg.addEventListener("pointerup", done);
         svg.addEventListener("pointercancel", done);
+    }
+
+    /* Whether a third room sits on the line between two others.
+     *
+     * Rooms are on a lattice, so "between" is exact rather than a matter of tolerance: the
+     * midpoint of two cells two steps apart is a cell, and either something is in it or
+     * nothing is. Only the midpoint needs checking, because nothing longer than two steps
+     * is drawn at all.
+     */
+    function somethingBetween(a, b, plan) {
+        var midX = (a.x + b.x) / 2;
+        var midY = (a.y + b.y) / 2;
+        var keys = Object.keys(plan.at);
+        for (var i = 0; i < keys.length; i++) {
+            var spot = plan.at[keys[i]];
+            if (spot === a || spot === b) {
+                continue;
+            }
+            if (Math.abs(spot.x - midX) < 1 && Math.abs(spot.y - midY) < 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function render(state, onRedraw) {
@@ -437,20 +514,10 @@ window.MaritimeLandMap = (function () {
         });
 
         var drawn = {};
-        (sheet.edges || []).forEach(function (edge) {
-            var a = plan.at[edge.from];
-            var b = plan.at[edge.to];
-            if (!a || !b) {
-                return;
-            }
-            /* A ladder is not a street. The room it reaches is drawn beside its parent and
-             * marked; a line between the two would say you can walk along it. */
-            if (edge.climbs) {
-                return;
-            }
-            if (Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > SPACING * LONGEST_WAY) {
-                return;
-            }
+        var joined = {};
+        var ways = [];
+
+        function keep(edge, a, b) {
             var pair = edge.from < edge.to
                 ? edge.from + ":" + edge.to
                 : edge.to + ":" + edge.from;
@@ -458,12 +525,83 @@ window.MaritimeLandMap = (function () {
                 return;
             }
             drawn[pair] = true;
+            joined[edge.from] = true;
+            joined[edge.to] = true;
+            ways.push({ a: a, b: b, climbs: edge.climbs });
+        }
+
+        (sheet.edges || []).forEach(function (edge) {
+            var a = plan.at[edge.from];
+            var b = plan.at[edge.to];
+            if (!a || !b) {
+                return;
+            }
+            /* NO LINE THAT CANNOT BE WALKED.
+             *
+             * Flattening a graph onto a grid always leaves some pairs a long way apart -
+             * two ends of a street reached by different routes, a lane that doubles back.
+             * Drawn, that line runs dead straight across four other streets and reads as a
+             * bridge through the air. It is not a road, and there is no honest way to draw
+             * it on a street plan, so it is not drawn.
+             *
+             * Nothing is lost that was ever true: the rooms are still on the map, still
+             * clickable, and clicking still routes over the *whole* edge list. Only the
+             * false line goes.
+             *
+             * A climb is drawn when it is short, because a room up a flight of steps is
+             * placed beside its parent and the line between them is one cell long and
+             * plainly not a street. It is suppressed when it is long, for the same reason
+             * as everything else here. */
+            if (Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > SPACING * LONGEST_WAY) {
+                return;
+            }
+            /* And nothing standing in the road.
+             *
+             * A line the right length can still run straight through a third room, which
+             * on a street plan means a road going through a building. The length test
+             * alone cannot see that; this asks what is actually in the way. */
+            if (somethingBetween(a, b, plan)) {
+                return;
+            }
+            keep(edge, a, b);
+        });
+
+        /* AND NO ROOM LEFT WITH NOTHING DRAWN TO IT.
+         *
+         * The rules above are about which lines are honest. This one is about which rooms
+         * are legible, and it wins: a dot standing alone in a field reads as a mistake in
+         * the map, and no amount of correctness elsewhere makes up for it.
+         *
+         * It happens to a dead end whose only neighbour has a third room sitting exactly in
+         * the road between them, and whose neighbour has no free cell to be moved to - the
+         * layout tries first and this is what is left when it cannot. The line is one move
+         * long and can be walked; it just clips a dot on the way past. Drawn.
+         *
+         * The length cap still holds. A room whose nearest neighbour is four streets away
+         * is better left unattached than joined by a line across the town, which is the
+         * thing this whole pass exists to prevent. */
+        (sheet.edges || []).forEach(function (edge) {
+            if (joined[edge.from] && joined[edge.to]) {
+                return;
+            }
+            var a = plan.at[edge.from];
+            var b = plan.at[edge.to];
+            if (!a || !b) {
+                return;
+            }
+            if (Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > SPACING * LONGEST_WAY) {
+                return;
+            }
+            keep(edge, a, b);
+        });
+
+        ways.forEach(function (way) {
             svg.appendChild(
                 node("line", {
-                    x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+                    x1: way.a.x, y1: way.a.y, x2: way.b.x, y2: way.b.y,
                     stroke: WAY_COLOUR,
                     "stroke-width": WAY_WIDTH,
-                    class: "maritime-landmap-way"
+                    class: "maritime-landmap-way" + (way.climbs ? " is-climb" : "")
                 })
             );
         });
@@ -476,6 +614,15 @@ window.MaritimeLandMap = (function () {
                 tabindex: "0",
                 role: "button"
             });
+
+            /* The target first, so it sits under the dot and the ring and never over
+             * them - a transparent circle on top would swallow its own tooltip. */
+            group.appendChild(
+                node("circle", {
+                    cx: spot.x, cy: spot.y, r: CATCH,
+                    class: "maritime-landmap-catch"
+                })
+            );
 
             if (look.ring) {
                 group.appendChild(
@@ -513,6 +660,10 @@ window.MaritimeLandMap = (function () {
 
             if (room.id !== sheet.here) {
                 group.addEventListener("click", function (event) {
+                    /* A drag that happens to finish over a room is not a click on it. */
+                    if (dragged) {
+                        return;
+                    }
                     event.stopPropagation();
                     stopWalking();
                     var path = routeTo(sheet.here, room.id, sheet.edges || []);

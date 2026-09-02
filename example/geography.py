@@ -80,13 +80,24 @@ RIVER_DRIFT = 0.9
 #: sloop actually makes 2.2 on this heading, so every island was nearly twice as far
 #: out as it should have been and the test passed anyway because it was checking the
 #: same guess.
+# **No name here may also be an island in the other example coast.**
+#
+# Both builders adopt an existing room whenever one already answers to the name they want,
+# so an island in both worlds becomes one room with two islands' worth of exits leading out
+# of it - half of them to a coast three miles away. Nothing reports it: the build simply
+# says it made fewer rooms than it did last time.
+#
+# The sixth was `Outer Skerry`, which the authored coast also uses. Renamed here rather than
+# there because these six are scenery for the integration walkthrough, while those six carry
+# a navigation chain, marked approaches, a trade good each and a bar. `tests/test_example.py`
+# holds the two lists apart.
 ISLANDS = (
     ("Gullstone", 1575.0, 350.0, 260.0),
     ("Blackrock", 2450.0, -250.0, 240.0),
     ("Thornholm", 3400.0, 400.0, 280.0),
     ("Cradle Isle", 4263.0, -300.0, 250.0),
     ("Farne", 5138.0, 300.0, 230.0),
-    ("Outer Skerry", 6000.0, -200.0, 200.0),
+    ("Bare Skerry", 6000.0, -200.0, 200.0),
 )
 
 #: How high an island stands at its middle.
@@ -275,7 +286,7 @@ class ExampleTile(Tile):
         Notes:
             Rock around the islands and mud in the river, because what she strikes
             decides whether she comes off again. Grounding on the mud of a river
-            bend is an afternoon; grounding on Outer Skerry is not.
+            bend is an afternoon; grounding on Bare Skerry is not.
 
         """
         if distance_to_river(position) <= RIVER_HALF_WIDTH:

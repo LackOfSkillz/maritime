@@ -87,6 +87,60 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- **Two rooms in Careenage had two exits of the same name, and one was unreachable.**
+  `High Row` had two called `down` - one to each of the two lanes that climb to it - and
+  `Netloft Row` had two called `north`. Evennia answers with the first, so the second lane
+  could not be walked down at all, by clicking a map or by typing, and nothing anywhere said
+  so. Found by walking every room on the map one at a time and checking each step arrived
+  where the map said it would.
+- The lane builder now names the second and later arrivals at a ridge after the lane they
+  descend, so adding a fifth lane to an existing ridge cannot quietly break the fourth.
+- **The map no longer draws a line it cannot walk.** Flattening a graph onto a grid leaves
+  some pairs a long way apart, and the straight line between them crosses four other streets
+  and reads as a bridge through the air. The rooms stay on the map, stay clickable, and
+  still route over the whole edge list; only the false line goes.
+- Rooms are now laid out next door or nowhere, rather than further along the street when the
+  next cell is full. Looking further along was what produced the long lines in the first
+  place; suppressing them afterwards only left the room at the far end floating.
+- A room placed later can still land in the gap between two earlier ones and cut the road
+  that joined them. Rather than hold every gap open against that - which costs other rooms
+  their place entirely - the few rooms it happens to are moved afterwards, and any that
+  cannot be moved keep their line anyway. **No room is drawn with nothing attached to it**:
+  a dot alone in a field reads as a mistake in the map, and no correctness elsewhere makes
+  up for it.
+- Measured on the fifty-five room waterfront: every line one or two cells, no room
+  unattached, and all fifty-four other rooms reached by clicking their dot.
+- **A quay never told anybody somebody had walked onto it.** `PortRoom` was the one room
+  type in the contrib without `NoticesTheWaterline` - a ship's rooms had it, so walking
+  ashore raised the panel and drew a map, and walking on to the quay next door left that map
+  behind. It now notices, like everything else at a waterline.
+- **Moving between two rooms ashore sent nothing at all.** A street and the quay at the end
+  of it are both `ashore`, so the refresh found no change of situation and returned having
+  said nothing - while the one thing that had changed was the map, which is a picture of
+  where the player is standing. Every click is routed from the dot on that map, so the route
+  began where they no longer were: ten rooms along, the walk was sending `north` at a pier
+  whose only exit is `shore`.
+- **`ShoreRoom`**, for the streets between the quays: an ordinary room that reports arrivals
+  and counts as land without also having to be tagged. Requiring both a type and a tag is
+  how the island tracks came to be built as land, walked as land and resolved as not-land,
+  so stepping up off a pier put the whole panel away.
+- The example world had a mixin of its own doing half of this by hand, which is how the
+  town's quays became the one kind of room it did not cover. Removed; there is one mechanism
+  now.
+- The test that guarded this read a mixin's own source for the words `at_object_receive` and
+  `send_land`. It passed every day the quays were silent, because the quays did not use that
+  mixin. Replaced with one that moves somebody and looks at what was sent.
+- **Both example coasts had an island called Outer Skerry**, and both builders adopt a room
+  that already answers to the name they wanted. Running the two demos - which the readme
+  offers as two commands - therefore merged them: one room with five ways out of it, two
+  leading to an island three miles off at another set of coordinates. Nothing reported it;
+  the build simply said it had made fewer rooms than last time. The scenery coast's sixth
+  island is now `Bare Skerry`, and a test holds the two lists apart.
+- The readme said the authored world was 76 rooms and 148 exits. It is 79 and 154, and a
+  test now counts what the builder makes and compares it with what the readme claims, so the
+  number cannot drift again in silence.
+
+
 - **Her position on the chart shipped with the chart, so she never appeared to move.** A
   sheet is drawn centred on her, and sheets are redrawn about once a minute - so the `own`
   that arrived with one put her in the middle of it and nothing changed until the next.

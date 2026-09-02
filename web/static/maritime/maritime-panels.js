@@ -876,6 +876,34 @@ window.MaritimePanels = (function () {
         return board.childNodes.length ? board : null;
     }
 
+    /* ASHORE: who you are and where she lies, and nothing that needs a helm.
+     *
+     * The full strip is instruments - heading, speed, course made good, sail plan - and on
+     * a quay every one of them is either meaningless or a stale reading off a ship at rest.
+     * What is worth carrying ashore is which ship is yours, because the point of the map is
+     * walking back to her.
+     */
+    function renderAshoreStrip(state) {
+        var strip = element("div", "maritime-strip maritime-strip-ashore");
+        var vessel = (state.status && state.status.vessel) || {};
+
+        strip.appendChild(element("div", "maritime-artwork maritime-emblem"));
+
+        var who = element("div", "maritime-strip-who");
+        who.appendChild(element("div", "maritime-strip-name", vessel.name || "Ashore"));
+
+        var said = [];
+        if (vessel.template) {
+            said.push(String(vessel.template).toUpperCase());
+        }
+        if (typeof vessel.length === "number") {
+            said.push(Math.round(vessel.length) + " METRES");
+        }
+        who.appendChild(element("div", "maritime-strip-note", said.join(" · ")));
+        strip.appendChild(who);
+        return strip;
+    }
+
     function renderChartPlaceholder() {
         var card = element("div", "maritime-card");
         card.appendChild(element("div", "maritime-card-title", "Chart"));
@@ -902,6 +930,7 @@ window.MaritimePanels = (function () {
         range: range,
         renderPanelBody: renderPanelBody,
         renderControlGrid: renderControlGrid,
+        renderAshoreStrip: renderAshoreStrip,
         renderChartPlaceholder: renderChartPlaceholder
     };
 })();

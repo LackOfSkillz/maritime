@@ -28,6 +28,8 @@ I buy things, and where am I. Everything else stays the same quiet colour so tho
 carry.
 """
 
+import math
+
 #: How far to walk before the map stops, in rooms.
 #:
 #: Far enough to hold a town and stop at its edges. Bounded because an unbounded spread from
@@ -140,7 +142,13 @@ def sheet_for(character, reach=REACH):
     if here is None:
         return {"rooms": [], "edges": [], "here": None, "title": ""}
 
-    placed, edges, stairs = _walk(here, reach)
+    anchor = _anchor_for(here, reach)
+    placed, edges, stairs = _walk(anchor, reach)
+    if here not in placed:
+        # She is inside the component but past the room budget, so the sheet cannot show
+        # her. Better to draw the place she is standing in than a place she is not.
+        placed, edges, stairs = _walk(here, reach)
+
     return {
         "title": str(getattr(here, "key", "")),
         "here": here.id,
@@ -157,6 +165,72 @@ def sheet_for(character, reach=REACH):
         ],
         "edges": [edge for edge in edges if edge["from"] in {room.id for room in placed}],
     }
+
+
+def _anchor_for(here, reach):
+    """
+    The room this map is laid out from, whoever happens to be standing on it.
+
+    Args:
+        here (Object): Where the player is.
+        reach (int): How far the map extends, in rooms.
+
+    Returns:
+        anchor (Object): The room to walk from.
+
+    Notes:
+        **A map that is drawn from the player's own room is a different map every time the
+        player moves.** Walking east redrew the whole town from a new origin: streets
+        landed in different cells, doors picked different gaps, and the picture visibly
+        reshaped itself under somebody who had taken one step. A map is meant to be the
+        thing that stays still while you move across it.
+
+        So the layout is anchored on the lowest-numbered room of the group the player is
+        in, which is a fact about the place rather than about the player. Stand anywhere in
+        Careenage and Careenage is drawn identically; only the marker moves. It is the same
+        thing a game with authored room coordinates gets for free, worked out instead of
+        stored - because a contrib cannot ask every game to have laid its rooms out on a
+        grid first.
+
+        The lowest dbref, specifically, because it is stable, cheap and needs nothing
+        declared. It is usually the oldest room in the area, which is as good an origin as
+        any and better than most.
+
+    """
+    seen = {here}
+    edge = [here]
+    for _ in range(reach):
+        following = []
+        for room in edge:
+            for way in _exits_of(room):
+                target = way.destination
+                if target is not None and target not in seen:
+                    seen.add(target)
+                    following.append(target)
+        if not following or len(seen) >= MOST_ROOMS:
+            break
+        edge = following
+
+    # **Ashore, and not aboard.** A ship reachable over a gangway has a dbref like anything
+    # else, and hers was the lowest - so a whole town was laid out relative to her deck,
+    # which put the harbour inland of everything and would have moved the entire map the
+    # moment she sailed. An anchor has to be a thing that stays: a vessel is a visitor.
+    ashore = [room for room in seen if not _afloat(room)]
+    return min(ashore or list(seen), key=lambda room: room.id)
+
+
+def _afloat(room):
+    """
+    Args:
+        room (Object): A room.
+
+    Returns:
+        aboard (bool): Whether it is part of a vessel.
+
+    """
+    from ..vessel import vessel_in
+
+    return vessel_in(room) is not None
 
 
 def _walk(start, reach):
@@ -218,7 +292,9 @@ def _walk(start, reach):
             if steps + 1 > reach:
                 continue
 
-            spot = _spot_for(placed[here], name, taken, here, target)
+            spot = _anchored_spot(target, placed, taken, here)
+            if spot is None:
+                spot = _spot_for(placed[here], name, taken, here, target)
             if spot is None:
                 # Nowhere beside its parent, so it is not drawn. A room placed six cells
                 # away to find space is a room joined to the map by a line across half the
@@ -228,7 +304,263 @@ def _walk(start, reach):
             taken.add(spot)
             queue.append((target, steps + 1))
 
+    _rehouse(placed, edges)
     return placed, edges, stairs
+
+
+def _joinable(first, second, taken):
+    """
+    Whether a line drawn between two cells would be drawn at all.
+
+    Args:
+        first (tuple): One room's cell.
+        second (tuple): The other's.
+        taken (set): Every cell holding a room.
+
+    Returns:
+        joinable (bool): True if the client would draw this line.
+
+    Notes:
+        The same two questions the client asks before it draws: is this one move, and is
+        there anything standing in it. Asked here so the layout can see what the picture
+        will look like before anybody has to look at it.
+
+    """
+    across = second[0] - first[0]
+    down = second[1] - first[1]
+    if max(abs(across), abs(down)) > STREET:
+        return False
+    return _clear_between(first, second, taken)
+
+
+def _rehouse(placed, edges):
+    """
+    Move any room that has ended up with no line to anywhere.
+
+    Args:
+        placed (dict): Room to cell, changed in place.
+        edges (list): The exits between them.
+
+    Notes:
+        Placement puts each room beside the room it opens off, but a room placed later can
+        land in the gap between two earlier ones and cut the road that joined them. The room
+        beyond is then on the map with nothing drawn to it - a dot in a field, which a player
+        can see, click, and walk to, and which looks like a mistake.
+
+        Rather than hold every gap open against that - which costs rooms their place, since
+        a held cell is one nothing else may use - the few rooms it actually happens to are
+        moved afterwards, to a free cell beside a room they really do open off.
+
+    """
+    cells = {room.id: spot for room, spot in placed.items()}
+    rooms = {room.id: room for room in placed}
+    taken = set(cells.values())
+
+    neighbours = {}
+    for edge in edges:
+        neighbours.setdefault(edge["from"], set()).add(edge["to"])
+        neighbours.setdefault(edge["to"], set()).add(edge["from"])
+
+    for room_id, spot in list(cells.items()):
+        near = [other for other in neighbours.get(room_id, ()) if other in cells]
+        if any(_joinable(spot, cells[other], taken) for other in near):
+            continue
+        for other in near:
+            moved = _free_beside(cells[other], taken)
+            if moved is None:
+                continue
+            taken.discard(spot)
+            taken.add(moved)
+            cells[room_id] = moved
+            placed[rooms[room_id]] = moved
+            break
+
+
+def _free_beside(origin, taken):
+    """
+    Args:
+        origin (tuple): The cell to sit beside.
+        taken (set): Every cell holding a room.
+
+    Returns:
+        spot (tuple or None): A free cell one move from `origin`, or None if there is none.
+
+    """
+    for scale in (STREET, 1):
+        for way in BESIDE:
+            spot = (origin[0] + way[0] * scale, origin[1] + way[1] * scale)
+            if spot not in taken and _clear_between(origin, spot, taken):
+                return spot
+    return None
+
+
+def _anchored_spot(target, placed, taken, parent=None):
+    """
+    Where a room that knows its own position belongs, relative to the others that do.
+
+    Args:
+        target (Object): The room being placed.
+        placed (dict): Rooms already on the map, and their cells.
+        taken (set): Cells already used.
+        parent (Object, optional): The room it was reached from.
+
+    Returns:
+        spot (tuple or None): Its cell, or None if there is nothing to anchor it to.
+
+    Notes:
+        **A few rooms on a land map know where they really are, and they should be drawn
+        there.** A quay carries a `WorldPosition`; a street never will. Walked from the
+        street plan alone, three piers on one waterfront came out in a line running south
+        in the order the Strand happens to visit them - and the middle one, which is north
+        and east of the first in the world, was drawn six cells south of it. A map that
+        puts the harbour on the wrong side of the town is worse than one that admits it is
+        a diagram.
+
+        So a positioned room is placed by its true bearing from the nearest *other*
+        positioned room already on the sheet, and the streets hang off them as they fall.
+        The first one anchors the sheet and everything else is measured from it, which is
+        what a chart datum is for.
+
+        Rounded to the eight points and one street's stride, because this is still a
+        diagram: the piers come out in the right relation to each other, not to scale.
+
+    """
+    # Asked first, because a ship's compartment carries no position of its own - she is
+    # placed by where her *berth* is - so the gate below would turn her away.
+    # A vessel lying at a quay is in the same place as the quay, so there is no bearing
+    # between them to take - and a gangway is a noun, so she was going wherever the first
+    # free cell happened to be, which was east. East of the pier is where the town is.
+    seaward = _seaward_spot(target, placed, taken, parent)
+    if seaward is not None:
+        return seaward
+
+    here = getattr(target, "maritime_position", None)
+    if here is None:
+        return None
+
+    nearest = None
+    span = None
+    for room, cell in placed.items():
+        other = getattr(room, "maritime_position", None)
+        if other is None or getattr(other, "region", None) != getattr(here, "region", None):
+            continue
+        away = other.horizontal_distance_to(here)
+        if away <= 0.0:
+            continue
+        if span is None or away < span:
+            nearest, span = (other, cell), away
+
+    if nearest is None:
+        return None
+
+    other, cell = nearest
+    step = _step_between(other, here)
+    if step is None:
+        return None
+    for out in range(1, 5):
+        spot = (cell[0] + step[0] * STREET * out, cell[1] + step[1] * STREET * out)
+        if spot not in taken:
+            return spot
+    return None
+
+
+def _seaward_step(port, draft=0.0):
+    """
+    Which way the open water lies from a quay.
+
+    Args:
+        port (PortRoom): The quay.
+        draft (float, optional): What is being taken in, so the mark that serves her is
+            the one she could actually use.
+
+    Returns:
+        step (tuple or None): A compass step towards the sea, or None if this quay has no
+            marked approach.
+
+    Notes:
+        **Taken from the mark that serves the harbour, which is seaward by construction.**
+        A roadstead lies off a quay in open water; the bearing to it is the way out. That
+        needs nothing authored and guesses nothing, and it is the same answer `passage`
+        gives when it plans a course in - so the map and the passage agree about which way
+        the sea is, which they must.
+
+    """
+    quay = getattr(port, "maritime_position", None)
+    if quay is None:
+        return None
+
+    from .. import passage
+
+    mark = passage.approach_for(port, draft=draft)
+    if mark is None:
+        return None
+    return _step_between(quay, mark.position)
+
+
+def _seaward_spot(target, placed, taken, parent=None):
+    """
+    Where something on the water side of a town belongs: on the water side of the map.
+
+    Args:
+        target (Object): The room being placed.
+        placed (dict): Rooms already on the map, and their cells.
+        taken (set): Cells already used.
+        parent (Object, optional): The room it was reached from.
+
+    Returns:
+        spot (tuple or None): Its cell, or None if this is not a quay or a ship at one.
+
+    Notes:
+        Two cases, and the same answer to both.
+
+        **A quay reached from a street.** A pier is joined to the road by a noun - `pier`,
+        `hard`, `steps` - because a pier is a structure you walk out onto rather than a
+        direction you travel, which is right. It also means nothing in the exit says which
+        way the sea is, so a waterfront went into the first free cell, which was east: a
+        harbour whose ocean lies west drew its shipping inland, and the map came out a
+        mirror of the coast.
+
+        **A vessel lying at that quay.** She and the berth share a position, so there is no
+        bearing between them to take at all, and the gangway is a noun for the same good
+        reason. She goes on the water side of the quay, which is where she is.
+
+    """
+    from ..vessel import vessel_in
+
+    vessel = vessel_in(target)
+    if vessel is not None:
+        port = getattr(vessel, "docked_at", None)
+        if port is None or port not in placed:
+            return None
+        step = _seaward_step(port, getattr(vessel, "draft", 0.0))
+        return _out_from(placed[port], step, taken)
+
+    # A quay: seaward of whatever it hangs off.
+    if not getattr(target, "berths", None) or parent is None or parent not in placed:
+        return None
+    step = _seaward_step(target)
+    return _out_from(placed[parent], step, taken)
+
+
+def _out_from(cell, step, taken, reach=3):
+    """
+    Args:
+        cell (tuple): Where to start.
+        step (tuple or None): Which way to go.
+        taken (set): Cells already used.
+        reach (int, optional): How far to look.
+
+    Returns:
+        spot (tuple or None): The first free cell that way, or None.
+
+    """
+    if step is None:
+        return None
+    for out in range(1, reach + 1):
+        spot = (cell[0] + step[0] * out, cell[1] + step[1] * out)
+        if spot not in taken:
+            return spot
+    return None
 
 
 def _spot_for(origin, direction, taken, here=None, target=None):
@@ -273,19 +605,22 @@ def _spot_for(origin, direction, taken, here=None, target=None):
         # Up and down go nowhere on a street plan. Beside its parent, like a door.
         step = None
 
-    # **A street stays on the street lattice, or it does not go on the map.**
+    # **NEXT DOOR, OR NOWHERE.**
     #
-    # Falling back to a cell beside the parent was what left a knot of long parallel
-    # diagonals across the middle of a waterfront: one street cell placed half a stride out
-    # puts every cell beyond it out of phase with the grid, and every exit that later joins
-    # the two halves is drawn as a line across the town. Staying in line and looking further
-    # along the same street is what a street does.
+    # A town has no bridges and no subways, so every line on the map has to be a move a
+    # player could make in one go. That is a rule about *placement*, not about drawing:
+    # a room put three streets from the room it opens off cannot be joined to it by
+    # anything honest, and hiding the line afterwards only leaves the room floating.
+    #
+    # So a room goes in the cell its exit points at; failing that, in the nearest cell to
+    # that one which is still a single move from its parent; and failing that, not on the
+    # map at all. Looking further along the street was the previous rule and it is what put
+    # rooms two and three strides out with four- and six-cell lines back to their parents.
     if step is not None and direction in STEPS:
-        for out in range(1, 4):
-            spot = (origin[0] + step[0] * STREET * out, origin[1] + step[1] * STREET * out)
-            if spot not in taken:
-                return spot
-        return None
+        wanted = (origin[0] + step[0] * STREET, origin[1] + step[1] * STREET)
+        if wanted not in taken and _clear_between(origin, wanted, taken):
+            return wanted
+        return _nearest_free(origin, step, taken)
 
     if step is not None:
         spot = (origin[0] + step[0], origin[1] + step[1])
@@ -298,6 +633,94 @@ def _spot_for(origin, direction, taken, here=None, target=None):
         if spot not in taken:
             return spot
     return None
+
+
+def _nearest_free(origin, step, taken):
+    """
+    The free cell one move from here that lies nearest the way the exit points.
+
+    Args:
+        origin (tuple): The parent's cell.
+        step (tuple): The compass step the exit wanted.
+        taken (set): Cells already used.
+
+    Returns:
+        spot (tuple or None): A cell one move away, or None if every one is taken.
+
+    Notes:
+        One move means one street's stride on the lattice, or one cell into the gap between
+        streets - the two distances anything on this map is ever drawn at. Tried in order of
+        how far round they are from the direction actually asked for, so a lane that cannot
+        run north runs north-east before it runs south, and the picture stays as close to
+        the truth as the grid allows.
+
+    """
+    wanted = math.atan2(step[0], step[1])
+
+    def turned(candidate):
+        angle = math.atan2(candidate[0], candidate[1])
+        return abs((angle - wanted + math.pi) % (2.0 * math.pi) - math.pi)
+
+    for scale in (STREET, 1):
+        for way in sorted(BESIDE, key=turned):
+            spot = (origin[0] + way[0] * scale, origin[1] + way[1] * scale)
+            if spot not in taken and _clear_between(origin, spot, taken):
+                return spot
+    return None
+
+
+def _clear_between(origin, spot, taken):
+    """
+    Whether the line from one cell to another has nothing standing in it.
+
+    Args:
+        origin (tuple): The parent's cell.
+        spot (tuple): Where the room would go.
+        taken (set): Cells already used.
+
+    Returns:
+        clear (bool): True if a line between them would cross no other room.
+
+    Notes:
+        A cell two strides away is one move on this lattice, but only if the cell between
+        them is empty - otherwise the line runs straight through somebody's front room,
+        which on a street plan is a road through a building. The drawing refuses to draw
+        such a line, so a room placed there ends up on the map joined to nothing; asking
+        here means it is never placed there at all.
+
+        Only the midpoint, because nothing further than two strides is ever offered.
+
+    """
+    across = spot[0] - origin[0]
+    down = spot[1] - origin[1]
+    if abs(across) < 2 and abs(down) < 2:
+        return True
+    return (origin[0] + across // 2, origin[1] + down // 2) not in taken
+
+
+def _step_between(first, second):
+    """
+    Args:
+        first (WorldPosition): Where to measure from.
+        second (WorldPosition): Where to measure to.
+
+    Returns:
+        step (tuple or None): The compass step the bearing falls in, or None if they are
+            in the same place.
+
+    Notes:
+        Rounded to the eight points, because the map has eight neighbours. A bearing is
+        only being used to pick a cell.
+
+    """
+    east = second.x - first.x
+    north = second.y - first.y
+    if not east and not north:
+        return None
+
+    bearing = (math.degrees(math.atan2(east, north)) + 360.0) % 360.0
+    point = int((bearing + 22.5) // 45) % 8
+    return ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))[point]
 
 
 def _bearing_step(here, target):
@@ -328,17 +751,7 @@ def _bearing_step(here, target):
         return None
     if getattr(first, "region", None) != getattr(second, "region", None):
         return None
-
-    east = second.x - first.x
-    north = second.y - first.y
-    if not east and not north:
-        return None
-
-    import math
-
-    bearing = (math.degrees(math.atan2(east, north)) + 360.0) % 360.0
-    point = int((bearing + 22.5) // 45) % 8
-    return ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))[point]
+    return _step_between(first, second)
 
 
 def _exits_of(room):

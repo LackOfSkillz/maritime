@@ -133,6 +133,18 @@ def is_ashore(room):
         return False
     if getattr(room, "berths", None):
         return True
+    # A room that says so itself.
+    #
+    # `ShoreRoom` exists for nothing but being a room ashore, and having declared that in
+    # its own type it should not also have to be tagged by whoever builds it. Requiring both
+    # is how a room comes to look configured and do nothing: the island tracks were built as
+    # land, walked as land, and resolved as not-ashore, so stepping up off a pier put the
+    # whole panel away.
+    #
+    # Read off the object rather than by importing the room module, because this is the
+    # client layer and it does not get to depend on typeclasses. Any room may answer it.
+    if getattr(room, "maritime_ashore", False):
+        return True
     tags = getattr(room, "tags", None)
     if tags is None:
         return False

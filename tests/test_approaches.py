@@ -37,7 +37,11 @@ STEPS = 400
 
 #: The world these marks were laid against, so the test measures the shipped coast rather
 #: than whatever a host game happens to have configured.
-SHIPPED = "evennia.contrib.full_systems.maritime.baked_world.AetosCoast"
+#:
+#: Built from `__package__` rather than written out, because a settings-style dotted path is
+#: still a path: spelled in full it names one of this contrib's two homes and fails in the
+#: other, which is the whole reason the discipline check looks for them.
+SHIPPED = __package__.rsplit(".", 1)[0] + ".baked_world.AetosCoast"
 
 
 def sound_along(world, first, second, steps=STEPS):

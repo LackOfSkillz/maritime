@@ -27,10 +27,9 @@ have sighted an island that none of them has ever set foot on.
 """
 
 from evennia.commands.cmdset import CmdSet
-from evennia.objects.objects import DefaultRoom
 
 from ...discovery import ISLAND, Landmark, set_foot
-from ...rooms import PortRoom
+from ...rooms import PortRoom, ShoreRoom
 
 
 class AshoreCmdSet(CmdSet):
@@ -58,70 +57,21 @@ class AshoreCmdSet(CmdSet):
         self.add(CmdSellCargo())
 
 
-class ShoreRoom:
+class ShoreStreet(ShoreRoom):
     """
-    Mixin: a room that keeps the land map current for anybody standing in it.
+    An ordinary room ashore, which keeps the map current and carries the counters.
 
     Notes:
-        **The map has to be redrawn when somebody arrives, and nothing else was doing it.**
-        A land map is a picture of where you are standing, so the one moment it certainly
-        changes is the moment you stand somewhere else. Without this the panel drew the
-        first room a player entered and then kept drawing it for ever, while they walked
-        away - and click-to-move would move them correctly into a map that no longer
-        described anywhere they were.
+        `ShoreRoom` is the contrib's own and does the whole job: it tells an arriving
+        player's sessions where they now are, and the client layer answers with a fresh map
+        whenever that is ashore. This world briefly had a mixin of its own doing the same
+        thing by hand, which is how the town's quays came to be the one kind of room that
+        told nobody anything - a quay is a `PortRoom`, and only the local mixin had been
+        taught the trick.
 
-        A mixin rather than a base class because the two rooms that need it already have
-        different parents: an ordinary street is a `DefaultRoom` and a pier is a
-        `PortRoom`, and neither should have to become the other for this.
+        All this class adds on top is the shop counters.
 
     """
-
-    def at_object_receive(self, arriving, source, **kwargs):
-        """
-        Args:
-            arriving (Object): Whoever turned up.
-            source (Object): Where they came from.
-
-        """
-        super().at_object_receive(arriving, source, **kwargs)
-        self._redraw_for(arriving)
-
-    def at_object_leave(self, leaving, target, **kwargs):
-        """
-        Args:
-            leaving (Object): Whoever is going.
-            target (Object): Where to.
-
-        Notes:
-            The far room redraws on arrival, so this exists for the case where it is not
-            one of ours - walking inland out of the town, where the panel should show the
-            last thing it honestly knew rather than a map of somewhere else.
-
-        """
-        super().at_object_leave(leaving, target, **kwargs)
-
-    @staticmethod
-    def _redraw_for(character):
-        """
-        Args:
-            character (Object): Who to redraw for.
-
-        Notes:
-            Quietly does nothing for anything without sessions - a crate, a vendor, an NPC
-            - which is most of what arrives in a room.
-
-        """
-        sessions = getattr(character, "sessions", None)
-        if sessions is None:
-            return
-        from ...client.transport import send_land
-
-        for session in sessions.all():
-            send_land(session)
-
-
-class ShoreStreet(ShoreRoom, DefaultRoom):
-    """An ordinary room ashore, which keeps the map current and carries the counters."""
 
     def at_object_creation(self):
         """Set up a street that knows about shops."""
@@ -129,7 +79,7 @@ class ShoreStreet(ShoreRoom, DefaultRoom):
         self.cmdset.add(AshoreCmdSet, persistent=True)
 
 
-class IslandLanding(ShoreRoom, PortRoom):
+class IslandLanding(PortRoom):
     """
     A pier that notices who walks off it first.
 
@@ -214,4 +164,4 @@ class IslandLanding(ShoreRoom, PortRoom):
         )
 
 
-__all__ = ("AshoreCmdSet", "ShoreRoom", "ShoreStreet", "IslandLanding")
+__all__ = ("AshoreCmdSet", "ShoreStreet", "IslandLanding")

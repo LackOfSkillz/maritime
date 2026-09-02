@@ -42,7 +42,7 @@ from ..client import (
 from ..client.state import CHART_REVISION_SECONDS
 from ..position import WorldPosition
 from ..projection import OceanProjection
-from ..rooms import ShipRoom
+from ..rooms import PortRoom, ShipRoom
 from ..typeclasses import Flotsam, Vessel
 from ..vessel import OPEN
 from .base import EmptySeaMixin
@@ -544,6 +544,79 @@ class TestCrossingTheWaterline(ClientTestCase):
         self.seen.clear()
         sea.recover(self.char1, self.deck)
         self.assertIn(COMMAND, self.seen)
+
+
+@override_settings(MARITIME_ASHORE_PANEL=True)
+class TestTheMapFollowsTheWalkerAshore(ClientTestCase):
+    """
+    **The map is a picture of where you are standing.**
+
+    So the one moment it certainly changes is the moment you stand somewhere else. A panel
+    that is not told keeps a dot on a room the player has left, and that is not merely
+    untidy: every click is routed from that dot, so the route begins in the wrong place and
+    the walk sends the first turning of somebody else's journey. Ten rooms along it is
+    sending `north` at a pier whose only exit is `shore`.
+
+    Two halves, because the bug had two: a quay that told nobody it had been walked into,
+    and a refresh that had nothing to say when the situation had not changed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.maps = []
+        original = transport.send_land
+
+        def spy(session):
+            self.maps.append(session)
+            return True
+
+        transport.send_land = spy
+        self.addCleanup(setattr, transport, "send_land", original)
+
+    def test_a_quay_says_so_when_somebody_walks_onto_it(self):
+        """
+        A quay is by definition the room on the landward side of a crossing, and it was the
+        one room type in the contrib that fired no hook at all. A ship's rooms did, so
+        walking ashore raised the panel - and then walking on to the quay next door left
+        that map behind.
+
+        """
+        told = []
+        original = boundary.transport.refresh_for
+        boundary.transport.refresh_for = lambda moved, room=None: told.append(moved) or 0
+        self.addCleanup(setattr, boundary.transport, "refresh_for", original)
+
+        quay = create.create_object(PortRoom, key="A Quay")
+        quay.at_object_receive(self.char1, self.quay)
+        self.assertIn(self.char1, told, "walking onto a quay told nobody")
+
+    def test_moving_ashore_sends_a_map_although_the_situation_is_unchanged(self):
+        """
+        A street and the quay at the end of it are both `ashore`, so there is no situation
+        to announce and the refresh used to return having sent nothing. The map is the news.
+
+        """
+        session = FakeSession(puppet=self.char1)
+        self.ashore()
+
+        hello(session)
+        self.assertTrue(self.maps, "the first sight of a town sent no map")
+
+        self.maps.clear()
+        self.assertFalse(
+            refresh(session), "the situation is unchanged, so nothing should be announced"
+        )
+        self.assertTrue(self.maps, "moving ashore sent no map")
+
+    def test_it_stays_quiet_for_somebody_at_sea(self):
+        """The other half of the same branch: a deck gets its chart, not a town plan."""
+        session = FakeSession(puppet=self.char1)
+        self.aboard()
+
+        hello(session)
+        self.maps.clear()
+        refresh(session)
+        self.assertEqual(self.maps, [], "a land map was drawn for somebody at sea")
 
 
 class TestTakingControlOfACharacter(ClientTestCase):

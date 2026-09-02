@@ -31,7 +31,7 @@ from evennia.utils.search import search_object
 
 from ..ports import Berth
 from ..position import WorldPosition
-from ..rooms import PortRoom, ShipRoom
+from ..rooms import PortRoom, ShipRoom, ShoreRoom
 from ..typeclasses import Vessel
 from ..vessel import BELOW_WATERLINE, INTERIOR, OPEN
 from .craft import CRAFT, outfit
@@ -203,7 +203,10 @@ def _room(spec):
         room (Object): The room, a `PortRoom` if it has a berth.
 
     """
-    wanted = PortRoom if spec.get("berth") else "evennia.objects.objects.DefaultRoom"
+    # A shore room rather than a plain one, so that walking the lane between the quay and
+    # the pond keeps the map under the player's feet. Both types report an arrival; only the
+    # one with a berth also stands on the water.
+    wanted = PortRoom if spec.get("berth") else ShoreRoom
     existing = [found for found in search_object(spec["key"]) if found.destination is None]
     if existing:
         return existing[0]

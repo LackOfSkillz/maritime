@@ -205,7 +205,38 @@ class ShipRoom(NoticesTheWaterline, Stowed, DefaultRoom):
         return f"<ShipRoom {self.key} deck {self.deck_level}>"
 
 
-class PortRoom(DefaultRoom):
+class ShoreRoom(NoticesTheWaterline, DefaultRoom):
+    """
+    An ordinary room on land, which keeps a maritime client's map current.
+
+    Notes:
+        **Use this for the streets of a port town.** A land map is a picture of where the
+        player is standing, so the one moment it certainly changes is the moment they stand
+        somewhere else - and a room has to say so, because nothing else knows. A panel that
+        is not told keeps its dot on a room the player has left, and since every click on
+        the map is routed from that dot, the walk it works out begins somewhere they are
+        not.
+
+        There is nothing maritime about the room itself: no position, no berth, no water.
+        It is a `DefaultRoom` that reports arrivals, and a game that already has its own
+        room typeclass should mix `NoticesTheWaterline` into that instead of adopting this
+        one - the mixin is the contract and this is the convenience.
+
+        Only needed with `MARITIME_ASHORE_PANEL` on. With the panel off, maritime gets out
+        of the way ashore and there is no map to keep current, so the hook resolves to
+        nothing and costs a comparison.
+
+    """
+
+    #: Ashore by construction, so a builder does not also have to tag it.
+    #:
+    #: The tag is for marking somebody else's rooms as land. A room that *is* this type has
+    #: already said what it is, and making it say so twice is how one of the two gets
+    #: forgotten - which is what happened to the island tracks.
+    maritime_ashore = True
+
+
+class PortRoom(NoticesTheWaterline, DefaultRoom):
     """
     A quayside: ordinary room space that also stands somewhere on the water.
 
@@ -219,6 +250,14 @@ class PortRoom(DefaultRoom):
         error. A port is the exception, and the resolver finds it through the
         ordinary `location` link, so nothing standing on the quay needs to know
         it is special.
+
+        **It notices the waterline, which for a long time it did not.** A quay is by
+        definition the room on the landward side of a crossing, and it was the one room
+        type in the contrib that never told anybody's client they had arrived. A ship's
+        rooms did, so walking ashore raised the panel and drew a map - and then walking on
+        to the quay next door left that map behind, still marked with the room the player
+        had left. Clicking a street on it worked out a route from there, and the walk sent
+        the first turning of somebody else's journey.
 
     """
 

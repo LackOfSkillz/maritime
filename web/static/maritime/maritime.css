@@ -1321,10 +1321,43 @@ svg.maritime-chart {
     border-color: rgba(214, 176, 97, 0.55);
 }
 
+.maritime-strip-ashore {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.maritime-strip-ashore .maritime-strip-name {
+    font-size: 1.05rem;
+    color: var(--maritime-accent, #d6b061);
+}
+
+.maritime-strip-ashore .maritime-strip-note {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: var(--maritime-text-soft, #a9a291);
+}
+
 .maritime-landmap-plot {
     position: relative;
-    min-height: 220px;
-    height: min(34vh, 360px);
+    /* BIG ENOUGH TO HOLD A TOWN AND STILL HIT A ROOM.
+     *
+     * It was a third of the viewport, which is the size the *chart* wants: a chart is
+     * mostly empty water and a few lines and it reads at any size. A street plan is fifty
+     * dots and the roads between them, and at a third of a screen a room is four pixels
+     * across and clicking the right one is a game of its own.
+     *
+     * Height matters more than width here because a town is taller than it is wide more
+     * often than not - Careenage is fourteen cells across and eighteen down - and an SVG
+     * fitted with `meet` scales to whichever side runs out first. Give it a letterbox and
+     * the whole map shrinks to the height with empty ground either side.
+     *
+     * These two are only the default, for anywhere this card is used on its own. Inside the
+     * panel the layout overrides the height and the card takes whatever the pane allows,
+     * which is the only arrangement that works: a card cannot know how much room there is
+     * and should not try to guess. */
+    min-height: 320px;
+    height: min(60vh, 640px);
     border: 1px solid rgba(214, 176, 97, 0.16);
     background: radial-gradient(
         circle at center,
@@ -1340,7 +1373,7 @@ svg.maritime-chart {
  * the text you are walking through has to stay visible. Taking the panel is as big as it
  * can honestly get. */
 .maritime-landmap.is-full .maritime-landmap-plot {
-    height: min(72vh, 900px);
+    max-height: 92vh;
 }
 
 .maritime-landmap-svg {
@@ -1359,8 +1392,33 @@ svg.maritime-chart {
     stroke-linecap: round;
 }
 
+/* A way up or down, drawn only when the two rooms are next to each other. Dashed, because
+ * it is a step rather than a street - you go up it, not along it. */
+.maritime-landmap-way.is-climb {
+    stroke-dasharray: 2 3;
+    opacity: 0.7;
+}
+
 .maritime-landmap-room {
     cursor: pointer;
+}
+
+/* A target you can actually hit.
+ *
+ * The dot is drawn small because fifty large ones is a smear; the thing you click is a
+ * transparent circle over it, big enough for a hand that is not a pixel. This is why the
+ * dots can stay the size the picture wants them without the map being a test of aim. */
+/* Selected past `.maritime-landmap-room circle` for the third time in this file. That rule
+ * is one class and one element; a lone class does not beat it, so the target picked up the
+ * outline every dot gets and drew a ring round every room on the map. Worth remembering:
+ * anything styling one *kind* of circle in here has to say `circle.the-kind`. */
+.maritime-landmap-room circle.maritime-landmap-catch {
+    fill: transparent;
+    stroke: none;
+}
+
+.maritime-landmap-room:hover circle.maritime-landmap-catch {
+    fill: rgba(214, 176, 97, 0.12);
 }
 
 /* A way up or down out of this room. A chevron above the dot rather than a line to

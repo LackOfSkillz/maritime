@@ -183,6 +183,23 @@ def refresh(session, force=False, room=None):
 
     now = mode_for(character, room)
     if now == session.ndb.maritime_mode:
+        # **Ashore, standing somewhere else is the whole of the news.**
+        #
+        # The mode has not changed - a street and the quay at the end of it are both
+        # `ashore` - so there is no situation to announce. There is still a new map, because
+        # the map is centred on the player and the player has moved.
+        #
+        # Saying nothing here is what left the panel showing the room somebody walked out
+        # of. It looked harmless: the drawing was of the right town and the dot was on a
+        # real room. But every click is routed from that dot, so the route began in the
+        # wrong place and the walk sent the first turning of a journey from somewhere the
+        # player had already left. Ten rooms later it was sending `north` at a pier with one
+        # exit called `shore`.
+        #
+        # Cheap enough to do on every step: the sheet is a walk over a few dozen exits, and
+        # it is only drawn for a session that is ashore with a client that asked for maps.
+        if now.mode == ASHORE:
+            send_land(session)
         return False
     session.ndb.maritime_mode = now
     told = announce(session, now)
@@ -190,15 +207,13 @@ def refresh(session, force=False, room=None):
     # **The map goes with the mode that asks for it.**
     #
     # Stepping off a gangway changes the mode to `ashore`, and the panel then keeps its
-    # space and draws the town instead of the sea - except that nothing sent it a town, so
-    # it drew "nowhere to map" and stayed that way. `refresh_ashore` existed to send one and
-    # had no callers at all; the only thing that ever did was a room type the example uses
-    # for its islands and not for its own quays, so walking down the pier at Careenage
-    # produced an empty panel and walking onto an island produced a map.
+    # space and draws the town instead of the sea - except that for a long time nothing sent
+    # it a town, so it drew "nowhere to map" and stayed that way.
     #
-    # It belongs here rather than in a room hook, because this is the one place that knows
-    # the mode has just become `ashore` - and a transition is exactly when a client has
-    # nothing and needs everything.
+    # A transition is when a client has nothing and needs everything. Moving *within*
+    # `ashore` needs the same map for a different reason, and is handled above. Between the
+    # two, every arrival anywhere ashore is covered, and there is no third place that sends
+    # one - which there was, briefly, and having two was how one of them got left behind.
     if now.mode == ASHORE:
         send_land(session)
     return told
@@ -397,31 +412,6 @@ def send_land(session):
         # afternoon: two arguments, one of them nearly the other's value.
         "land",
     )
-
-
-def refresh_ashore(character):
-    """
-    Redraw the land map for everybody puppeting this character.
-
-    Args:
-        character (Object): Who moved.
-
-    Returns:
-        told (int): How many sessions were sent a map.
-
-    Notes:
-        Called when somebody walks, because ashore the map changes for exactly one reason:
-        they are standing somewhere else. There is no tick to hang it on and no need for
-        one - a room does not move.
-
-    """
-    told = 0
-    for session in (
-        getattr(character, "sessions", None).all() if getattr(character, "sessions", None) else ()
-    ):
-        if send_land(session):
-            told += 1
-    return told
 
 
 def redraw_chart(session):

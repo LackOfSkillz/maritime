@@ -23,6 +23,7 @@ from ..bathymetry import MaritimeMapProvider
 from ..cargo import STANDARD_STOWAGE
 from ..client import landmap
 from ..discovery import Landmark
+from ..example import aetos_world
 from ..example.aetos_world import islands, stock, village
 from ..position import WorldPosition
 
@@ -334,6 +335,109 @@ class TestTheMapAshore(BaseEvenniaTest):
         self.assertEqual(landmap.sheet_for(self.char1)["rooms"], [])
 
 
+class TestTheWholeTownDrawsWithNothingStranded(BaseEvenniaTest):
+    """
+    **A dot on its own in a field reads as a mistake in the map.**
+
+    The client draws only lines a player could walk in one go: anything longer crosses four
+    other streets and reads as a bridge through the air, so it is suppressed. That rule is
+    safe only if the layout puts every room within one move of something. A room it strands
+    is one the client is not allowed to draw a line to, and it appears as a dot in open
+    ground - clickable, walkable, and looking broken.
+
+    Asserted against the whole built town rather than a hand-made grid, because a grid never
+    runs out of room and so never fails. What actually strands a room is a real street plan:
+    lanes arriving at one ridge from two directions, shops entered by their own noun, and a
+    dead end whose only neighbour is already surrounded on every side.
+    """
+
+    def setUp(self):
+        super().setUp()
+        aetos_world.build(world=Shelf())
+        self.char1.location = aetos_world.starting_room()
+
+    def drawn_sheet(self):
+        """
+        Returns:
+            sheet (dict): The town as the client would receive it.
+
+        """
+        sheet = landmap.sheet_for(self.char1)
+        self.assertGreaterEqual(len(sheet["rooms"]), 50, "the map did not draw the town")
+        return sheet
+
+    def test_no_room_is_drawn_with_nothing_joined_to_it(self):
+        sheet = self.drawn_sheet()
+        at = {room["id"]: room for room in sheet["rooms"]}
+        near = set()
+        for edge in sheet["edges"]:
+            first, second = at.get(edge["from"]), at.get(edge["to"])
+            if not first or not second:
+                continue
+            if max(abs(first["x"] - second["x"]), abs(first["y"] - second["y"])) <= landmap.STREET:
+                near.add(edge["from"])
+                near.add(edge["to"])
+
+        stranded = sorted(room["name"] for room in sheet["rooms"] if room["id"] not in near)
+        self.assertEqual(
+            stranded, [], "these rooms are drawn with no line the client is allowed to draw"
+        )
+
+    def test_no_two_rooms_land_on_one_spot(self):
+        """Two rooms drawn on one square is one room lost, and nothing anywhere says so."""
+        spots = [(room["x"], room["y"]) for room in self.drawn_sheet()["rooms"]]
+        self.assertEqual(len(spots), len(set(spots)))
+
+
+class TestTheReadmeCountsTheWorldItActuallyBuilds(BaseEvenniaTestCase):
+    """
+    **The readme is the public documentation page**, generated from this file, and the size
+    of the world is the first concrete thing it tells anybody. A number that drifts as the
+    town grows is a number a reader cannot trust, and there is nothing in a build log to
+    catch it - the builder reports what it made and the readme reports what it used to.
+
+    Counted from the authored data rather than by building, so it costs nothing and answers
+    the same question: two exits per join, one room per spec.
+    """
+
+    def setUp(self):
+        super().setUp()
+        world = Shelf()
+        self.rooms = len(village.rooms(world))
+        self.joins = len(village.paths())
+        marks = {mark.key: mark for mark in world.landmarks_near(WorldPosition(0.0, 0.0, 0.0), 1e9)}
+        for island in islands.ISLANDS:
+            mark = marks.get(island["key"])
+            if mark is None:
+                continue
+            self.rooms += len(islands.rooms_for(island, mark, world))
+            self.joins += len(islands.paths_for(island))
+
+    def claimed(self):
+        """
+        Returns:
+            said (tuple): The `(rooms, exits)` the readme states.
+
+        """
+        import re
+        from pathlib import Path
+
+        readme = Path(__file__).resolve().parent.parent / "README.md"
+        found = re.search(
+            r"builds Careenage and the six islands: (\d+) rooms, (\d+) exits",
+            readme.read_text(encoding="utf-8"),
+        )
+        self.assertIsNotNone(found, "the readme no longer states the size of the world")
+        return int(found.group(1)), int(found.group(2))
+
+    def test_the_room_count_is_the_one_it_builds(self):
+        self.assertEqual(self.claimed()[0], self.rooms)
+
+    def test_the_exit_count_is_the_one_it_builds(self):
+        """Two per join: a way there and a way back. A one-way street would be a bug."""
+        self.assertEqual(self.claimed()[1], self.joins * 2)
+
+
 class TestTheAshorePanelIsOffByDefault(BaseEvenniaTest):
     """
     The rule the resolver states at the top of itself: the failure a player notices is a
@@ -391,10 +495,14 @@ class TestTheWiringIsActuallyConnected(BaseEvenniaTestCase):
     """
     The gap this class exists for: four things were written and none was wired.
 
-    `browse` and `buy` were in no cmdset, so nothing could reach them. `refresh_ashore` was
-    never called, so the map would have drawn the first room a player entered and kept
+    `browse` and `buy` were in no cmdset, so nothing could reach them. Nothing redrew the
+    land map when somebody walked, so it drew the first room a player entered and kept
     drawing it while they walked away. `STARTING_ROOM` and `trade_at` were read by nothing
     but their own tests.
+
+    The redrawing is now `refresh`'s own business and is tested in `test_client_protocol`,
+    where there are sessions to send to. The function that used to do it here was called by
+    nothing at all, which is the same disease as the rest of this list.
 
     Every one of them looked finished. That is the point - a thing that is defined and never
     called passes every test written about the definition, and the world it was written for
@@ -433,15 +541,6 @@ class TestTheWiringIsActuallyConnected(BaseEvenniaTestCase):
         from ..example import aetos_world
 
         self.assertIn("ShoreStreet", aetos_world.LAND_ROOM)
-
-    def test_a_shore_room_redraws_the_map_when_somebody_arrives(self):
-        import inspect
-
-        from ..example.aetos_world import typeclasses
-
-        source = inspect.getsource(typeclasses.ShoreRoom)
-        self.assertIn("at_object_receive", source)
-        self.assertIn("send_land", source)
 
     def test_the_starting_room_can_be_found_rather_than_only_named(self):
         from ..example import aetos_world

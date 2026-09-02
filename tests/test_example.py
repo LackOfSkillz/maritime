@@ -318,6 +318,30 @@ class TestBuildingIt(EmptySeaMixin, BaseEvenniaTest):
                 self.assertEqual(room.vessel, vessel)
 
 
+class TestTheTwoExampleCoastsAreDifferentPlaces(BaseEvenniaTestCase):
+    """
+    **Two shipped worlds, one game, and a builder that adopts rooms by name.**
+
+    The readme offers `example` and `build_aetos` as separate commands, so a game may
+    reasonably run both. Each builder reuses any room already answering to the name it
+    wanted, which is what makes a second build harmless - and what silently merges two
+    islands into one room if both coasts name an island the same.
+
+    It happened: `Outer Skerry` was on both, and the merged room had five exits, two of them
+    to an island three miles away at a different set of coordinates. Nothing said so. The
+    build reported making fewer rooms and that was the whole of the evidence.
+    """
+
+    def test_no_island_is_on_both_coasts(self):
+        from ..example.aetos_world import islands as authored
+        from ..example.geography import ISLANDS as scenery
+
+        shared = {name for name, *_ in scenery} & {island["key"] for island in authored.ISLANDS}
+        self.assertEqual(
+            shared, set(), "these islands are on both coasts and will build into one room"
+        )
+
+
 class TestTheApproachesAreMarked(BaseEvenniaTest):
     """
     The buoyage invariants, asserted against the world that ships with the contrib.

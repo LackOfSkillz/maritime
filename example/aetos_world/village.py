@@ -753,9 +753,22 @@ def paths():
     joined.append(("The Hard", "The Careening Hard", "hard", "shore"))
 
     # The lanes climb inland off the Strand and come out on the ridge.
+    #
+    # **Two of them come out on High Row**, and naming both ends `up` and `down` gave that
+    # one room two exits called `down` - one to each lane. Evennia takes the first, so the
+    # second lane could not be walked down at all, by clicking or by typing, and nothing
+    # said so. A room cannot have two downs any more than it can have two norths.
+    #
+    # So the second and later arrivals at a ridge are named for the lane they descend. That
+    # is what a person would say anyway - "take the ropewalk down" - and it scales: adding
+    # a fifth lane to an existing ridge cannot quietly break the fourth.
+    landed = {}
     for lane, ridge in zip(LANES, ("High Row", "High Row", "The Cross", "Beacon Road")):
         joined.append((lane["from"], lane["key"], "up", "down"))
-        joined.append((lane["key"], ridge, "up", "down"))
+        arrivals = landed.setdefault(ridge, 0)
+        landed[ridge] = arrivals + 1
+        down = "down" if not arrivals else lane["key"].split("'")[0].split()[0].lower()
+        joined.append((lane["key"], ridge, "up", down))
 
     # Ridge Road, and the square hanging off the middle of it - the centre, not one room
     # along, or the whole upper town leans.
@@ -784,7 +797,11 @@ def paths():
     # Behind the waterfront, and the road out of town.
     joined.append(("Fore Street", "Dunnage Lane", "east", "west"))
     joined.append(("Dunnage Lane", "Bollard Steps", "steps", "up"))
-    joined.append(("Netloft Row", "Fisherman's Beach", "north", "south"))
+    # A noun, because Netloft Row already goes north to Mangrove Walk and a row cannot have
+    # two norths - which it did, so the beach was unreachable from it however you asked.
+    # Stepping off a row onto a beach is a thing you do sideways anyway, not a street you
+    # walk along.
+    joined.append(("Netloft Row", "Fisherman's Beach", "beach", "row"))
     joined.append(("Fisherman's Beach", "The Turtle Crawl", "crawl", "beach"))
     joined.append(("Beacon Road", "Millway", "east", "west"))
     joined.append(("Millway", "The Elbow", "east", "west"))

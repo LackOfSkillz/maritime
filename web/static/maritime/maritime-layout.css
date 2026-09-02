@@ -120,6 +120,22 @@
     min-height: 130px;
 }
 
+/* THE MAP ASHORE GROWS LIKE THE CHART DOES.
+ *
+ * The chart card is told it may fill the pane; the land map card was not, so it fell to
+ * `flex: 0 1 auto` and took only its content height. Asking for that height in the
+ * stylesheet - a square, a share of the viewport - made it a thousand pixels tall inside a
+ * pane two hundred and fifty high with `overflow: hidden`, and a player ashore was shown a
+ * vertical slice through the middle of their own town: three rooms and a dotted line.
+ *
+ * A panel decides how much room there is. A card fills what it is given. */
+:root:has(#maritime-root.maritime-on) .maritime-landmap-plot {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+}
+
 :root:has(#maritime-root.maritime-on) .maritime-chart-plot,
 :root:has(#maritime-root.maritime-on) .maritime-chart {
     height: 100%;
@@ -129,7 +145,9 @@
 /* The one place a scrollbar is allowed, and it is inside a box rather than on the page.
  * A hold with forty kinds of cargo in it has to go somewhere, and the answer is that
  * the manifest scrolls - not that the window does. */
-:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card:not(.maritime-chart-card) {
+:root:has(#maritime-root.maritime-on)
+    .maritime-pane
+    > .maritime-card:not(.maritime-chart-card):not(.maritime-landmap) {
     display: flex;
     flex-direction: column;
     flex: 0 1 auto;
@@ -207,7 +225,9 @@
  * this rule was capping the chart at the panel's height and pinning it to its own
  * minimum. Measuring every child of the pane found it in one look; staring at the
  * screenshot had not, because a smaller chart looks like a styling choice. */
-:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card:not(.maritime-chart-card) {
+:root:has(#maritime-root.maritime-on)
+    .maritime-pane
+    > .maritime-card:not(.maritime-chart-card):not(.maritime-landmap) {
     flex: 0 1 auto;
     max-height: 27%;
 }
@@ -245,7 +265,9 @@
     }
 
     /* The panel gives up more of the column when there is less of it to go round. */
-    :root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card:not(.maritime-chart-card) {
+    :root:has(#maritime-root.maritime-on)
+    .maritime-pane
+    > .maritime-card:not(.maritime-chart-card):not(.maritime-landmap) {
         max-height: 24%;
     }
 }
@@ -363,4 +385,53 @@
 
 :root:has(#maritime-root.maritime-on) ::-webkit-scrollbar-corner {
     background: var(--maritime-panel, #101b21);
+}
+
+/* THE MAP ASHORE IS A CARD THAT GROWS, LIKE THE CHART.
+ *
+ * Two rules above hold every other card still: one sets `flex: 0 1 auto`, and one caps them
+ * at twenty-seven per cent of the panel. Both are right for a manifest or a crew list and
+ * both were catching the land map, so a player ashore got two hundred and fifty pixels of a
+ * thousand-pixel panel - with all fifty-six of their rooms drawn correctly inside them,
+ * which is why it looked like a map bug for four rounds and was a layout one.
+ *
+ * Excluded there and granted here, last in the file, because those selectors are five
+ * classes deep behind a `:has()` and nothing short of repeating them wins.
+ */
+:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card.maritime-landmap {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 130px;
+    max-height: none;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-card.maritime-landmap .maritime-landmap-plot {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+}
+
+/* HALF THE PANEL FOR THE MAP, THE OTHER HALF FOR WHOEVER OWNS THE GAME.
+ *
+ * Half, kept for them whether they have filled it yet or not. The first version collapsed
+ * the slot while it was empty and let the map have the whole column, which is tidier and
+ * is the wrong answer: a game builder cannot design for room they cannot see, and a panel
+ * that reflows the moment they render their first element has moved the goalposts under
+ * them. Reserved space is the offer; an empty half is what an unused offer looks like.
+ *
+ * The map is capped rather than fixed, so a very small map is still drawn at its own size
+ * rather than stretched to fill a half it does not need.
+ */
+:root:has(#maritime-root.maritime-on) .maritime-pane > .maritime-card.maritime-landmap {
+    flex: 1 1 auto;
+    max-height: 50%;
+}
+
+:root:has(#maritime-root.maritime-on) .maritime-host-slot {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin-top: 0.5rem;
 }

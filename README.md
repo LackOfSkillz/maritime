@@ -155,7 +155,7 @@ spare — the same water, and the cargo is the whole difference.
 build_aetos
 ```
 
-That builds Careenage and the six islands: 76 rooms, 148 exits, eighteen people behind
+That builds Careenage and the six islands: 79 rooms, 154 exits, eighteen people behind
 counters. It prints the dbref of the room new players should start in, for `START_LOCATION`.
 
 Ashore you get `browse`, `buy`, `market` and `sell` — installed on the rooms themselves, so
@@ -179,6 +179,37 @@ MARITIME_ASHORE_PANEL = True
 Then the chart is replaced on land by a map of rooms and the ways between them, with
 click-to-move. Routes are walked as ordinary movement commands, one at a time — nothing
 teleports, so a locked gate stops the walk exactly where it would stop the player.
+
+**Rooms ashore keep the map current by being the right kind of room.** A quay
+(`PortRoom`) already does. For the streets between them, use `ShoreRoom` — an ordinary room
+that reports arrivals and counts as land:
+
+```python
+from evennia.contrib.full_systems.maritime.rooms import ShoreRoom
+```
+
+A game with its own room typeclass mixes in `NoticesTheWaterline` instead; the mixin is the
+contract and `ShoreRoom` is the convenience. A room that does neither still works — the
+player can walk through it — but the panel keeps the last map it was sent, so its dot sits
+on a room they have left, and clicking works out a route from there.
+
+**Every line on the map is one move.** Flattening a graph of rooms onto a grid always leaves
+some pairs a long way apart — two ends of a street reached by different routes, a lane that
+doubles back — and the straight line between them crosses four other streets and reads as a
+bridge through the air. Those lines are not drawn. Nothing true is lost: the rooms are still
+on the map, still clickable, and clicking still routes over every exit the room really has.
+
+**The map takes the top half of the panel and the bottom half is yours.** The contrib creates
+one empty element and never looks inside it again:
+
+```javascript
+document.getElementById("maritime-host").append(yourCharacterSheet);
+```
+
+Render a vitals bar, a quest log, a portrait or nothing at all. The half is reserved whether
+it is used or not, so a builder can design against room they can actually see, and the panel
+does not move the goalposts the moment they render their first element. The element survives
+every redraw, so listeners bound to what you put in it stay bound.
 
 ## A real coast, shipped
 
@@ -220,7 +251,7 @@ Pond Shore  --  Water Meadow  --  River Head
                 Stone Quay  --  Harbour Town  --  Ferry Steps
 
 Stone Quay  ==  Gullstone  ==  Blackrock  ==  Thornholm  ==  Cradle Isle
-            ==  Farne  ==  Outer Skerry
+            ==  Farne  ==  Bare Skerry
 ```
 
 There is deliberately no path from the river head to the harbour. The river is the road,
