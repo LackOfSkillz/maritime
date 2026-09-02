@@ -7,207 +7,7 @@ stalled.
 Nothing here is a bug. These are places where guessing would have produced a plausible
 answer that quietly became load-bearing.
 
----
-
-## Tactical pacing
-
-**Raised by:** phase 15, tactical geometry.
-**Blocks:** nothing built yet. It blocks phase 15's *evaluation*, which the roadmap calls
-"the tactical-pacing decision point".
-
-The specification declines, deliberately, to lock close-quarters play to the host game's
-world-time ratio, and lists it as an open question. At 4:1, a player may not have the
-reaction time for close manoeuvring, collision avoidance, a boarding approach, or laying a
-gun on a ship that is crossing.
-
-The options, as far as I can see them:
-
-1. **Tactical time stays world time.** Simplest and most consistent — one clock, Law 1
-   untouched. A four-to-one game gets fights that happen four times faster than they read.
-2. **Tactical time slows towards real time when vessels are close.** Reads well and is what
-   most naval games do. It means two clocks, and something has to decide when to switch —
-   which is a rule, and rules about time leak into everything.
-3. **Configurable per game, with no position taken here.** What stands today.
-
-**What I did:** nothing that presumes an answer. `tactical.py` holds geometry only — range,
-bearing, aspect, closure, arcs — and takes no time argument at all, so it is incapable of
-having an opinion about pacing. Whichever way this goes, none of that changes.
-
-**What it needs from you:** a decision, and ideally after playing one close-quarters
-situation once weapons land and it can actually be felt rather than reasoned about.
-
----
-
-## What the sea does to a person in it
-
-**Raised by:** phase 13, the projected ocean.
-**Blocks:** nothing built. It blocks the question of what being in the water *costs*.
-
-The projection puts a swimmer somewhere and drifts them. It says nothing about how long
-they last, and that is the whole of the question: exhaustion, cold, whether a wound
-matters more in the water, whether a raft or a spar helps, and what happens at the end of
-it. Every one of those is a statement about how harsh the game is, and none of them is
-mine to make.
-
-It is also the one place where the contrib would reach into the host game's own systems.
-Stamina, health and death already exist in whatever game installs this, and a maritime
-contrib that shipped its own drowning rules would either duplicate them or fight them.
-
-The options, as far as I can see them:
-
-1. **The contrib does nothing.** A swimmer floats indefinitely; the game kills them if it
-   wants to. Cleanest separation, and the game has to write everything.
-2. **The contrib exposes hooks and no rules** — time in the water, sea state, whether they
-   are holding onto something - and the game decides what those cost.
-3. **The contrib ships a default with the numbers configurable.** Convenient, and it makes
-   an opinion about lethality the default for every game that installs it.
-
-**What I did:** option 1, for now, and deliberately - `Floating` carries a position, a
-windage and a buoyancy, and nothing that decays. `Buoyancy` does carry a sink rate as well
-as a flag, because something that has stopped floating is still somewhere and phase 25
-needs that, but nothing yet decides when floating stops.
-
-**What it needs from you:** a direction, and probably not until damage lands, since going
-into the water will mostly be something that happens to you rather than something you do.
-
----
-
-## What a cargo is worth, and what a contract says
-
-**Raised by:** phase 22, cargo.
-**Blocks:** trade. The physical half is built - what stows how, what fits, what it does to
-her draught - and none of it knows a price.
-
-A freight rate is a statement about a whole economy: what a voyage is worth, whether it is
-worth more in a war, who is buying, what a shipper does when you arrive late, and whether
-the game has a currency at all. Every one of those already exists in whatever game installs
-this, or is deliberately absent from it, and a maritime contrib that shipped its own would
-either duplicate the game's economy or argue with it.
-
-The same goes for contracts. A cargo contract is a promise with a deadline and a penalty,
-which is the same shape as a passenger charter - and phase 21 is explicitly yours.
-
-The options, as far as I can see them:
-
-1. **The contrib never prices anything.** It moves tonnes; the game sells them. Cleanest
-   separation, and what stands today.
-2. **The contrib defines a contract shape and no values** - a commodity, a quantity, an
-   origin, a destination, a deadline - and the game decides what any of it is worth.
-3. **The contrib ships a working freight economy** with configurable rates. Convenient for
-   a game with no economy of its own, and an argument with every game that has one.
-
-**What I did:** option 1. `Commodity` carries a key, a name, a stowage factor and whether it
-is bulk, and deliberately nothing about value, legality, perishability or demand. Those are
-the four fields a ship's officer needs to load her, which is the part that is genuinely
-maritime.
-
-**What it needs from you:** a direction, and it pairs with phase 21 rather than standing
-alone - passengers and cargo are the same contract with different freight.
-
----
-
-## What being tender should cost her
-
-**Raised by:** phase 22, cargo.
-**Blocks:** nothing built. The condition is detected and reported; what follows from it is
-open.
-
-Weight stowed high makes a ship roll slowly and far, and in a seaway not always come back.
-The system knows when she is in that state - the stability moment is computed from real deck
-levels, and the manifest says so in as many words. What it does not do is make it hurt.
-
-The trouble is that every honest answer reaches into two systems at once. A tender ship
-should carry less sail, which is `sailing`; she should be more likely to be knocked down in
-a gale, which is weather and damage together; and a knockdown is a flooding event, which is
-phase 17 and yours.
-
-The options, as far as I can see them:
-
-1. **Reported and no more.** A warning on the manifest, and a master who ignores it gets
-   away with it. What stands today.
-2. **A sail limit.** A tender ship cannot safely carry her full plan, and the mate refuses
-   to set it. Contained, and touches only `sailing`.
-3. **A risk in a seaway,** resolved against sea state - which means deciding what a
-   knockdown does, and that is damage.
-
-**What I did:** option 1, and the arithmetic is finished so that whichever way this goes it
-is already there. `stowed_moment` is signed relative to the main deck, so a stow that is too
-high is a positive number rather than a flag somebody has to set.
-
-**What it needs from you:** a direction, and probably alongside damage rather than before it.
-
----
-
-## What becomes of an offline player when she sinks
-
-**Raised by:** the LOGOUT-001 spike.
-**Blocks:** nothing built. It blocks phase 17, which cannot break a hull up without
-deciding this.
-
-The spike answered the engine half and it turned out to matter more than expected. Evennia
-takes an unpuppeted character off the grid entirely - `location` becomes `None` and the
-room is remembered in `prelogout_location`. When that room is deleted, the attribute reads
-back as `None` and the character is put in their `home` room the next time they log in,
-with no message and nothing anybody can hook.
-
-So there is already a policy, and nobody chose it: **everyone aboard survives, and is
-teleported home without being told.** A game that never decides this will ship that.
-
-The options, as far as I can see them:
-
-1. **Keep the engine's default.** Foundering is survivable if you were offline. Cheapest,
-   and quietly makes logging out the safest thing you can do in a storm.
-2. **Resolve them like anybody else** - put them in the water, in a boat, or drowned, at
-   the moment she goes, whether or not they are logged in. Consistent, and it means a
-   player can lose a character while asleep.
-3. **Hold them.** Do not resolve an offline passenger at all; leave the compartment alive
-   until they log in and then tell them what happened. Kindest, and it means a sunk ship's
-   rooms cannot be cleaned up on a schedule.
-4. **Do not allow logging out at sea** in the first place, the way some games only let you
-   quit in an inn.
-
-**What I did:** nothing that presumes an answer, and one thing that makes any of them
-possible. `Vessel.ships_company()` and `rooms.absent_from()` find the offline passengers
-that `room.contents` cannot see, so whichever policy you pick, the people it applies to can
-actually be enumerated. Without that, options 2 and 3 are not implementable and option 1
-happens by default.
-
-**What it needs from you:** a direction, before damage. It also interacts with whether
-logging out at sea is allowed at all, which is the same question from the other end.
-
----
-
-
----
-
-## How lethal damage should be
-
-**Raised by:** damage tracks.
-**Blocks:** nothing - there is a working default. It decides how a fight *feels*.
-
-Damage is a fraction of a track, and what a shot takes out of that track is decided by one
-number: `RESILIENCE_PER_METRE`, how much punishment a hull absorbs per metre of her length.
-Everything else follows from it, which is deliberate - a game that wants a different kind of
-sea has one dial to turn rather than a table to rebalance.
-
-**What I set it to, and why.** Nine per metre, chosen against the guns rather than guessed:
-`WeaponType.damage` has always defaulted to ten with a docstring saying it is meaningless
-until the damage phase gives it a scale, and this is that scale. It works out at about
-sixteen hits to reduce a sloop's hull and fifty-odd for a first-rate.
-
-That shape is a claim about the period. Ships of the age were reduced over an hour of firing
-rather than in a broadside, and the ones that went quickly went by fire or by the magazine
-rather than by being whittled down - so a long grind with a sudden ending is the honest
-curve. It also keeps capture worth attempting: if gunnery killed quickly there would be
-nothing left to take.
-
-**What it needs from you:** a direction, if you want a different sea. Lower it for a
-bloodier, faster fight where a broadside decides things; raise it for a longer grind. It is
-one constant and every other number in the system is derived from it, so moving it is safe.
-
-**Not this, though:** the *tracks* should stay as they are however lethal you want it. The
-point of five of them is that a ship can be fast and toothless or intact and unable to
-steer, and that survives any setting of this dial.
+**Nothing is outstanding.** The six that stood here were answered together, and are below.
 
 ---
 
@@ -216,6 +16,158 @@ steer, and that survives any setting of this dial.
 Kept rather than deleted. What was decided is less useful than what the alternatives were
 and why one was picked - the next person to ask "why does capture work like that?" deserves
 the argument, not just the outcome.
+
+---
+
+## Tactical pacing
+
+**Was blocking:** how a fight paces, and how a new captain survives learning to fight one.
+
+**Decided:** pacing is geography and cargo. Not difficulty scaling, and not a dial.
+
+A small hull cannot cross open water and survive, so a new captain is confined to safe,
+low-paying coastal passages *without anybody telling them they are a beginner*. The ladder
+enforces itself through seaworthiness, which is already modelled. The day her hull can cross
+open ocean is the day the lucrative water opens.
+
+Risk then follows **what you load**, not what you have achieved. The source is explicit that
+pirates ignore grain and hunt spices and precious metals, and it draws its trade routes as
+two kinds of line on one map - escorted and unescorted. So a captain picks their own
+difficulty by choosing a cargo and a route, and escorted routes are what consorts (item `S`)
+are for.
+
+**Why not level scaling:** because a world that grows with the player is a world where
+nothing is ever actually safer, and the progression stops meaning anything. Here the sea is
+fixed and the captain changes.
+
+For the original question - how fast a fight resolves - a new captain gets time from the
+slow attrition channel and from escape being real. **A ship that can run is a ship that can
+learn.**
+
+---
+
+## What the sea does to a person in it
+
+**Was blocking:** sinking, man overboard, and what a foundering means for anybody aboard.
+
+**Decided:** we put them in the water and publish the conditions. **The game decides what
+that means.**
+
+The same rule that keeps economy, character combat and stamina out of this contrib, and this
+is the case where breaking it would be most tempting, because drowning feels like physics
+rather than policy. It is not: how much punishment a person absorbs is a character system,
+and character systems are the thing we must not import.
+
+What we publish is enough for any game to decide well: water temperature, sea state,
+distance to the nearest land, whether they have anything to hold on to, and how long they
+have been in. Gary's three bands - cold kills quickly, a rough sea drowns whoever tires
+first, calm and warm is survivable but not for two hundred miles - ship as the **worked
+example in the handbook**. Guidance a game copies, not mechanics we enforce.
+
+**Prerequisite:** sea temperature does not exist yet. `environment` supplies wind, sea state,
+current and visibility, and no temperature. It is small, and nothing above works without it.
+
+---
+
+## What a cargo is worth, and what a contract says
+
+**Was blocking:** phases 21 and 22.
+
+**Decided:** ours, behind `MARITIME_CARGO_ECONOMY`, **off by default**.
+
+This reverses the earlier deferral, and the reversal is right because the interesting half is
+already built: `stowage` models *both* capacities, deadweight and volume. That is the whole
+game. Heavy cheap cargo - grain, salt, coal, timber, stone - fills her tonnage while the hold
+stands half empty; light valuable cargo - spices, silk, dyestuffs, wine - fills the volume
+long before the marks go under. **The cargoes worth thinking about are the ones that trade
+the two off**, and no other naval system can express that because none of them carry two
+capacities.
+
+The pricing model is the source's and it is the correct one: a port has a **surplus of what
+it exports and a shortage of what it imports**, and price follows from that rather than from
+an authored number per commodity.
+
+One consequence is load-bearing elsewhere: **piracy follows cargo value, not traffic.** That
+is what makes the pacing decision above work, so these two are really one decision seen
+twice.
+
+Off by default, so a game arriving with its own economy is untouched.
+
+---
+
+## What being tender should cost her
+
+**Was blocking:** phase 24's refits, and repair generally.
+
+**Decided:** damage sets **time in dock** and **the size of the bill**, and the bill is paid
+from the ship's ledger rather than by a player.
+
+The source splits repair in two and the split is the mechanic. A carpenter with carried
+spares handles routine work indefinitely at sea - seams, cordage, sails, even re-rigging -
+so a properly found ship stays out as long as her food and water last. A **yard** is needed
+only for major repair and overhaul. So:
+
+    routine    costs crew time, and nothing else
+    major      costs money and days alongside
+
+A jury-rigged mast stays slower until a yard sees her. That is a **scar**, not a cooldown,
+and it gives a reason to make port that no hit-point system has.
+
+**The ledger this is paid from is a new subsystem**, and it is Gary's design: money lives on
+the *vessel*, not the character, because the contrib cannot know what a player is - some
+games have no player currency at all - but every ship must pay for repairs, wages and cargo.
+Three denominations, because one unit cannot span a day's wage and the price of a ship;
+names and ratios configurable. It is a prerequisite for phases 14, 21, 22, 23 and 24, which
+is five dependents, so it wants building early.
+
+---
+
+## What becomes of an offline player when she sinks
+
+**Was blocking:** sinking at all.
+
+**Decided:** **the boats, and then the water.**
+
+She carries boats and the seats are limited. When she founders, offline characters take one
+automatically; the boat becomes a floating thing and drifts on the current and the wind,
+which `floating` already does for a swimmer, a barrel, a raft and a corpse. They log in
+adrift and alive, with a story. If there is no seat left they go into the water, and the
+ruling above applies.
+
+What makes this better than kindness: **the source destroys ship's boats by name in its
+criticals.** So boats can be shot away during the fight, and "did you keep your boats?"
+becomes a tactical question with a consequence that outlives the battle. Phase 25 already
+lists survivors in the wreck lifecycle; this is where they come from.
+
+**Rejected:** washed ashore (simplest, but wrong in mid-ocean); straight into the water for
+somebody who cannot act (harsh, and they cannot swim for themselves); held in limbo until
+they log in (elegant on paper, indistinguishable from a bug).
+
+---
+
+## How lethal damage should be
+
+**Was blocking:** nothing - there was a working default. It decides how a fight *feels*.
+
+**Decided:** keep the constant where it is. **Change the shape instead.**
+
+`RESILIENCE_PER_METRE` was set to nine against the guns, aiming at a long grind with a sudden
+ending, and at leaving something worth capturing. Reading the source confirms that aim rather
+than overturning it, so the dial does not move.
+
+What the source *did* change is the structure the dial feeds, and it is written up properly
+in `docs/damage-model.md`. In short: damage arrives on two channels and only attrition is
+fast; a critical **opens a process and never concludes one**; each track is a short ladder of
+legible steps rather than a bar that empties; and - the finding that matters most - **the
+crew ladder ends in surrender, not death.**
+
+That last one makes capture the *cheaper* win and turns the ammunition triangle into a choice
+of ending rather than a choice of flavour. It also means a player who loses a fight is
+usually alive, ashore and short one ship, which is how this model can be lethal without being
+cruel.
+
+**Still true:** the tracks stay as they are however lethal anybody wants it. The point of
+five of them is that a ship can be fast and toothless, or intact and unable to steer.
 
 ---
 

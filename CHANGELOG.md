@@ -11,6 +11,32 @@ Nothing released yet. Foundations, the spatial model, vessels, the simulation
 service, sailing, grounding and who owns a ship are in place; ports, navigation,
 weather, crew, combat and damage are not.
 
+### Docs
+
+- **Every open decision is answered, and `DECISIONS.md` has nothing outstanding for the
+  first time.** Six of them, settled together: how lethal damage should be, what the sea
+  does to a person in it, what becomes of an offline player when she sinks, what a cargo is
+  worth, what being tender should cost her, and tactical pacing.
+- **`docs/damage-model.md`: what phase 17 is going to be, written down before it is built.**
+  The shape was worked out by reading the source once and it should not have to be read
+  again. Two damage channels of which only attrition is fast; a critical that **opens a
+  process and never concludes one**; each track a short ladder of legible steps rather than a
+  bar that empties.
+- The finding that reorganised the rest: **the crew ladder ends in surrender, not death.** A
+  ship whose people are shot to pieces strikes her colours. So grape fills the track that
+  ends in her changing hands while ball fills the one that ends in her sinking, and the
+  ammunition triangle becomes a choice of *ending* rather than of flavour. It also makes
+  capture the cheaper win, which promotes item `I` from a finishing touch to the thing the
+  rest leans on - and it means a player who loses a fight is usually alive, ashore and short
+  one ship rather than dead.
+- **Two rulings turned out to be one.** Piracy follows cargo value rather than traffic, so
+  "what is a cargo worth" and "how does a fight pace" are the same decision seen twice: a
+  captain picks their own difficulty by choosing what to load and which way to carry it. No
+  level scaling anywhere - the sea is fixed and the captain changes.
+- **`RESILIENCE_PER_METRE` does not move.** It was set against the guns aiming at a long
+  grind with a sudden ending; the source confirms that aim rather than overturning it. What
+  changed is the structure it feeds, not the dial.
+
 ### Feat
 
 - **Dredged channels, dug by the engine rather than authored.** `dredging` lets a world say
