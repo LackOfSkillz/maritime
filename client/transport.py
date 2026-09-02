@@ -202,6 +202,24 @@ def refresh(session, force=False, room=None):
             send_land(session)
         return False
     session.ndb.maritime_mode = now
+
+    # **A change of mode throws the client's panels away, so everything it was holding
+    # is gone with them.**
+    #
+    # Every cache below means "the client already has this", and that stops being true
+    # the instant the panels are rebuilt. Left standing, they suppress the first send
+    # after a return aboard as redundant - so a ship whose readings have not moved since
+    # her captain stepped ashore reports nothing at all, and the board sits on "awaiting
+    # report" until something happens to shift a number. For a ship lying quiet that is
+    # hours, and it is not a teleport bug: walking back up the gangway does it too.
+    #
+    # Cleared here rather than in the hooks that move somebody, because this is the one
+    # place that knows the panels were replaced. A mover who does not change mode has
+    # panels that are still standing, and clearing those would redraw the board on every
+    # step along a deck.
+    session.ndb.maritime_status = None
+    session.ndb.maritime_chart_stamp = None
+
     told = announce(session, now)
 
     # **The map goes with the mode that asks for it.**

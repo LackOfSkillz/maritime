@@ -68,11 +68,12 @@ PIERS = (
         "length": 60.0,
         "beam": 16.0,
         "desc": (
-            "Eight hundred metres of piling and plank, built out to where the dredgers "
-            "stopped and there is water enough for anything that floats. It is wide enough "
-            "for two carts to pass and does not quite manage to be straight. Iron bollards "
-            "the size of barrels stand along both edges, and a crane of black timber leans "
-            "over the head of it on a stone footing."
+            "Eight hundred metres of piling and plank, built out to where the dredgers stopped and "
+            "there is water enough for anything that floats. It is wide enough for two carts to "
+            "pass and does not quite manage to be straight. Iron bollards the size of barrels "
+            "stand "
+            "along both edges, and a crane of black timber leans over the head, with the shore a "
+            "long walk back behind it."
         ),
     },
     {
@@ -97,10 +98,10 @@ PIERS = (
         "length": 24.0,
         "beam": 8.0,
         "desc": (
-            "A stone slipway running down into the harbour, with a pair of massive posts "
-            "at the head of it and tackle enough to heave a small vessel over on her side. "
-            "The stone is green below the tide line and worn into a trough down the middle "
-            "where keels have been dragged over it. The whole place smells of tar."
+            "A stone slipway running down into the harbour from the shore, with a pair of massive "
+            "posts at the head of it and tackle enough to heave a small vessel over on her side. "
+            "The stone is green below the tide line and worn into a trough down the middle where "
+            "keels have been dragged over it. The whole place smells of tar."
         ),
     },
 )
@@ -111,9 +112,9 @@ STRAND = (
     {
         "key": "Netloft Row",
         "desc": (
-            "The waterfront runs out here into a litter of hauled-up boats and drying "
-            "nets on frames. A low wall of coral block keeps the road out of the water, "
-            "and beyond it the mud of the creek mouth begins. The town is all to the "
+            "The waterfront runs out here into a litter of hauled-up boats and drying nets on "
+            "frames. A low wall of coral block keeps the road out of the water, and a gap in it "
+            "gives onto the beach where the smaller craft are drawn up. The town is all to the "
             "south from here."
         ),
     },
@@ -129,10 +130,11 @@ STRAND = (
     {
         "key": "Fore Street",
         "desc": (
-            "A stretch of the waterfront where the buildings stand closest to the water. "
-            "The Custom House takes up most of the landward side, a squat stone thing with "
-            "barred windows and a scale on a bracket by the door, and there is a queue "
-            "outside it more often than not."
+            "A stretch of the waterfront where the buildings stand closest to the water. The "
+            "Custom "
+            "House takes up most of the landward side, a squat stone thing with barred windows and "
+            "a scale on a bracket by the door. A sugar store stands beside it with its shutters "
+            "chained, and an archway between the two opens into Anchor Court."
         ),
     },
     {
@@ -148,9 +150,10 @@ STRAND = (
         "key": "Fishgut Row",
         "desc": (
             "The paving is scrubbed pale here and slopes to a gutter that runs down to the "
-            "harbour. The fish market opens onto the road under a long tiled roof, and a "
-            "row of stone slabs stands out front, worn hollow in the middle from a hundred "
-            "years of gutting."
+            "harbour. "
+            "The fish market opens onto the road under a long tiled roof, and a row of stone slabs "
+            "stands out front, worn hollow in the middle from a hundred years of gutting. A slop "
+            "shop at the end sells the clothes a man goes to sea in."
         ),
     },
     {
@@ -211,40 +214,45 @@ RIDGE = (
     {
         "key": "High Row",
         "desc": (
-            "The road along the top of the town, level for once after all that climbing. "
-            "From the seaward side there is nothing between here and the harbour but "
-            "roofs. The mission stands on the inland side behind a low wall."
+            "The road along the top of the town, level for once after all that climbing. From the "
+            "seaward side there is nothing between here and the harbour but roofs. The mission "
+            "stands on the inland side behind a low wall, and the smithy beyond it, with barrel "
+            "hoops stacked against the gable in threes."
         ),
     },
     {
         "key": "The Cross",
         "desc": (
-            "The widest part of the ridge, where the road opens into the market square. "
-            "A stone cistern stands at the centre with a bucket chained to it, and the "
-            "ground around it is worn to hard bare earth by the traffic of a market day."
+            "The widest part of the ridge, where the road opens into the market square. A stone "
+            "cistern stands at the centre with a bucket chained to it, and the ground around it is "
+            "worn to hard bare earth by the traffic of a market day. The bakehouse holds "
+            "the corner "
+            "with its oven mouth open to the road."
         ),
     },
     {
         "key": "Beacon Road",
         "desc": (
-            "The road runs on east here and turns into the track that leaves town. The "
-            "last buildings are on the seaward side only; inland is cane to the top of "
-            "the rise. A milestone stands at the corner with its figures worn away."
+            "The road runs on east here and turns into the track that leaves town. The last "
+            "buildings are on the seaward side only; inland is cane to the top of the rise. The "
+            "apothecary keeps the final shopfront, its window stacked with blue and green glass, "
+            "and a milestone stands at the corner with its figures worn away."
         ),
     },
     {
         "key": "Market Square",
         "desc": (
-            "An open square of hard-packed earth with a ring of stone benches round its "
-            "edge and a great tree in the middle, its roots lifting the paving in slabs. "
-            "Stalls stand along two sides on permanent frames of lashed timber. The "
-            "tavern is on the third side and the mission's wall makes the fourth."
+            "An open square of hard-packed earth with a ring of stone benches round its edge and a "
+            "great tree in the middle, its roots lifting the paving in slabs. Stalls stand along "
+            "two sides on permanent frames of lashed timber. A rum shop, a tavern and the "
+            "watch house share the third, which the town has always considered a sensible "
+            "arrangement."
         ),
     },
     {
         "key": "The Fruit Stalls",
         "desc": (
-            "The north side of the square, under a roof of thatch on posts. The stalls "
+            "The east side of the square, under a roof of thatch on posts. The stalls "
             "are permanent - scrubbed boards on trestles, each with its owner's mark burnt "
             "into the end - and the ground beneath them is soft with a century of trodden "
             "peel."
@@ -268,16 +276,19 @@ UPPER = (
         "key": "Mizzen Row",
         "desc": (
             "A row of small houses with deep verandas, each raised a course or two of "
-            "block off the ground. The road is unpaved and edged with whitewashed stones, "
-            "and every house has a water butt at its corner under the roof's downpipe."
+            "block off the "
+            "ground. The road is unpaved and edged with whitewashed stones, and every house has a "
+            "water butt at its corner under the roof's downpipe. A gut runs between two of them, "
+            "too narrow for a cart and used as a short cut by everybody who lives here."
         ),
     },
     {
         "key": "Gullcry Steps",
         "desc": (
-            "The houses run out here into garden plots fenced with cane, growing peppers "
-            "and pumpkins and a few stands of banana. A footpath continues where the road "
-            "gives up."
+            "The houses run out here into garden plots fenced with cane, growing peppers and "
+            "pumpkins and a few stands of banana. The gulls work this corner for whatever the "
+            "gardens throw out and are bolder about it than the dogs. A footpath continues where "
+            "the road gives up, and nobody has ever paved it."
         ),
     },
     {
@@ -291,7 +302,8 @@ UPPER = (
     {
         "key": "The Burying Ground",
         "desc": (
-            "A walled enclosure on the seaward slope, the stones set in rows facing the "
+            "A walled enclosure on the slope above the town, the stones set in rows "
+            "facing the "
             "water. Many of the markers carry a ship's name under the person's, and a good "
             "number carry no date of death at all - only the year she was last spoken."
         ),
@@ -320,9 +332,10 @@ OUTSKIRTS = (
     {
         "key": "Dunnage Lane",
         "desc": (
-            "A back lane serving the rear doors of the waterfront stores, wide enough for "
-            "a cart and stacked along both sides with dunnage and empty crates. Every door "
-            "along it is numbered in painted figures a foot high."
+            "A back lane behind the netlofts, wide enough for a cart and stacked along both sides "
+            "with dunnage and the empty crates the fish go out in. Every door along it is numbered "
+            "in painted figures a foot high, and half the numbers are for buildings that have been "
+            "something else twice."
         ),
     },
     {
@@ -336,9 +349,10 @@ OUTSKIRTS = (
     {
         "key": "Fisherman's Beach",
         "desc": (
-            "A shelf of coarse sand north of the town where the small boats are drawn up "
-            "clear of the water, each on its own set of rollers. Racks of split timber "
-            "stand above the tide line for drying nets on."
+            "A shelf of coarse sand north of the town where the small boats are drawn up clear of "
+            "the water, each on its own set of rollers. Racks of split timber stand above the tide "
+            "line for drying nets on. The row is a step up the bank behind, and a turtle crawl is "
+            "fenced off at the far end."
         ),
     },
     {
@@ -352,9 +366,10 @@ OUTSKIRTS = (
     {
         "key": "Millway",
         "desc": (
-            "The road out of town, climbing between banks of red earth cut deep by the "
-            "carts. Cane stands taller than a rider on both sides, and the road is only "
-            "wide enough for one vehicle, with passing places cut at intervals."
+            "The road out of town starts here, climbing between banks of red earth cut deep by the "
+            "carts. The provision stalls stand at the corner, which is a ship's cook's last chance "
+            "at a barrel of anything. Beyond them the cane closes in and the road is wide enough "
+            "for one vehicle only, with passing places cut at intervals."
         ),
     },
     {
@@ -368,9 +383,9 @@ OUTSKIRTS = (
     {
         "key": "Boiling House Lane",
         "desc": (
-            "A spur off the main road running to the sugar mill, rutted and dusted white "
-            "with spilled lime. The mill stands at the end of it with its roof visible "
-            "over the cane, and the road is built wide because the carts that use it are."
+            "A spur off the waterfront lanes running up to the sugar mill, rutted and dusted white "
+            "with spilled lime. The mill stands at the end of it with its roof visible over the "
+            "cane, and the lane is built wide because the carts that use it are."
         ),
     },
     {
@@ -724,6 +739,185 @@ def rooms(world=None):
     return out
 
 
+#: Where every room on the street lattice stands, as `(x, y, z)`.
+#:
+#: **Coordinates first; exits are derived from them and never typed.** The town was
+#: originally written the other way round - exits by hand, positions never checked - and
+#: every defect that followed came from that one inversion. Four lanes each ran *up* from
+#: the waterfront and *up* again to the ridge, landing on ridge rooms at different points
+#: along it, so the geometry could not close: nine contradictions, four links spanning
+#: cells they had no business crossing, and one room with two exits called `down`, of
+#: which only the first could ever be walked.
+#:
+#: None of that is reachable now. A link exists because two rooms are neighbours, and the
+#: direction is read off the difference between them.
+#:
+#: **The outline is a half-hull, and that is deliberate.** The waterfront is one straight
+#: line because a quay is built to a line; the inland edge swells from the creek, runs
+#: full through the middle of the town and tapers again to the boatyard. Seen from above
+#: on the map panel it is the shape of a hull sawn along the keel - which is the model a
+#: shipwright hangs on his wall, and this is a careenage. Nobody has to notice.
+#:
+#: `y` runs north, `x` runs inland from the water, `z` is up. Interiors are not here:
+#: they hang off the street on their own layer and constrain nothing.
+PLAN = {
+    # The waterfront and the creek above it: the straight edge, the keel line.
+    "The Creek Landing": (0, 9, 0),
+    "Mangrove Walk": (0, 8, 0),
+    "Netloft Row": (0, 7, 0),
+    "Quay Head": (0, 6, 0),
+    "Fore Street": (0, 5, 0),
+    "Capstan Walk": (0, 4, 0),
+    "Fishgut Row": (0, 3, 0),
+    "The Hard": (0, 2, 0),
+    "Bollard Steps": (0, 1, 0),
+    # One cell inland: the lanes, each beside the room it climbs from.
+    "Dunnage Lane": (1, 7, 0),
+    "Cooper's Lane": (1, 6, 0),
+    "Ropewalk Lane": (1, 5, 0),
+    "Sailmaker's Lane": (1, 4, 0),
+    "Windlass Steps": (1, 3, 0),
+    "Canecutter's Lane": (1, 2, 0),
+    "Boiling House Lane": (1, 1, 0),
+    # The road along the ridge, which is the town's second spine.
+    "High Row": (2, 6, 0),
+    "The Cross": (2, 5, 0),
+    "Beacon Road": (2, 4, 0),
+    "Mizzen Row": (2, 3, 0),
+    "Gullcry Steps": (2, 2, 0),
+    # Behind the ridge, where the town runs out into cane. The widest part.
+    "The Burying Ground": (3, 6, 0),
+    "Market Square": (3, 5, 0),
+    "Millway": (3, 4, 0),
+    "The Elbow": (3, 3, 0),
+    "The Fruit Stalls": (4, 5, 0),
+    "The Provision Stalls": (4, 4, 0),
+    # The only true vertical in the town. A signal station is above the place it watches
+    # over and nowhere else, so it is the one climb that does not also travel.
+    "The Signal Path": (2, 5, 1),
+    "The Signal Station": (2, 5, 2),
+}
+
+#: Which rooms are neighbours. The direction each way is worked out from `PLAN`.
+#:
+#: Written as unordered pairs on purpose. A pair cannot disagree with itself about which
+#: way it runs, which is the whole class of defect the old table kept producing.
+LINKS = (
+    # The waterfront, running down from the creek to the hard.
+    ("The Creek Landing", "Mangrove Walk"),
+    ("Mangrove Walk", "Netloft Row"),
+    ("Netloft Row", "Quay Head"),
+    ("Quay Head", "Fore Street"),
+    ("Fore Street", "Capstan Walk"),
+    ("Capstan Walk", "Fishgut Row"),
+    ("Fishgut Row", "The Hard"),
+    # Inland off the waterfront, one lane to each working part of it.
+    ("Netloft Row", "Dunnage Lane"),
+    ("Quay Head", "Cooper's Lane"),
+    ("Fore Street", "Ropewalk Lane"),
+    ("Capstan Walk", "Sailmaker's Lane"),
+    ("Fishgut Row", "Windlass Steps"),
+    ("The Hard", "Canecutter's Lane"),
+    # And on again to the ridge. Each lane comes out on its own room, which is what
+    # stops two of them arriving in the same place and one of the two being unwalkable.
+    ("Cooper's Lane", "High Row"),
+    ("Ropewalk Lane", "The Cross"),
+    ("Sailmaker's Lane", "Beacon Road"),
+    ("Windlass Steps", "Mizzen Row"),
+    ("Canecutter's Lane", "Gullcry Steps"),
+    # Two short joins that make the ends of the town loops rather than stubs, so there
+    # is a second way back from either.
+    ("Dunnage Lane", "Cooper's Lane"),
+    ("The Hard", "Bollard Steps"),
+    ("Bollard Steps", "Boiling House Lane"),
+    ("Canecutter's Lane", "Boiling House Lane"),
+    # The ridge road itself.
+    ("High Row", "The Cross"),
+    ("The Cross", "Beacon Road"),
+    ("Beacon Road", "Mizzen Row"),
+    ("Mizzen Row", "Gullcry Steps"),
+    # Behind it.
+    ("High Row", "The Burying Ground"),
+    ("The Cross", "Market Square"),
+    ("Beacon Road", "Millway"),
+    ("Mizzen Row", "The Elbow"),
+    ("The Burying Ground", "Market Square"),
+    ("Market Square", "Millway"),
+    ("Millway", "The Elbow"),
+    # The market, which is a square with its stalls around it rather than a room with
+    # two rooms hanging off it.
+    ("Market Square", "The Fruit Stalls"),
+    ("The Fruit Stalls", "The Provision Stalls"),
+    ("The Provision Stalls", "Millway"),
+    # Up to the signal station, and only up.
+    ("The Cross", "The Signal Path"),
+    ("The Signal Path", "The Signal Station"),
+)
+
+#: What you go through rather than walk across, and what it is called from each side.
+#:
+#: A pier, a beach, a yard and a court are entered by their own noun because that is what
+#: a person says and what the act actually is. They sit off the lattice as a result, which
+#: is correct: a pier is not a step inland, it is a structure you walk out onto.
+NOUN_LINKS = (
+    ("Quay Head", "Long Pier", "pier", "shore"),
+    ("Capstan Walk", "Middle Pier", "pier", "shore"),
+    ("The Hard", "The Careening Hard", "hard", "shore"),
+    ("Netloft Row", "Fisherman's Beach", "beach", "row"),
+    ("Fisherman's Beach", "The Turtle Crawl", "crawl", "beach"),
+    ("The Hard", "The Boatyard", "yard", "out"),
+    ("Mizzen Row", "The Gut", "gut", "row"),
+    ("Fore Street", "Anchor Court", "court", "out"),
+)
+
+#: The ten directions, and what each does to a position.
+STEPS = {
+    (0, 1, 0): ("north", "south"),
+    (0, -1, 0): ("south", "north"),
+    (1, 0, 0): ("east", "west"),
+    (-1, 0, 0): ("west", "east"),
+    (1, 1, 0): ("northeast", "southwest"),
+    (-1, 1, 0): ("northwest", "southeast"),
+    (1, -1, 0): ("southeast", "northwest"),
+    (-1, -1, 0): ("southwest", "northeast"),
+    (0, 0, 1): ("up", "down"),
+    (0, 0, -1): ("down", "up"),
+}
+
+
+def direction_between(here, there):
+    """
+    Which way one room lies from another.
+
+    Args:
+        here (str): The room key you are standing in.
+        there (str): The room key you are going to.
+
+    Returns:
+        pair (tuple): `(out, back)` - the exit name each way.
+
+    Raises:
+        KeyError: If either room is not on the plan.
+        ValueError: If they are not neighbours, which means the plan and the links
+            disagree and one of them is wrong.
+
+    Notes:
+        The whole point of the rebuild lives in this function. An author who wants two
+        rooms joined moves one of them until they are neighbours; they do not write a
+        direction the geometry will not support, because there is nowhere to write one.
+
+    """
+    ax, ay, az = PLAN[here]
+    bx, by, bz = PLAN[there]
+    step = (bx - ax, by - ay, bz - az)
+    if step not in STEPS:
+        raise ValueError(
+            f"{here} at {PLAN[here]} and {there} at {PLAN[there]} are not neighbours; "
+            "move one of them, or join them with a noun."
+        )
+    return STEPS[step]
+
+
 def paths():
     """
     Every exit, in both directions.
@@ -732,90 +926,29 @@ def paths():
         paths (tuple): `(from, to, out, back)`.
 
     Notes:
-        Both directions are written out rather than left to be inferred. An importer that
-        invents the missing half is being kind, and the kindness hides the mistake.
+        Streets are **derived** from `PLAN`: a link exists because two rooms are next to
+        each other, and its name is read off the difference between their positions. Both
+        halves are emitted together, so a link cannot be written one way and forgotten the
+        other, and the return of a compass exit is its exact opposite by construction
+        rather than by care.
 
-        Streets join by compass; buildings join by their noun. That is the difference
-        between walking along a road and going through a door, and the exit line should say
-        which is which without anybody having to guess.
+        Buildings and structures join by their noun, which is the difference between
+        walking along a road and going through a door - and the exit name should say which
+        without anybody having to guess.
 
     """
     joined = []
 
-    # The Strand, north to south.
-    for nearer, further in zip(STRAND, STRAND[1:]):
-        joined.append((nearer["key"], further["key"], "south", "north"))
+    # One entry per link, carrying both names. The builder and the validator each make
+    # the two exits from it, so emitting the pair here would give every room two of
+    # everything - which is the very defect E3 exists to catch, arrived at from the
+    # opposite direction.
+    for here, there in LINKS:
+        out, back = direction_between(here, there)
+        joined.append((here, there, out, back))
 
-    # The piers run seaward off the Strand, and are named rather than compassed - a pier is
-    # a structure you walk out onto.
-    joined.append(("Quay Head", "Long Pier", "pier", "shore"))
-    joined.append(("Capstan Walk", "Middle Pier", "pier", "shore"))
-    joined.append(("The Hard", "The Careening Hard", "hard", "shore"))
+    joined.extend(NOUN_LINKS)
 
-    # The lanes climb inland off the Strand and come out on the ridge.
-    #
-    # **Two of them come out on High Row**, and naming both ends `up` and `down` gave that
-    # one room two exits called `down` - one to each lane. Evennia takes the first, so the
-    # second lane could not be walked down at all, by clicking or by typing, and nothing
-    # said so. A room cannot have two downs any more than it can have two norths.
-    #
-    # So the second and later arrivals at a ridge are named for the lane they descend. That
-    # is what a person would say anyway - "take the ropewalk down" - and it scales: adding
-    # a fifth lane to an existing ridge cannot quietly break the fourth.
-    landed = {}
-    for lane, ridge in zip(LANES, ("High Row", "High Row", "The Cross", "Beacon Road")):
-        joined.append((lane["from"], lane["key"], "up", "down"))
-        arrivals = landed.setdefault(ridge, 0)
-        landed[ridge] = arrivals + 1
-        down = "down" if not arrivals else lane["key"].split("'")[0].split()[0].lower()
-        joined.append((lane["key"], ridge, "up", down))
-
-    # Ridge Road, and the square hanging off the middle of it - the centre, not one room
-    # along, or the whole upper town leans.
-    joined.append(("High Row", "The Cross", "east", "west"))
-    joined.append(("The Cross", "Beacon Road", "east", "west"))
-    joined.append(("The Cross", "Market Square", "square", "road"))
-    joined.append(("Market Square", "The Fruit Stalls", "north", "south"))
-    joined.append(("Market Square", "The Provision Stalls", "east", "west"))
-
-    # The creek side, which is where somebody coming downriver arrives.
-    joined.append(("The Creek Landing", "Mangrove Walk", "south", "north"))
-    joined.append(("Mangrove Walk", "Netloft Row", "south", "north"))
-    joined.append(("The Hard", "The Boatyard", "yard", "out"))
-
-    # The upper lanes hang off the *middle* of the ridge rather than one room along it.
-    # Checked by mirroring rather than by midpoint: a row with the right midpoint can still
-    # be lopsided, and the whole upper town leans if it is.
-    joined.append(("Beacon Road", "Mizzen Row", "north", "south"))
-    joined.append(("Mizzen Row", "Gullcry Steps", "east", "west"))
-    joined.append(("Mizzen Row", "The Gut", "gut", "row"))
-    joined.append(("The Gut", "The Cross", "south", "gut"))
-    joined.append(("High Row", "The Burying Ground", "west", "east"))
-    joined.append(("The Cross", "The Signal Path", "up", "down"))
-    joined.append(("The Signal Path", "The Signal Station", "up", "down"))
-
-    # Behind the waterfront, and the road out of town.
-    joined.append(("Fore Street", "Dunnage Lane", "east", "west"))
-    joined.append(("Dunnage Lane", "Bollard Steps", "steps", "up"))
-    # A noun, because Netloft Row already goes north to Mangrove Walk and a row cannot have
-    # two norths - which it did, so the beach was unreachable from it however you asked.
-    # Stepping off a row onto a beach is a thing you do sideways anyway, not a street you
-    # walk along.
-    joined.append(("Netloft Row", "Fisherman's Beach", "beach", "row"))
-    joined.append(("Fisherman's Beach", "The Turtle Crawl", "crawl", "beach"))
-    joined.append(("Beacon Road", "Millway", "east", "west"))
-    joined.append(("Millway", "The Elbow", "east", "west"))
-    joined.append(("The Elbow", "Boiling House Lane", "north", "south"))
-
-    # Two pieces that keep the town off a grid. A court is a dead end - it goes nowhere,
-    # which is exactly why a place that grew has them and a place that was drawn does not.
-    # The steps are a short cut that skips the ridge road entirely, so there is more than
-    # one way up and they are not the same length.
-    joined.append(("Fore Street", "Anchor Court", "court", "out"))
-    joined.append(("Capstan Walk", "Windlass Steps", "steps", "down"))
-    joined.append(("Windlass Steps", "Mizzen Row", "up", "steps"))
-
-    # Buildings, by their own noun.
     for inside in INTERIORS:
         joined.append((inside["from"], inside["key"], inside["noun"], "out"))
 
@@ -824,6 +957,10 @@ def paths():
 
 __all__ = (
     "TOWN",
+    "PLAN",
+    "LINKS",
+    "NOUN_LINKS",
+    "direction_between",
     "SHORE",
     "PIERS",
     "STRAND",

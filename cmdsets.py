@@ -16,6 +16,9 @@ from evennia.commands.cmdset import CmdSet
 from .commands import (
     CmdAllStop,
     CmdAnchor,
+    CmdButchersBill,
+    CmdLetItGo,
+    CmdStartThem,
     CmdFightFire,
     CmdFother,
     CmdManPumps,
@@ -99,6 +102,9 @@ class HelmCmdSet(CmdSet):
         self.add(CmdScan())
         self.add(CmdTarget())
         self.add(CmdAnchor())
+        self.add(CmdButchersBill())
+        self.add(CmdLetItGo())
+        self.add(CmdStartThem())
         self.add(CmdFightFire())
         self.add(CmdFother())
         self.add(CmdManPumps())

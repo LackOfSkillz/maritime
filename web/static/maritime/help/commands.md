@@ -119,6 +119,16 @@ Way through the water forces more of it in, so slowing her slows the leak. Fire
 wants her stopped too, for the opposite reason - one crew, two jobs, one decision
 about her speed.
 
+## After the firing stops
+
+| Command | Effect |
+| --- | --- |
+| `butchers bill` | Sort the men off their feet into dead, wounded, dazed and shirkers |
+| `start them` | Put the men who broke back to their duty. The company remembers |
+| `let it go` | Say nothing, and be short of them for a day |
+
+How the bill splits is a fact about your crew, not about the fight.
+
 ## Her people and her hold
 
 | Command | Effect |

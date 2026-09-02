@@ -566,7 +566,7 @@ def berths_near(position, radius=APPROACH_RANGE):
 
     """
     found = []
-    for port in PortRoom.objects.all():
+    for port in PortRoom.objects.all_family():
         where = port.maritime_position
         if where is None or where.region != position.region:
             continue

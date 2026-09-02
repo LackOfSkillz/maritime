@@ -361,7 +361,7 @@ your consort is a genuine mistake you can make.
     F   fire                         DONE
     G   flooding and pumping         DONE
     S   consorts and station-keeping independent
-    J   post-battle casualties       closes the loop into morale
+    J   post-battle casualties       DONE
     K2  battle repairs               last
 
 ---

@@ -195,6 +195,9 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
                 "pumps",
                 "man pumps",
                 "fother",
+                "butchers bill",
+                "start them",
+                "let it go",
                 "cut cable",
                 "dock",
                 "kedge",
@@ -240,3 +243,96 @@ class TestHelmCmdSet(EmptySeaMixin, BaseEvenniaTest):
         room = create.create_object("evennia.objects.objects.DefaultRoom", key="Deck")
         room.cmdset.add(f"{__package__.rsplit(chr(46), 1)[0]}.cmdsets.HelmCmdSet")
         self.assertTrue(room.cmdset.has("maritime_helm"))
+
+
+class TestNoTwoCommandsAnswerToOneName(EmptySeaMixin, BaseEvenniaTest):
+    """
+    **An alias collision does not raise. One command simply displaces the other.**
+
+    `butchers bill` was given `muster` as an alias, which `crew` already had. Nothing
+    complained, no exception was thrown, and `crew` disappeared out of the helm set
+    entirely - a working command gone, and only a contract test asserting exactly which
+    verbs the set holds noticed it had happened.
+
+    A guard for the whole class rather than for that one pair, because the next collision
+    will be between two commands nobody is thinking about together.
+
+    """
+
+    def classes(self):
+        """
+        Returns:
+            classes (tuple): `(name, class)` for every set this contrib ships.
+
+        """
+        from ..cmdsets import HelmCmdSet, ShipwrightCmdSet
+        from ..commands.handbook import MaritimeHandbookCmdSet
+        from ..commands.interface import MaritimeInterfaceCmdSet
+        from ..commands.passage import PassageCmdSet
+        from ..commands.shipyard import MaritimeShipyardCmdSet
+
+        return tuple(
+            (cls.__name__, cls)
+            for cls in (
+                HelmCmdSet,
+                ShipwrightCmdSet,
+                MaritimeHandbookCmdSet,
+                MaritimeInterfaceCmdSet,
+                PassageCmdSet,
+                MaritimeShipyardCmdSet,
+            )
+        )
+
+    def test_every_name_in_every_set_is_its_own(self):
+        """
+        Checked against what each set *adds*, not against what it ends up holding.
+
+        By the time the set is built the collision has already been resolved - one
+        command displaced the other and the survivor answers to both names - so reading
+        the finished set finds nothing wrong. That is exactly why the bug was invisible.
+        The commands are therefore collected as they go in.
+
+        """
+        from evennia.commands.cmdset import CmdSet as BaseCmdSet
+
+        for name, cls in self.classes():
+            added = []
+            original = BaseCmdSet.add
+
+            def record(self, command, **kwargs):
+                added.append(command)
+                return original(self, command, **kwargs)
+
+            BaseCmdSet.add = record
+            try:
+                cls().at_cmdset_creation()
+            finally:
+                BaseCmdSet.add = original
+
+            seen = {}
+            for command in added:
+                key = getattr(command, "key", None)
+                if key is None:
+                    continue
+                for spoken in (key, *getattr(command, "aliases", ())):
+                    spoken = str(spoken).lower()
+                    if spoken in seen and seen[spoken] != key:
+                        self.fail(
+                            f"{name}: '{spoken}' answers for both '{seen[spoken]}' and "
+                            f"'{key}'. Nothing raises - one simply displaces the other."
+                        )
+                    seen[spoken] = key
+
+    def test_muster_is_the_crews_own(self):
+        """The pair that found it, kept as the worked example."""
+        from ..cmdsets import HelmCmdSet
+
+        made = HelmCmdSet()
+        made.at_cmdset_creation()
+        answers = {
+            spoken.lower(): command.key
+            for command in made.commands
+            for spoken in (command.key, *command.aliases)
+        }
+        self.assertEqual(answers.get("muster"), "crew")
+        self.assertIn("crew", {command.key for command in made.commands})

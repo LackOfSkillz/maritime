@@ -460,3 +460,74 @@ class TestCmdDock(EmptySeaMixin, BaseEvenniaCommandTest):
     def test_casting_off_a_ship_at_sea(self):
         output = self.call(CmdCastOff(), "")
         self.assertIn("not made fast", output)
+
+
+class AnIslandLanding(PortRoom):
+    """
+    A quay a game has made its own, which is the ordinary way to use this contrib.
+
+    Notes:
+        Subclassed for no reason beyond being a subclass. That is the point: a game does
+        not have to change anything for the bug below to bite it, only to give its quays
+        a typeclass of their own.
+
+    """
+
+
+class TestAQuayAGameSubclassed(EmptySeaMixin, BaseEvenniaTest):
+    """
+    **A query that names a typeclass must ask the whole family.**
+
+    `PortRoom.objects.all()` matches the exact typeclass path and nothing else, so every
+    quay a game subclassed was invisible to it. `berths_near` asked that way, which meant
+    `dock` reported "there is no berth within reach of her lines" to a ship sitting
+    exactly on one - and said it at every pier in the shipped example world, because the
+    example world is itself what subclasses `PortRoom`.
+
+    Found by docking a ship by hand and noticing that the command could not have.
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.plain = create.create_object(PortRoom, key="Plain Quay")
+        self.plain.maritime_position = QUAY
+        self.plain.add_berth(a_berth(key="plain", position=QUAY))
+
+        self.theirs = create.create_object(AnIslandLanding, key="Their Own Quay")
+        self.theirs.maritime_position = WorldPosition(60.0, 0.0)
+        self.theirs.add_berth(a_berth(key="theirs", position=WorldPosition(60.0, 0.0)))
+
+    def test_the_exact_typeclass_never_sees_a_subclass(self):
+        """The behaviour the bug rested on, pinned so nobody rediscovers it the hard way."""
+        exact = {room.id for room in PortRoom.objects.all()}
+        self.assertIn(self.plain.id, exact)
+        self.assertNotIn(self.theirs.id, exact)
+
+    def test_but_the_family_does(self):
+        family = {room.id for room in PortRoom.objects.all_family()}
+        self.assertIn(self.plain.id, family)
+        self.assertIn(self.theirs.id, family)
+
+    def test_and_so_a_subclassed_quay_offers_its_berth(self):
+        found = berths_near(WorldPosition(60.0, 0.0))
+        self.assertIn(self.theirs, [port for port, _berth in found])
+
+    def test_a_ship_lying_on_it_is_told_it_is_there(self):
+        """
+        The failure as a player met it: standing on the berth and refused.
+
+        Asserting only that *something* was found passes for the wrong reason - the plain
+        quay is inside the approach range too, so the list is never empty. It has to be
+        this quay, and it has to be the nearest, which is what a ship sitting on it would
+        expect to be offered.
+
+        """
+        found = berths_near(self.theirs.berths[0].position)
+        self.assertTrue(found, "a ship on the berth was told there was none within reach")
+        nearest, _berth = found[0]
+        self.assertIs(nearest, self.theirs)
+
+    def test_the_plain_one_still_works(self):
+        found = berths_near(QUAY)
+        self.assertIn(self.plain, [port for port, _berth in found])

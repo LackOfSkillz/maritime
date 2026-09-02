@@ -168,7 +168,7 @@ spare — the same water, and the cargo is the whole difference.
 build_aetos
 ```
 
-That builds Careenage and the six islands: 79 rooms, 154 exits, eighteen people behind
+That builds Careenage and the six islands: 79 rooms, 164 exits, eighteen people behind
 counters. It prints the dbref of the room new players should start in, for `START_LOCATION`.
 
 Ashore you get `browse`, `buy`, `market` and `sell` — installed on the shore rooms
@@ -1110,7 +1110,7 @@ command that exists**.
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3343 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3384 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1126,6 +1126,9 @@ of wall time runs in milliseconds.
 - An anchored ship can be sprung round on her cable to lay her broadside where she wants
   it, and shoots better for lying still. Cutting the cable frees her at once and costs her
   the anchor until a spare is rigged, which is hours.
+- Careenage is laid out **coordinates first**: every room has a position, and every street
+  exit is derived from the difference between two of them rather than typed. There is
+  nowhere left to write a direction the geometry will not support.
 - **Fire is a situation rather than a debuff.** It escalates on its own clock while you
   ignore it — and resets that clock each time it spreads, so a ship left burning faces
   several fires rather than one that got worse. Fighting it costs hands with diminishing
@@ -1137,6 +1140,16 @@ of wall time runs in milliseconds.
   a ship both alight and filling has one crew, two jobs, and a single decision about her
   speed that cannot satisfy both. Sinking is a process you fight — pumps, and a sail
   fothered under the hull — rather than a threshold you cross.
+- **The butcher's bill sorts casualties into four futures** — dead, wounded who are days
+  from their duty, dazed who are up within the hour, and men who were not hurt at all and
+  broke. How it splits is a fact about the crew rather than about the fight: same shot,
+  same number, different ship.
+- The men who broke are a decision. Start them back to their duty and you have the hands
+  now and a grievance later; say nothing and you are short of them for a day. The grievance
+  goes through the same door as every other thing a crew holds against its captain, so a
+  battle can end in a mutiny without a line of new wiring.
+- We never decide that a player is hurt. The event carries the *fraction* — she took thirty-
+  eight per cent — and a game rolls its own people against it.
 - What becomes of the people when she founders is not built. The event says how many were
   aboard; the ruling that they take to the boats is in `DECISIONS.md` and the boats are
   their own item.

@@ -809,6 +809,7 @@ class Crewed:
             floor=company.quality.casualty_floor,
             has_captain=self.captain is not None,
             struck=self.struck,
+            punished=getattr(self, "punished_them", False),
         )
 
     def will_mutiny(self, roll=None):

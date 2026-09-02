@@ -173,6 +173,13 @@ DRIVEN = "driven"
 BUTCHERED = "butchered"
 LEADERLESS = "leaderless"
 
+#: Held when the shirkers were started back to their duty.
+#:
+#: The other half of a decision, and the reason it is one. A captain short of hands
+#: in the middle of something can have them back immediately, and pays for it in a
+#: currency that does not come due until later.
+FLOGGED = "flogged"
+
 #: How exhausted a company has to be before being driven is a grievance rather than a
 #: hard day. Below this they are tired; above it they were spent by somebody.
 DRIVEN_THRESHOLD = 0.75
@@ -339,7 +346,14 @@ def strikes(value, casualties, floor, roll=None):
     return roll() < _pressure(value, STRIKE_READING, casualties, floor)
 
 
-def grievances(exhaustion=0.0, casualties=0.0, floor=1.0, has_captain=True, struck=False):
+def grievances(
+    exhaustion=0.0,
+    casualties=0.0,
+    floor=1.0,
+    has_captain=True,
+    struck=False,
+    punished=False,
+):
     """
     What the company holds against her command.
 
@@ -349,6 +363,7 @@ def grievances(exhaustion=0.0, casualties=0.0, floor=1.0, has_captain=True, stru
         floor (float): What men of their quality will bear before it is a grievance.
         has_captain (bool): Whether anybody is aboard giving orders.
         struck (bool): Whether she has already struck.
+        punished (bool): Whether the shirkers were started back to their duty.
 
     Returns:
         held (tuple): The grievance keys, in no particular order.
@@ -371,6 +386,8 @@ def grievances(exhaustion=0.0, casualties=0.0, floor=1.0, has_captain=True, stru
         held.append(BUTCHERED)
     if not has_captain:
         held.append(LEADERLESS)
+    if punished:
+        held.append(FLOGGED)
     return tuple(held)
 
 

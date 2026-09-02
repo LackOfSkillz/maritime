@@ -626,13 +626,14 @@ one is how a push goes red on two unused imports that `black` and the discipline
 were never asked about:
 
 ```bash
-black --check --diff --line-length 100 --extend-exclude _reference .
-flake8 --max-line-length 100 --extend-exclude _reference .
+black --check --diff --line-length 100 --extend-exclude "_reference|area-design" .
+flake8 --max-line-length 100 --extend-exclude _reference,area-design .
 python .github/scripts/check_discipline.py
 ```
 
-`--extend-exclude _reference` matters. The studied copy of another contrib lives there and
-is not ours to format; without the exclusion the gate fails on somebody else's line
-lengths and you learn to ignore it, which is worse than not running it.
+The exclusions matter. `_reference` holds a studied copy of another contrib, which is not
+ours to format; `area-design` holds the world-shaping tools, which are gitignored and are
+not part of what ships. Without the exclusions the gate reports on files that are not the
+contrib, and you learn to ignore it, which is worse than not running it.
 
 Evidence before assertions, every time.

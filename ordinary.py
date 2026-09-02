@@ -242,7 +242,7 @@ def fleet_of(character, laid_up=None):
     from .typeclasses import Vessel
 
     found = []
-    for hull in Vessel.objects.all():
+    for hull in Vessel.objects.all_family():
         if not may_command(character, hull):
             continue
         if laid_up is not None and in_ordinary(hull) != laid_up:

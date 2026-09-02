@@ -148,7 +148,7 @@ def ports_afloat():
 
     found = [
         port
-        for port in PortRoom.objects.all()
+        for port in PortRoom.objects.all_family()
         if port.maritime_position is not None and port.berths
     ]
     found.sort(key=lambda port: port.key.lower())

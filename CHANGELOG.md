@@ -11,7 +11,65 @@ Nothing released yet. Foundations, the spatial model, vessels, the simulation
 service, sailing, grounding and who owns a ship are in place; ports, navigation,
 weather, crew, combat and damage are not.
 
+### Fix
+
+- **An alias collision does not raise; one command silently displaces the other.**
+  `butchers bill` was given `muster`, which `crew` already answered to. Nothing complained
+  and `crew` vanished out of the helm set entirely - a working command gone, noticed only
+  because a contract test asserts exactly which verbs that set holds. `muster` is the crew's;
+  mustering the company is what that command does.
+- The guard for it has to watch what a set **adds**, not what it ends up holding. By the time
+  the set is built the collision has been resolved, the survivor answers to both names, and
+  reading the finished set finds nothing wrong - which is precisely why this was invisible.
+  The first version of the test made that mistake and passed with the bug still in.
+
+- **A query that names a typeclass must ask the whole family.** `PortRoom.objects.all()`
+  matches the exact typeclass path and nothing else, so every quay a game had subclassed was
+  invisible to it. `berths_near` asked that way, which meant `dock` told a ship sitting
+  *exactly on a berth* that there was none within reach - and said it at every pier in the
+  shipped example world, because the example world is itself what subclasses `PortRoom`. Six
+  call sites asked the same way and all six now ask `all_family()`.
+- Found by docking a ship by hand and noticing the command could not have done it. Two tests
+  pin it: one that a subclassed quay offers its berth, one that the nearest berth to a ship
+  lying on it is that quay. The second was written weakly first - asserting only that
+  *something* was found, which passed with the bug still in, because a different quay was
+  inside the approach range. Disabling the fix is what exposed the weak test.
+- **A change of mode left the client's readings suppressed.** `broadcast_status` skips a
+  send when the reading matches what the session was last told, and that cache was cleared
+  only on logout. So going ashore and coming back rebuilt the panels empty, and the next tick
+  compared her instruments against what the *discarded* panels had held, found them identical,
+  and sent nothing. A ship lying quiet produces the same numbers for hours, so the board sat
+  on "awaiting report" with every reading blank while the chart drew perfectly.
+- It was reported as a teleport bug and is not one: walking back up the gangway does exactly
+  the same thing. The mode change is now the moment both caches are cleared, because it is
+  the one place that knows the panels were thrown away. A mover who has *not* changed mode
+  keeps them, or the board would redraw on every step along a deck.
+
 ### Feat
+
+- **The butcher's bill.** While a fight is happening a casualty is one number, which is the
+  right amount of detail because nobody aboard is counting. Afterwards it is the wrong amount,
+  because the four things that number contains have completely different futures: the dead,
+  the wounded who are days from their duty, the dazed who are up within the hour, and the men
+  who were not hurt at all and broke.
+- **The split is a fact about the crew, not about the fight.** A crack company's shaken men
+  are dazed and back at their guns; a pressed one's are below and not coming up. Same shot,
+  same number, different ship - which is the sharpest statement the quality axis makes
+  anywhere, and it cost nothing because `base_morale` was already exactly the right number.
+- The columns are taken off the total in turn rather than rounded independently, because four
+  independent roundings do not add up to what you started with and a bill that does not
+  balance is a bug somebody finds in the field.
+- **The men who broke are a decision, which is the part the source stops short of.** Start
+  them back to their duty and you have the hands this minute and a grievance later; say
+  nothing and you are a man short until their nerve returns. `FLOGGED` joins `BUTCHERED`,
+  `DRIVEN` and `LEADERLESS`, so a battle can end in a mutiny through machinery that was
+  already built and already watching.
+- A surgeon moves men out of the first column and into the second. He cannot save everybody,
+  and he does not change the total.
+- The dead leave her complement rather than merely her muster, so a ship that has counted her
+  cost never musters what she sailed with again.
+- **We never decide that a player is hurt.** `BillCounted` carries the fraction and a game
+  rolls its own people against it.
 
 - **Flooding, and it is the mirror of fire rather than a copy of it.** Fire wants her stopped
   because the hoses go over the side. Water wants her stopped for a different reason

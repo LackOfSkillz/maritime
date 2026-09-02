@@ -36,7 +36,7 @@ from pathlib import Path
 MAX_FILE_LINES = 1000
 
 # Directories that are never part of the shipped contrib.
-EXCLUDED_DIRS = {".git", ".github", "__pycache__", "_reference", ".venv"}
+EXCLUDED_DIRS = {".git", ".github", "__pycache__", "_reference", "area-design", ".venv"}
 
 # Import roots always available to a contrib, because Evennia itself depends on
 # them - installing Evennia installs these. Taken from the `dependencies` list in

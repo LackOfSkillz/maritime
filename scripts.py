@@ -89,7 +89,7 @@ class MaritimeDriver(DefaultScript):
         if service is None:
             return 0
         registered = 0
-        for vessel in Vessel.objects.all():
+        for vessel in Vessel.objects.all_family():
             if vessel.maritime_position is None:
                 continue
             service.register(vessel, tier=ACTIVE)

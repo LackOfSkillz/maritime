@@ -37,6 +37,7 @@ from .lookout import (
     CmdWatch,
     sightings_toward,
 )
+from .aftermath import CmdButchersBill, CmdLetItGo, CmdStartThem
 from .firefighting import CmdFightFire, CmdFires
 from .pumping import CmdFother, CmdManPumps, CmdPumps
 from .mooring import (
@@ -129,6 +130,9 @@ __all__ = (
     "CmdKedge",
     "CmdCastOff",
     "CmdAnchor",
+    "CmdButchersBill",
+    "CmdLetItGo",
+    "CmdStartThem",
     "CmdFightFire",
     "CmdFother",
     "CmdManPumps",

@@ -198,7 +198,7 @@ def _ship_alongside(character):
     port = _port_of(getattr(character, "location", None))
     if port is None:
         return None
-    for hull in Vessel.objects.all():
+    for hull in Vessel.objects.all_family():
         if hull.docked_at == port:
             return hull
     return None

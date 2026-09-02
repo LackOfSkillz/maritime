@@ -27,3 +27,9 @@ secret_settings.py
 # Never shipped, imported or executed as part of this contrib.
 # See _reference/PROVENANCE.md for what is in here and where it came from.
 _reference/
+
+# How our areas are laid out, and the validator that enforces it. Kept locally
+# for the same reason: it is a tool we build worlds with rather than a part of
+# the contrib, and how a world is shaped is our own business rather than
+# something every game installing this needs a copy of.
+area-design/

@@ -29,6 +29,7 @@ side effect of assignment.
 from evennia.objects.objects import DefaultObject
 
 from .boarding import Boarded
+from .aftermath import CountsTheCost
 from .burning import Burns
 from .flooding import MakesWater
 from .cables import Springs
@@ -108,6 +109,7 @@ class Vessel(
     Owned,
     Boarded,
     Burns,
+    CountsTheCost,
     MakesWater,
     Springs,
     Crewed,
@@ -602,6 +604,10 @@ class Vessel(
         # Before movement, so a crew who have just been driven to a standstill pull
         # the way exhausted men pull on this step rather than the next one.
         self.stand_watch(elapsed)
+
+        # Time is the only thing that brings back the wounded and the men who
+        # broke, so it happens on the watch rather than by anybody ordering it.
+        self.stand_watch_over_the_hurt()
 
         before = MotionState(position=position, heading=self.heading, speed=self.speed)
 

@@ -144,7 +144,7 @@ class CmdShipwright(Command):
             that silently stopped short would be worse than no list at all.
 
         """
-        hulls = sorted(Vessel.objects.all(), key=lambda hull: hull.key.lower())
+        hulls = sorted(Vessel.objects.all_family(), key=lambda hull: hull.key.lower())
         if match:
             hulls = [hull for hull in hulls if match.lower() in hull.key.lower()]
 
