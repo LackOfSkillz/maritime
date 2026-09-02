@@ -355,7 +355,7 @@ your consort is a genuine mistake you can make.
     E   ramming and sheering         DONE
     Q   defensive fire               DONE
     L   grappling as a count         DONE
-    H   boarding melee               needs R
+    H   boarding melee               DONE
     I   capture                      completes H and item 1
     O   springing on a cable         independent, small
     F   fire                         large, independent

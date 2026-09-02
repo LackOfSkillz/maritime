@@ -34,6 +34,7 @@ from ..boarding import (
 )
 from ..commands import CmdCutGrapples, CmdGrapple, CmdGrapples, CmdStrike
 from ..motion import MotionLimits
+from ..crew import ABLE, PRESSED
 from ..position import WorldPosition
 from ..rooms import ShipRoom
 from ..traffic import traffic
@@ -543,3 +544,62 @@ class TestGettingFreeAgain(BaseEvenniaTestCase):
     def test_nobody_to_do_it_means_it_never_finishes(self):
         """An order given to an empty ship is work that never ends, not work that is free."""
         self.assertEqual(unfouling_time(6, hands=0.0), float("inf"))
+
+
+class TestStormingHerDeck(EmptySeaMixin, BaseEvenniaTest):
+    """
+    The join between two lashed hulls and the melee arithmetic.
+
+    What is asserted here is the wiring, not the fight: that she measures the real contact
+    between the two hulls rather than assuming one, and that a ship holding nobody storms
+    nobody.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.mine = create.create_object(Vessel, key="Boarder")
+        self.hers = create.create_object(Vessel, key="Prize")
+        for hull, key in ((self.mine, "Boarder"), (self.hers, "Prize")):
+            hull.length, hull.beam = 30.0, 8.5
+            deck = create.create_object(ShipRoom, key=f"{key} Deck")
+            deck.vessel = hull
+            deck.exposure = OPEN
+        self.mine.maritime_position = WorldPosition(0.0, 0.0)
+        self.hers.maritime_position = WorldPosition(8.0, 0.0)
+        self.mine.heading = self.hers.heading = 0.0
+
+    def test_a_ship_holding_nobody_storms_nobody(self):
+        self.assertIsNone(self.mine.storm_her())
+
+    def test_lashed_alongside_she_can_send_a_party(self):
+        self.mine.man(120, ABLE)
+        self.hers.man(40, PRESSED)
+        self.mine.grapple(self.hers)
+        result = self.mine.storm_her()
+        self.assertIsNotNone(result)
+        self.assertGreater(result.across, 0)
+
+    def test_the_contact_she_fights_across_is_the_real_one(self):
+        """
+        Lying level and parallel is the whole of her length; drawn out to her bow is a
+        fraction of it. The melee reads the hulls rather than being told a number.
+
+        """
+        self.mine.man(120, ABLE)
+        self.hers.man(200, ABLE)
+        self.mine.grapple(self.hers)
+        level = self.mine.storm_her().across
+
+        self.hers.maritime_position = WorldPosition(8.0, 27.0)
+        drawn_out = self.mine.storm_her().across
+        self.assertGreater(level, drawn_out)
+
+    def test_a_ship_nobody_has_crewed_still_answers(self):
+        """
+        A game that has not modelled complements gets a boarding that resolves rather than
+        an exception - the same courtesy the rest of the contrib extends to an unmeasured
+        hull.
+
+        """
+        self.mine.grapple(self.hers)
+        self.assertIsNotNone(self.mine.storm_her())

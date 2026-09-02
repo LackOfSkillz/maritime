@@ -246,6 +246,33 @@ class ShipsCompany:
     quality: CrewQuality = DEFAULT_QUALITY
     divisions: tuple = ()
 
+    @property
+    def fighting_divisions(self):
+        """
+        Returns:
+            divisions (tuple): The groups aboard, for anything that has to know who is
+                dangerous.
+
+        Notes:
+            **A company crewed the ordinary way has no divisions**, because `man` does not
+            ask for any - and boarding is the one question that needs them. Rather than
+            answer "nobody", she answers with what she is: seamen, which is what a company
+            nobody has broken down into ratings actually is. A merchantman's whole complement
+            is seamen, and the `SEAMEN` rating says so.
+
+            The alternative was for every caller to know this rule, and the first one that
+            forgot it would find a fully crewed ship unable to send a single man across, with
+            nothing anywhere reporting why.
+
+        """
+        if self.divisions:
+            return self.divisions
+        if self.fit <= 0:
+            return ()
+        return (
+            Division(rating=SEAMEN, complement=self.complement, fit=self.fit, quality=self.quality),
+        )
+
     @classmethod
     def of(cls, divisions):
         """

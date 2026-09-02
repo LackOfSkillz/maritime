@@ -685,6 +685,43 @@ class Boarded:
         """
         return int(self.db.lines or 0)
 
+    def storm_her(self):
+        """
+        Send a party across to the ship she is lashed to, and fight one exchange.
+
+        Returns:
+            result (MeleeResult or None): What came of it, or None if she is holding
+                nobody.
+
+        Notes:
+            **One exchange, not a battle.** A boarding action is fought over several, with
+            both sides feeding in what they have, and a single call that settled it would
+            take the decision - whether to reinforce or to cut and run - away from the two
+            captains, which is the decision the whole thing exists for.
+
+            The contact is measured, not assumed: how much of the two hulls are actually
+            alongside decides how many can cross, so laying yourself properly alongside is
+            worth doing and is a thing a player does with the helm rather than a button.
+
+        """
+        from .melee import fight
+
+        other = self.grappled_to
+        if other is None:
+            return None
+
+        here, there = self.maritime_position, other.maritime_position
+        if here is None or there is None:
+            return None
+
+        mine, hers = self.company, other.company
+        return fight(
+            boarding=mine.fighting_divisions if mine else (),
+            repelling=hers.fighting_divisions if hers else (),
+            overlap=alongside(here, self.heading, self.length, there, other.heading, other.length),
+            shorter_length=min(self.length, other.length),
+        )
+
     # --- striking -----------------------------------------------------------
 
     @property
