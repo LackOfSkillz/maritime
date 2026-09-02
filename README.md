@@ -218,6 +218,11 @@ one worth manoeuvring for. What is on her bow decides how the cost is split:
 vessel.bow_fitting = "ram"      # or "spur", or "plain"
 ```
 
+Grapples are a count rather than a yes: how many irons get across depends on how much of the
+two hulls are alongside, how fast she is sheering away, and how many hands there are to
+throw them. More lines hold harder — by the square root of the count, so breaking free stays
+possible — and clearing them again takes correspondingly longer.
+
 A beak drives more of the blow into her and takes less of it back, which is what a beak is
 for. The ship being run at fires everything that bears in the moment before impact — and
 mostly misses, because a bow-on ship is the narrowest target there is, which is why ramming
@@ -1079,7 +1084,7 @@ leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3139 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3157 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they

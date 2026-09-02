@@ -43,6 +43,42 @@ from .results import Result
 # How far a grapnel can be thrown with a line bent to it, in metres. Short - this is a
 # man throwing an iron, not a gun firing one - and it is why closing to board is a
 # genuinely dangerous thing to have to do.
+#: How many hands one grapnel takes to throw, haul in and make fast.
+#:
+#: A line is not a switch. Somebody heaves the iron, somebody swigs it down, and somebody
+#: takes a turn round a cleat while she is still moving - which is why a short-handed ship
+#: gets fewer lines across than a full one from exactly the same position.
+HANDS_PER_LINE = 3.0
+
+#: The most lines two hulls will ever get across each other.
+#:
+#: Not a balance number: it is how many places there are along a rail to make one fast
+#: before they start fouling each other. Beyond about a dozen the extra irons are landing on
+#: top of the ones already there.
+MOST_LINES = 12
+
+#: How much of a hull's length has to be alongside for a full set of lines.
+#:
+#: Two ships meeting bow to bow have one point of contact and can get a couple of irons
+#: across it. Two lying side by side have their whole length, and the difference is what
+#: makes laying yourself alongside properly worth the trouble.
+FULL_CONTACT = 0.6
+
+#: How much harder each line makes it to break free, as a share of one line's worth.
+#:
+#: Sub-linear on purpose. Twelve lines do not hold twelve times as hard as one - they share
+#: the load unevenly and the first few take most of it - but they do hold harder, and a ship
+#: that has been thoroughly lashed should not sheer off as easily as one held by two irons.
+HOLD_PER_LINE = 0.25
+
+#: Hand-seconds of work to clear one iron that is holding.
+#:
+#: **Unfouling is harder the more contact there is**, which is the other half of making
+#: lines a count. Getting free of two irons is a minute's work with an axe; getting free of
+#: twelve, with the two hulls grinding together and half of them under strain, is an
+#: undertaking - and a captain who let himself be thoroughly lashed has to live with it.
+WORK_PER_IRON = 45.0
+
 GRAPNEL_RANGE = 25.0
 
 # How fast two hulls may be moving relative to one another and still be lashed
@@ -61,6 +97,7 @@ TOO_FAR = "too_far"
 CLOSING_TOO_FAST = "closing_too_fast"
 NO_DECK = "no_deck"
 NOT_GRAPPLED = "not_grappled"
+NOTHING_HELD = "nothing_held"
 ALREADY_GRAPPLED = "already_grappled"
 SAME_VESSEL = "same_vessel"
 LINES_PARTED = "lines_parted"
@@ -87,6 +124,7 @@ class GrappleResult(Result):
     distance: float = 0.0
     closure: float = 0.0
     target: object = None
+    lines: int = 0
 
 
 def velocity(heading, speed):
@@ -195,6 +233,148 @@ def can_grapple(
     return GrappleResult(success=True, distance=distance, closure=closing)
 
 
+def alongside(own_position, own_heading, own_length, her_position, her_heading, her_length):
+    """
+    How much of the two hulls are actually side by side.
+
+    Args:
+        own_position (WorldPosition): Where you are.
+        own_heading (float): Your heading, in degrees.
+        own_length (float): Your length, in metres.
+        her_position (WorldPosition): Where she is.
+        her_heading (float): Hers.
+        her_length (float): Hers.
+
+    Returns:
+        overlap (float): The share of the shorter hull that has the other one beside it,
+            0 to 1.
+
+    Notes:
+        **Contact geometry, which is what decides how many irons can reach.** Measured by
+        projecting her stem and stern onto your fore-and-aft line and asking how much of you
+        that span covers - so two ships lying parallel and level share their whole length,
+        two meeting bow to bow share almost nothing, and a ship laid across another's stern
+        shares whatever her quarter reaches.
+
+        The shorter hull is the divisor. A ship's boat alongside a first-rate is entirely
+        alongside her, even though she covers a twentieth of the bigger ship - and it is the
+        boat's rail that runs out of places to make a line fast.
+
+    """
+    shorter = min(own_length, her_length)
+    if shorter <= 0.0:
+        return 0.0
+
+    half = her_length / 2.0
+    ends = sorted(
+        _along_hull(own_position, own_heading, her_position.moved(her_heading, reach))
+        for reach in (half, -half)
+    )
+    mine = own_length / 2.0
+    overlap = min(ends[1], mine) - max(ends[0], -mine)
+    return max(0.0, min(overlap, shorter)) / shorter
+
+
+def _along_hull(origin, heading, point):
+    """
+    Args:
+        origin (WorldPosition): The centre of the hull being measured against.
+        heading (float): Her heading, in degrees.
+        point (WorldPosition): The point to place.
+
+    Returns:
+        along (float): Metres forward of her centre, negative aft.
+
+    """
+    import math
+
+    distance = origin.horizontal_distance_to(point)
+    if distance <= 0.0:
+        return 0.0
+    return distance * math.cos(math.radians(origin.bearing_to(point) - heading))
+
+
+def lines_across(overlap, closure, hands, skill=1.0, closure_limit=MAX_BOARDING_CLOSURE):
+    """
+    How many irons get across and are made fast.
+
+    Args:
+        overlap (float): How much of the hulls are alongside, from `alongside`.
+        closure (float): Relative motion between them, in metres per second.
+        hands (float): What her people are worth at working the ship.
+        skill (float, optional): A multiplier for how handy they are.
+        closure_limit (float, optional): The closure at which nothing will hold.
+
+    Returns:
+        lines (int): How many are fast. Zero means the boarding failed.
+
+    Notes:
+        **A count rather than a yes.** Everything about being lashed to another ship follows
+        from how many lines are holding: whether she can sheer off, how long it takes to cut
+        free, and how much of the two rails are close enough to fight across.
+
+        Three things decide it and each can veto it on its own. How much of the two hulls
+        are alongside says how many places there are to make one fast. The relative motion
+        says how many of those throws stay put - a hull sheering away takes the iron with
+        her. And the hands say how many the crew can actually get over, because each one
+        costs three of them and a ship with sixty fit men cannot work twenty lines.
+
+    """
+    reach = min(1.0, max(0.0, overlap) / FULL_CONTACT)
+    steady = 1.0 - min(1.0, max(0.0, closure) / max(1e-9, closure_limit))
+    crew = max(0.0, hands) * max(0.0, skill) / HANDS_PER_LINE
+    return int(min(MOST_LINES, MOST_LINES * reach * steady, crew))
+
+
+def holding_closure(lines, base=MAX_HOLDING_CLOSURE, per_line=HOLD_PER_LINE):
+    """
+    How much relative motion the lines will take before they part.
+
+    Args:
+        lines (int): How many are fast.
+        base (float, optional): What one line will take.
+        per_line (float, optional): What each extra adds, as a share of the base.
+
+    Returns:
+        closure (float): Metres per second she can sheer at and still be held.
+
+    Notes:
+        Sub-linear, and by the square root: the first irons take most of the load and the
+        rest share what is left. Twelve lines hold roughly twice as hard as one rather than
+        twelve times, which is enough to matter and not enough to make a well-lashed ship
+        unbreakable - and breaking free has to stay possible, because it is what makes being
+        boarded survivable and worth trying to survive.
+
+    """
+    import math
+
+    return base * (1.0 + per_line * math.sqrt(max(0, lines - 1)))
+
+
+def unfouling_time(lines, hands, hesitation=0.0):
+    """
+    How long it takes to clear the irons and get free.
+
+    Args:
+        lines (int): How many are fast.
+        hands (float): What her people are worth at working the ship.
+        hesitation (float, optional): How much of what they could do is not being done.
+
+    Returns:
+        seconds (float): How long they will be at it. Zero if nothing is holding.
+
+    Notes:
+        Routed through `handling_time` rather than divided out here, so that being short
+        handed and being frightened cost the same on this job as they cost on every other -
+        and so that an unmanned ship gets the same answer as she gets everywhere else, which
+        is that the work never finishes rather than that it finishes instantly.
+
+    """
+    from .handling import handling_time
+
+    return handling_time(WORK_PER_IRON * max(0, lines), hands, hesitation)
+
+
 def still_holding(
     own_position,
     own_heading,
@@ -280,6 +460,7 @@ class Boarded:
         super().at_object_creation()
         self.db.grappled_to = None
         self.db.grapples = []
+        self.db.lines = 0
         self.db.struck_to = None
 
     # --- what she is holding on to ------------------------------------------
@@ -369,14 +550,55 @@ class Boarded:
                 target=other,
             )
 
+        # **How many, not whether.** Everything about being lashed to another ship follows
+        # from the count: how hard she is to shake off, how long it takes to cut free, and
+        # how much of the two rails are close enough to fight across.
+        fast = lines_across(
+            alongside(here, self.heading, self.length, there, other.heading, other.length),
+            result.closure,
+            self.working_hands(),
+        )
+        if fast <= 0:
+            return GrappleResult(
+                success=False,
+                code=NOTHING_HELD,
+                distance=result.distance,
+                closure=result.closure,
+                target=other,
+            )
+
         exits = rig_grapples(own_deck, her_deck)
         self.db.grappled_to = other
         self.db.grapples = list(exits)
+        self.db.lines = fast
         other.db.grappled_to = self
         other.db.grapples = list(exits)
+        other.db.lines = fast
         return GrappleResult(
-            success=True, distance=result.distance, closure=result.closure, target=other
+            success=True,
+            distance=result.distance,
+            closure=result.closure,
+            target=other,
+            lines=fast,
         )
+
+    def working_hands(self):
+        """
+        Returns:
+            hands (float): What her people are worth at working the ship, or a nominal
+                crew if nobody has manned her.
+
+        Notes:
+            A hull nobody has crewed still has to be able to grapple, because a game that
+            has not modelled complements should get boarding rather than an exception. She
+            is treated as adequately manned, which is the same courtesy the rest of the
+            contrib extends to an unmeasured hull.
+
+        """
+        company = self.company
+        if company is None:
+            return MOST_LINES * HANDS_PER_LINE
+        return company.hands
 
     def cast_off_grapples(self):
         """
@@ -396,10 +618,12 @@ class Boarded:
         other = self.grappled_to
         unrig_gangway(self.db.grapples or ())
         self.db.grapples = []
+        self.db.lines = 0
         self.db.grappled_to = None
         if other is not None:
             unrig_gangway(other.db.grapples or ())
             other.db.grapples = []
+            other.db.lines = 0
             other.db.grappled_to = None
             return True
         return False
@@ -428,10 +652,38 @@ class Boarded:
             self.cast_off_grapples()
             return GrappleResult(success=False, code=LINES_PARTED, target=other)
 
-        result = still_holding(here, self.heading, self.speed, there, other.heading, other.speed)
+        # Two irons and twelve are not the same hold. The tolerated closure grows with the
+        # count, so a ship that laid herself properly alongside and got her whole rail over
+        # is genuinely harder to sheer away from than one held by a lucky throw.
+        result = still_holding(
+            here,
+            self.heading,
+            self.speed,
+            there,
+            other.heading,
+            other.speed,
+            closure=holding_closure(self.lines),
+        )
+        result = GrappleResult(
+            success=bool(result),
+            code=result.code,
+            distance=result.distance,
+            closure=result.closure,
+            target=other,
+            lines=self.lines,
+        )
         if not result:
             self.cast_off_grapples()
         return result
+
+    @property
+    def lines(self):
+        """
+        Returns:
+            lines (int): How many irons are fast to whatever she is holding.
+
+        """
+        return int(self.db.lines or 0)
 
     # --- striking -----------------------------------------------------------
 

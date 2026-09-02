@@ -11,6 +11,11 @@ from evennia.utils.test_resources import (
 )
 
 from ..boarding import (
+    MOST_LINES,
+    alongside,
+    holding_closure,
+    lines_across,
+    unfouling_time,
     ALREADY_GRAPPLED,
     CLOSING_TOO_FAST,
     GRAPNEL_RANGE,
@@ -429,3 +434,112 @@ class TestBoardingCommands(BoardingCommandTestCase):
     def test_the_report_names_the_relative_speed(self):
         self.ours.grapple(self.theirs)
         self.assertIn("Relative speed", chr(10).join(self.ours.narrator.grapple_report(self.ours)))
+
+
+class TestHowManyLinesGetAcross(BaseEvenniaTestCase):
+    """
+    Roadmap item L: grapples are a count, not a yes.
+
+    Everything about being lashed to another ship follows from how many are fast - how hard
+    she is to shake off, and how much of the two rails are close enough to fight across. The
+    arithmetic is asserted as relationships, because the claim is "more contact means more
+    lines" and not "this position yields seven".
+    """
+
+    def test_lying_alongside_gets_more_across_than_meeting_bow_to_bow(self):
+        alongside_lines = lines_across(overlap=1.0, closure=0.0, hands=200.0)
+        touching = lines_across(overlap=0.05, closure=0.0, hands=200.0)
+        self.assertGreater(alongside_lines, touching)
+
+    def test_a_hull_sheering_away_takes_the_irons_with_her(self):
+        steady = lines_across(overlap=1.0, closure=0.0, hands=200.0)
+        sheering = lines_across(overlap=1.0, closure=MAX_BOARDING_CLOSURE * 0.9, hands=200.0)
+        self.assertGreater(steady, sheering)
+
+    def test_a_short_handed_ship_gets_fewer_over(self):
+        """Each line costs hands, so sixty fit men cannot work twenty of them."""
+        full = lines_across(overlap=1.0, closure=0.0, hands=200.0)
+        thin = lines_across(overlap=1.0, closure=0.0, hands=9.0)
+        self.assertGreater(full, thin)
+        self.assertEqual(thin, 3)
+
+    def test_nobody_left_to_throw_them_gets_none(self):
+        self.assertEqual(lines_across(overlap=1.0, closure=0.0, hands=0.0), 0)
+
+    def test_it_never_exceeds_what_a_rail_has_room_for(self):
+        self.assertLessEqual(lines_across(overlap=1.0, closure=0.0, hands=1e6), MOST_LINES)
+
+    def test_more_lines_hold_harder(self):
+        self.assertGreater(holding_closure(12), holding_closure(1))
+
+    def test_but_not_twelve_times_harder(self):
+        """
+        Sub-linear on purpose. Breaking free has to stay possible, because it is what makes
+        being boarded survivable and worth trying to survive.
+
+        """
+        self.assertLess(holding_closure(12), 3.0 * holding_closure(1))
+
+    def test_one_line_holds_what_one_line_always_held(self):
+        self.assertAlmostEqual(holding_closure(1), MAX_HOLDING_CLOSURE)
+
+
+class TestHowMuchOfThemIsAlongside(BaseEvenniaTestCase):
+    """`alongside`, which is the contact geometry the count is built on."""
+
+    def setUp(self):
+        super().setUp()
+        self.her = WorldPosition(0.0, 0.0)
+
+    def test_two_ships_level_and_parallel_share_their_whole_length(self):
+        overlap = alongside(self.her.moved(90.0, 8.0), 0.0, 30.0, self.her, 0.0, 30.0)
+        self.assertAlmostEqual(overlap, 1.0, places=6)
+
+    def test_bow_to_bow_shares_almost_nothing(self):
+        overlap = alongside(self.her.moved(180.0, 30.0), 0.0, 30.0, self.her, 180.0, 30.0)
+        self.assertLess(overlap, 0.05)
+
+    def test_half_a_length_out_shares_half_of_her(self):
+        overlap = alongside(self.her.moved(0.0, 15.0), 0.0, 30.0, self.her, 0.0, 30.0)
+        self.assertAlmostEqual(overlap, 0.5, places=6)
+
+    def test_a_boat_alongside_a_ship_is_entirely_alongside_her(self):
+        """
+        The shorter hull is the divisor: it is the boat's rail that runs out of places to
+        make a line fast, not the ship's.
+
+        """
+        overlap = alongside(self.her.moved(90.0, 6.0), 0.0, 6.0, self.her, 0.0, 46.0)
+        self.assertAlmostEqual(overlap, 1.0, places=6)
+
+    def test_a_hull_with_no_length_shares_nothing_rather_than_dividing_by_zero(self):
+        self.assertEqual(alongside(self.her, 0.0, 0.0, self.her, 0.0, 30.0), 0.0)
+
+
+class TestGettingFreeAgain(BaseEvenniaTestCase):
+    """
+    The other half of a count: unfouling is harder the more contact there is.
+
+    A captain who let himself be thoroughly lashed has to live with it, and that is what
+    makes laying yourself properly alongside worth the trouble from both sides.
+    """
+
+    def test_twelve_irons_take_longer_to_clear_than_two(self):
+        self.assertGreater(unfouling_time(12, hands=100.0), unfouling_time(2, hands=100.0))
+
+    def test_nothing_holding_is_no_work_at_all(self):
+        self.assertEqual(unfouling_time(0, hands=100.0), 0.0)
+
+    def test_a_short_handed_ship_is_longer_at_it(self):
+        self.assertGreater(unfouling_time(6, hands=20.0), unfouling_time(6, hands=100.0))
+
+    def test_a_frightened_crew_are_slower(self):
+        """The same rule that governs serving the guns and working the rigging."""
+        self.assertGreater(
+            unfouling_time(6, hands=100.0, hesitation=1.0),
+            unfouling_time(6, hands=100.0, hesitation=0.0),
+        )
+
+    def test_nobody_to_do_it_means_it_never_finishes(self):
+        """An order given to an empty ship is work that never ends, not work that is free."""
+        self.assertEqual(unfouling_time(6, hands=0.0), float("inf"))

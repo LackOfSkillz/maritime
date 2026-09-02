@@ -87,6 +87,19 @@ weather, crew, combat and damage are not.
 
 ### Add
 
+- **Grapples are a count, not a yes.** How many irons get across is decided by how much of
+  the two hulls are actually alongside, by how fast she is sheering away, and by how many
+  hands there are to throw them - each line costs three, so a ship with sixty fit men cannot
+  work twenty of them. Any of the three can refuse the boarding on its own.
+- What the count then decides: how hard she is to shake off, and how long it takes to get
+  free again. More lines hold harder but only by the square root of the count, because
+  breaking free has to stay possible - it is what makes being boarded survivable and worth
+  trying to survive.
+- **Unfouling is harder the more contact there is.** Clearing twelve irons with the two
+  hulls grinding together is an undertaking, and a captain who let himself be thoroughly
+  lashed has to live with it. Routed through `handling_time`, so being short handed and
+  being frightened cost the same here as they cost on every other job aboard.
+
 - **A last broadside into an oncoming rammer.** The ship about to be struck fires everything
   that bears in the moment before impact - not a standing order and nothing to declare,
   because a gun crew watching a bow come at them fire.
