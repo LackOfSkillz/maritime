@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Sailor's Handbook</title>
+<!--
+  THE SAME FILES THE REPOSITORY SHOWS.
+
+  This page renders the markdown in `help/` rather than carrying its own copy of the words.
+  Two copies of a manual is one copy and one lie: the second one is always the stale one and
+  nothing ever tells you which. So there is one set of files, they are ordinary markdown, and
+  they are readable three ways - here, on the repository's own file browser, and in a text
+  editor by anybody who has cloned it.
+
+  It also means the handbook works with the game server down. These are static files.
+-->
+<link rel="stylesheet" href="maritime.css">
+<link rel="stylesheet" href="maritime-help.css">
+</head>
+<body class="maritime-help-page">
+
+<nav class="maritime-help-contents" id="contents">
+    <div class="maritime-help-brand">The Sailor's Handbook</div>
+    <ul id="topics"></ul>
+</nav>
+
+<main class="maritime-help-sheet">
+    <article id="page">Opening the handbook&hellip;</article>
+</main>
+
+<script src="maritime-markdown.js"></script>
+<script>
+(function () {
+    "use strict";
+
+    /* The contents, grouped and in the order somebody learning this would want
+     * them, rather than alphabetically. Alphabetical order in a manual is a filing
+     * decision presented as a teaching one.
+     *
+     * The same order is in `commands/handbook.py`, and a test holds the two lists and
+     * the files on disk to the same set. */
+    var TOPICS = [
+        ["group", "Sailing her"],
+        ["index", "The handbook"],
+        ["under-way", "Under way"],
+        ["sailing", "Sailing"],
+        ["oars", "Oars"],
+        ["navigation", "Navigation"],
+        ["soundings", "Soundings"],
+        ["harbours", "Harbours"],
+        ["lookout", "The lookout"],
+        ["guns", "The guns"],
+        ["ramming", "Ramming"],
+        ["boarding", "Boarding"],
+        ["crew", "Her people"],
+        ["cargo", "Cargo"],
+        ["ashore", "Ashore"],
+        ["interface", "The interface"],
+        ["group", "Building with it"],
+        ["for-developers", "For developers"],
+        ["integrating", "Putting it in a game"],
+        ["adopting-a-part", "Taking only part of it"],
+        ["your-own-world", "Your own coast"],
+        ["your-own-ships", "Your own ships"],
+        ["rooms-and-typeclasses", "Rooms and typeclasses"],
+        ["extending", "Hooking into it"],
+        ["group", "Reference"],
+        ["commands", "Every command"],
+        ["settings", "Every setting"]
+    ];
+
+    var page = document.getElementById("page");
+    var list = document.getElementById("topics");
+
+    function slugOf(name) {
+        return String(name || "index").replace(/\.md$/, "").replace(/[^a-z0-9-]/gi, "");
+    }
+
+    function show(name, push) {
+        var slug = slugOf(name);
+        fetch("help/" + slug + ".md", { cache: "no-cache" })
+            .then(function (answer) {
+                if (!answer.ok) {
+                    throw new Error(answer.status);
+                }
+                return answer.text();
+            })
+            .then(function (text) {
+                page.innerHTML = MaritimeMarkdown.render(text);
+                mark(slug);
+                page.scrollTop = 0;
+                window.scrollTo(0, 0);
+                if (push) {
+                    history.pushState({ topic: slug }, "", "#" + slug);
+                }
+            })
+            .catch(function () {
+                /* Said plainly rather than swallowed. A handbook that silently shows the
+                 * last page you were on when it cannot fetch the next one is worse than one
+                 * that admits it. */
+                page.innerHTML =
+                    "<h1>Not aboard</h1><p>That page of the handbook could not be "
+                    + "fetched. If you are reading this from a game server, the static "
+                    + "files may not have been collected yet.</p>";
+            });
+    }
+
+    function mark(slug) {
+        var links = list.querySelectorAll("a");
+        for (var i = 0; i < links.length; i++) {
+            links[i].classList.toggle("is-here", links[i].dataset.topic === slug);
+        }
+    }
+
+    TOPICS.forEach(function (topic) {
+        var item = document.createElement("li");
+
+        /* A heading rather than a page. The contents is grouped, and a flat list of
+         * twenty-four titles is a list nobody reads to the end of. */
+        if (topic[0] === "group") {
+            item.className = "maritime-help-group";
+            item.textContent = topic[1];
+            list.appendChild(item);
+            return;
+        }
+
+        var link = document.createElement("a");
+        link.href = "#" + topic[0];
+        link.textContent = topic[1];
+        link.dataset.topic = topic[0];
+        link.addEventListener("click", function (event) {
+            event.preventDefault();
+            show(topic[0], true);
+        });
+        item.appendChild(link);
+        list.appendChild(item);
+    });
+
+    /* Links *inside* a page are ordinary relative markdown links, so that the repository
+     * can follow them as files. Here they are caught and turned into a topic change, which
+     * is why the same `[Back to the handbook](index.md)` works in both places. */
+    page.addEventListener("click", function (event) {
+        var link = event.target.closest("a");
+        if (!link) {
+            return;
+        }
+        var href = link.getAttribute("href") || "";
+        if (/^[a-z0-9-]+\.md$/i.test(href)) {
+            event.preventDefault();
+            show(href, true);
+        }
+    });
+
+    window.addEventListener("popstate", function () {
+        show(location.hash.slice(1) || "index", false);
+    });
+
+    show(location.hash.slice(1) || "index", false);
+})();
+</script>
+</body>
+</html>

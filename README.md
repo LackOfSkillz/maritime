@@ -1078,6 +1078,33 @@ leadsman_call(7.75 * METRES_PER_FATHOM)   # 'A quarter less eight!'
 leadsman_call(2.00 * METRES_PER_FATHOM)   # 'By the mark twain!'
 ```
 
+## The handbook
+
+A manual for players and for developers, in
+[`web/static/maritime/help/`](web/static/maritime/help/index.md).
+
+**One set of files, three doors.** They are ordinary markdown, so they are readable in this
+repository with the links working between them; they are served as static content, so
+`/static/maritime/help.html` renders them with a contents down the side; and the panel has a
+`?` in its top right corner that opens that page. A player in a plain telnet client types
+`maritime help` and is given the address.
+
+Two copies of a manual is one copy and one lie — the second is always the stale one and
+nothing tells you which — so there is one set of words and the renderer is forty lines.
+
+It is in two halves. The first is for anybody aboard a ship: the helm, sailing, oars,
+navigation, soundings, harbours, the lookout, the guns, ramming, boarding, her people, cargo,
+ashore, and the interface. The second is for anybody building with it — the layers and which
+ones you actually need, the four integration steps, **four worked recipes for taking only
+part of it**, your own coast, your own ships, rooms and typeclasses, the seams your game's own
+decisions go in, and a full reference of every command and every setting grouped by what you
+are trying to do.
+
+A test holds the handbook to the game: every link between pages resolves, every page can get
+back to the contents, the contents lists every page, the command's own topic list and the
+files on disk are the same set, and **every command the handbook tells somebody to type is a
+command that exists**.
+
 ## Testing
 
 ```bash

@@ -40,6 +40,7 @@ from evennia.commands.cmdset import CmdSet
 from evennia.commands.command import Command
 
 from .. import switches
+from .handbook import CmdMaritimeHelp
 from ..client.context import wants_ashore_panel
 
 #: What each choice does, in the words somebody would use to describe it.
@@ -504,6 +505,10 @@ class MaritimeInterfaceCmdSet(CmdSet):
         self.add(CmdMaritimeUncharted())
         self.add(CmdMaritimePlayerGui())
         self.add(CmdMyGui())
+        # Everybody, always. A player who cannot find the manual is a player who cannot
+        # find out that the manual exists, and locking the way in behind the permission
+        # that opens the panel would put it furthest from the people who need it most.
+        self.add(CmdMaritimeHelp())
 
 
 __all__ = (
@@ -514,5 +519,6 @@ __all__ = (
     "CmdMaritimeUncharted",
     "CmdMaritimePlayerGui",
     "CmdMyGui",
+    "CmdMaritimeHelp",
     "MaritimeInterfaceCmdSet",
 )

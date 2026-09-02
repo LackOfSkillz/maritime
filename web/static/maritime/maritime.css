@@ -1488,3 +1488,46 @@ svg.maritime-chart {
     border-radius: 50%;
     display: inline-block;
 }
+
+/* THE HANDBOOK BUTTON, TOP RIGHT OF THE PANEL.
+ *
+ * Positioned against the panel root rather than placed in the strip, because the strip is
+ * two different components - one at sea and one ashore - and a button that belongs to the
+ * panel should not have to be added to each of them and kept in step.
+ *
+ * Small, quiet, and always in the same place. It is a thing you reach for when you are
+ * stuck, which means it has to be findable without being looked at the rest of the time.
+ */
+#maritime-root.maritime-on .maritime-help-button {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.6rem;
+    z-index: 3;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+
+    border: 1px solid rgba(214, 176, 97, 0.35);
+    border-radius: 50%;
+    background: rgba(8, 7, 7, 0.55);
+    color: var(--maritime-accent, #d6b061);
+
+    font-size: 0.85rem;
+    line-height: 1;
+    text-decoration: none;
+}
+
+#maritime-root.maritime-on .maritime-help-button:hover,
+#maritime-root.maritime-on .maritime-help-button:focus-visible {
+    background: rgba(214, 176, 97, 0.18);
+    border-color: rgba(214, 176, 97, 0.7);
+}
+
+/* The panel is the positioning context for it. Without this the button would hang itself
+ * off the page and turn up in the top corner of the browser window. */
+#maritime-root.maritime-on {
+    position: relative;
+}

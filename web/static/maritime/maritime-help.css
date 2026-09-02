@@ -1,0 +1,239 @@
+/* The handbook's own page.
+ *
+ * Separate from `maritime.css` because it dresses a *document*, not an instrument panel:
+ * long measure, generous leading, and nothing that moves. A game that wants the handbook to
+ * look like the rest of its site drops this file and writes its own; the markup is plain and
+ * the class names say what things are.
+ *
+ * It borrows the palette from `maritime.css` so the two do not disagree about what colour
+ * the game is, and defines its own fallbacks so that it still reads if that file is absent.
+ */
+
+.maritime-help-page {
+    --help-ink: var(--maritime-text, #e8e2d4);
+    --help-soft: var(--maritime-text-soft, #a9a291);
+    --help-accent: var(--maritime-accent, #d6b061);
+    --help-ground: var(--maritime-ground, #14100c);
+    --help-panel: rgba(60, 45, 36, 0.35);
+    --help-rule: rgba(214, 176, 97, 0.22);
+
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+    background: var(--help-ground);
+    color: var(--help-ink);
+    font-family: "Iosevka", "Consolas", ui-monospace, monospace;
+    line-height: 1.65;
+}
+
+/* --- the contents ------------------------------------------------------------------- */
+
+.maritime-help-contents {
+    flex: 0 0 15rem;
+    padding: 1.75rem 1.25rem;
+    border-right: 1px solid var(--help-rule);
+    background: var(--help-panel);
+    /* Sticky rather than fixed, so it scrolls with a short page and stays with a long one
+     * without the main column having to know it is there. */
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.maritime-help-brand {
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--help-accent);
+    margin-bottom: 1.25rem;
+}
+
+.maritime-help-contents ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.maritime-help-contents li {
+    margin: 0.15rem 0;
+}
+
+.maritime-help-contents a {
+    display: block;
+    padding: 0.3rem 0.5rem;
+    color: var(--help-soft);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+}
+
+.maritime-help-contents a:hover,
+.maritime-help-contents a:focus-visible {
+    color: var(--help-ink);
+    background: rgba(214, 176, 97, 0.08);
+}
+
+.maritime-help-contents a.is-here {
+    color: var(--help-accent);
+    border-left-color: var(--help-accent);
+    background: rgba(214, 176, 97, 0.1);
+}
+
+/* --- the page ------------------------------------------------------------------------ */
+
+.maritime-help-sheet {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 2rem 6rem;
+}
+
+.maritime-help-sheet article {
+    /* A measure, not a width. Sixty-odd characters is what prose is read at, and a manual
+     * stretched across a wide monitor is a manual nobody finishes a paragraph of. */
+    width: 100%;
+    max-width: 46rem;
+}
+
+.maritime-help-sheet h1 {
+    font-size: 1.7rem;
+    color: var(--help-accent);
+    margin: 0 0 1.5rem;
+    letter-spacing: 0.02em;
+}
+
+.maritime-help-sheet h2 {
+    font-size: 1.15rem;
+    color: var(--help-accent);
+    margin: 2.5rem 0 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--help-rule);
+}
+
+.maritime-help-sheet h3 {
+    font-size: 1rem;
+    color: var(--help-ink);
+    margin: 1.75rem 0 0.5rem;
+}
+
+.maritime-help-sheet p,
+.maritime-help-sheet li {
+    color: var(--help-ink);
+}
+
+.maritime-help-sheet a {
+    color: var(--help-accent);
+    text-underline-offset: 0.2em;
+}
+
+.maritime-help-sheet code {
+    background: rgba(214, 176, 97, 0.12);
+    border-radius: 2px;
+    padding: 0.05em 0.35em;
+    font-size: 0.95em;
+}
+
+/* What to type. Set apart, because a reader skimming for the verb should find it without
+ * reading the paragraph round it. */
+.maritime-help-sheet pre {
+    background: rgba(8, 7, 7, 0.6);
+    border: 1px solid var(--help-rule);
+    border-left: 3px solid var(--help-accent);
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+}
+
+.maritime-help-sheet pre code {
+    background: none;
+    padding: 0;
+    color: var(--help-accent);
+}
+
+.maritime-help-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+    display: block;
+    overflow-x: auto;
+}
+
+.maritime-help-sheet th,
+.maritime-help-sheet td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--help-rule);
+    vertical-align: top;
+}
+
+.maritime-help-sheet th {
+    color: var(--help-accent);
+    font-weight: normal;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.maritime-help-sheet blockquote {
+    margin: 1.25rem 0;
+    padding-left: 1rem;
+    border-left: 2px solid var(--help-rule);
+    color: var(--help-soft);
+}
+
+.maritime-help-sheet hr {
+    border: 0;
+    border-top: 1px solid var(--help-rule);
+    margin: 2.5rem 0;
+}
+
+/* --- narrow screens ------------------------------------------------------------------ */
+
+@media (max-width: 46rem) {
+    .maritime-help-page {
+        flex-direction: column;
+    }
+
+    .maritime-help-contents {
+        flex: 0 0 auto;
+        position: static;
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--help-rule);
+    }
+
+    .maritime-help-contents ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .maritime-help-sheet {
+        padding: 1.5rem 1.25rem 4rem;
+    }
+}
+
+/* A heading in the contents. Grouped rather than flat, because a list of twenty-four
+ * titles is a list nobody reads to the end of. */
+.maritime-help-contents .maritime-help-group {
+    margin: 1.35rem 0 0.35rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--help-soft);
+}
+
+.maritime-help-contents .maritime-help-group:first-child {
+    margin-top: 0;
+}
+
+/* Numbered lists read as a sequence, which is what the contents is. */
+.maritime-help-sheet ol,
+.maritime-help-sheet ul {
+    padding-left: 1.4rem;
+}
+
+.maritime-help-sheet li {
+    margin: 0.35rem 0;
+}

@@ -87,6 +87,54 @@ weather, crew, combat and damage are not.
 
 ### Add
 
+- **A handbook**, for players and for developers, in `web/static/maritime/help/`. One set of
+  markdown files read three ways: in the repository with the links working, as a rendered
+  page at `/static/maritime/help.html`, and from the panel's `?` button. `maritime help`
+  gives the address to anybody in a plain client, and `maritime help <topic>` opens a page.
+- Two copies of a manual is one copy and one lie, so the web page renders the same files the
+  repository shows rather than carrying its own. The renderer is small and deliberate: no
+  library, so the handbook works with no network, inside a content policy, and with the
+  server down.
+- The developer half answers the question people actually ask, which is not "how do I run an
+  age-of-sail simulation" but **"I have a game, and I want a ferry"** - four worked recipes
+  that take two layers and leave the rest out, and a table of what each omitted layer costs.
+  Nothing in it throws: absence is a configuration.
+- Grouped and ordered the way somebody would learn it. Alphabetical order in a manual is a
+  filing decision presented as a teaching one.
+- A test holds it to the game: links resolve, the contents is complete, the command's topic
+  list and the files agree, and every command it tells somebody to type exists. Writing that
+  test found the handbook claiming `rehoist` was a verb - it is not, `strike` is a toggle.
+- Writing the developer pages against the real modules found three more: `OarPlan` does not
+  take `benches`, the current setting is `MARITIME_CURRENT_SET` rather than `_BEARING`, there
+  is no `ENCLOSED` exposure, and the integration steps omitted the driver script - without
+  which a game gets ships that accept every order and never move.
+
+- **The boarding melee.** One party crosses, one meets them, and four outcomes: the
+  boarders thrown back, her deck carried, neither and both sides feed in more, or nobody
+  left to meet them and she is taken unopposed.
+- **Frontage is measured, not tabulated.** How many can cross is the real length of rail in
+  contact - the overlap of the two hulls times the shorter one - and being properly
+  alongside doubles it, because every foot of the contact is then somewhere a man can cross
+  rather than one point where two hulls happen to meet.
+- Only about twice the boarders can reach the fighting, which is what stops a boarding being
+  decided by headcount. Three hundred men do not beat forty marines by three hundred to
+  forty; they beat them by eighty to forty, and the marines can win that.
+- **A property nobody designed, that a test found.** While the defender has men to spare she
+  meets whatever crosses with twice its number however wide the contact - so frontage
+  changes the size of the fight and not the odds. The moment she cannot field twice what
+  comes over, every extra man across is a man she has nobody to meet, and the contact starts
+  deciding the outcome. Which is the whole argument for beating her down before boarding
+  her, and it fell out of the two caps meeting.
+- Marines go across first, then seamen, then whoever is left. A captain sends the people he
+  shipped to fight.
+
+### Fix
+
+- **A company crewed the ordinary way could not send a man across.** `man` does not ask for
+  divisions and boarding is the one question that needs them, so a fully manned ship
+  reported that nobody could board and said nothing about why. A company with no divisions
+  now answers with what she is - seamen - rather than with nobody.
+
 - **Grapples are a count, not a yes.** How many irons get across is decided by how much of
   the two hulls are actually alongside, by how fast she is sheering away, and by how many
   hands there are to throw them - each line costs three, so a ship with sixty fit men cannot

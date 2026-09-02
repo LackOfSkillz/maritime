@@ -95,6 +95,28 @@ window.MaritimeUI = (function () {
         ].join("|");
     }
 
+    /* THE HANDBOOK, ONE CLICK AWAY.
+     *
+     * A player who does not know the word for the thing they want cannot look it up, and a
+     * maritime game has a great many words. So the manual is on the panel rather than
+     * behind a command somebody has to already know about.
+     *
+     * A new tab rather than an overlay: the handbook is something you read *while* doing
+     * the thing it describes, and a modal over the chart would make you close it to try
+     * what it just told you.
+     */
+    function helpButton() {
+        var link = document.createElement("a");
+        link.className = "maritime-help-button";
+        link.href = "/static/maritime/help.html";
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.title = "The Sailor's Handbook";
+        link.setAttribute("aria-label", "Open the handbook");
+        link.textContent = "?";
+        return link;
+    }
+
     function render(state) {
         if (!MaritimeState.isMaritime()) {
             if (mounted) {
@@ -150,6 +172,7 @@ window.MaritimeUI = (function () {
                 ? MaritimePanels.renderAshoreStrip(state)
                 : MaritimePanels.renderStrip(state)
         );
+        root.appendChild(helpButton());
 
         var pane = document.createElement("div");
         pane.className = "maritime-pane";
