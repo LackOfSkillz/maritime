@@ -97,6 +97,18 @@ ship's rooms, so they exist where a ship is and nowhere else.
 | `cut grapples` | Clear them. Takes longer the more are fast |
 | `strike` | Haul your colours down — or, typed again, put them back up |
 
+## Ashore, at a counter
+
+| Command | Effect |
+| --- | --- |
+| `browse [who]` | What is on the counter, and what the ship can afford |
+| `buy <thing> [from <who>]` | Ask to buy it |
+| `buy/yes <thing> [from <who>]` | Buy it, which is what the Yes link sends |
+
+The keeper, each ware, and the Yes and No are all clickable, and each sends the ordinary
+command. **Her ship's purse pays, never the player's** - what a person carries is the host
+game's business.
+
 ## Fire
 
 | Command | Effect |

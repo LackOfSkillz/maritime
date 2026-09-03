@@ -97,14 +97,24 @@ window.MaritimeState = (function () {
         if (!payload) {
             return;
         }
+        var wasVessel = state.vesselId;
         state.serverVersion = payload.version || null;
         state.mode = payload.mode || "none";
         state.vesselId = payload.vessel_id || null;
 
-        /* Leaving the maritime world clears everything the ship was. Keeping a stale
-         * chart around would mean a player who stepped ashore and back aboard a
-         * different ship briefly sees the wrong one. */
-        if (state.mode === "none") {
+        /* The chart, the readings and the contact list all belong to one hull. The moment
+         * that hull changes - to another ship, or to no ship at all because somebody has
+         * stepped ashore - every one of them describes a ship that is no longer under the
+         * reader's feet.
+         *
+         * Clearing only on "none" was not enough, and this is the half of it the client
+         * owns. Walking up a gangway goes ashore -> command and boarding another ship goes
+         * command -> command; neither passes through "none", so the panel kept the last
+         * hull's instruments and drew them under the new hull's name until something
+         * happened to replace them. Keyed on the vessel rather than on the mode, because
+         * the vessel is what the data is about - walking from a deck into a hold changes
+         * the room and not the ship, and must not throw the board away. */
+        if (state.vesselId !== wasVessel) {
             state.status = null;
             state.chart = null;
             state.contacts = [];

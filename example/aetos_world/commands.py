@@ -23,8 +23,10 @@ see `shoreleave`.
 """
 
 from evennia.commands.command import Command
+from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils import create
 
+from ...clickable import link
 from . import people, shoreleave
 
 #: What a bought thing is, unless a game says otherwise.
@@ -84,12 +86,19 @@ class CmdBrowse(Command):
         keeper = selling[0]
         lines = [f"|w{keeper.key}|n has:"]
         for name, price, kind, _ in keeper.stock:
-            lines.append(f"  {name:<26} {price:>3} coin   |x{kind}|n")
-        lines.append(f"You have {people.purse_of(self.caller)} coin.")
+            # The ware is clickable and sends the ordinary purchase command, which then
+            # asks before it takes anybody's money.
+            shown = link(f"buy {name} from {keeper.key}", f"{name:<26}")
+            lines.append(f"  {shown} {price:>3} coin   |x{kind}|n")
+        ship = _ship_alongside(self.caller)
+        if ship is None:
+            lines.append("|xNo ship of yours is lying here to pay for any of it.|n")
+        else:
+            lines.append(f"{ship.key} carries {people.purse_of(ship)} coin.")
         self.caller.msg("\n".join(lines))
 
 
-class CmdBuy(Command):
+class CmdBuy(MuxCommand):
     """
     Buy something from somebody standing here.
 
@@ -102,12 +111,17 @@ class CmdBuy(Command):
     they will be the better for it for a few days.
     """
 
+    # A MuxCommand rather than a plain one, alone among these, because it is the only
+    # command here that needs a switch parsed - and `/yes` is what the confirmation's Yes
+    # link sends. Nothing else about the parsing changes: the arguments are still read as
+    # "<thing> from <person>".
     key = "buy"
+    switch_options = ("yes",)
     locks = "cmd:all()"
     help_category = "Ashore"
 
     def func(self):
-        """Take the coin and hand over the goods."""
+        """Ask first, then take the coin and hand over the goods."""
         if not self.args.strip():
             self.caller.msg("Buy what?")
             return
@@ -130,9 +144,37 @@ class CmdBuy(Command):
             return
 
         name, price, kind, description = line
-        if not people.charge(self.caller, price):
-            held = people.purse_of(self.caller)
-            self.caller.msg(f"{name} costs {price} coin and you have {held}.")
+
+        # **Asked before anybody's money moves.**
+        #
+        # A purchase is the one thing here that cannot be undone by walking back, and it
+        # is reachable by a single click and by a mistyped word. So `buy` asks, and
+        # `buy/yes` is the answer - which is both what the Yes link sends and what a
+        # player who knows their own mind can type in the first place.
+        # **The ship pays, not the person.** A captain buying stores is spending
+        # his owner's money, and the ruling is that money lives on the hull - so
+        # there is nothing to spend without one lying here.
+        ship = _ship_alongside(self.caller)
+        if ship is None:
+            self.caller.msg(
+                "No ship of yours is lying here, and it is her purse that pays. "
+                "Bring one alongside first."
+            )
+            return
+
+        if "yes" not in self.switches:
+            held = people.purse_of(ship)
+            self.caller.msg(
+                f"Purchase |w{name}|n from {keeper.key} for {price} coin? "
+                f"({ship.key} carries {held}.)\n"
+                f"  {link(f'buy/yes {name} from {keeper.key}', '[ Yes ]')}   "
+                f"{link(f'browse {keeper.key}', '[ No ]')}"
+            )
+            return
+
+        if not people.charge(ship, price):
+            held = people.purse_of(ship)
+            self.caller.msg(f"{name} costs {price} coin and {ship.key} carries {held}.")
             return
 
         goods = create.create_object(GOODS, key=name, location=self.caller)
@@ -345,7 +387,9 @@ class CmdSellCargo(Command):
 
         moved = landed.parcel.tonnes
         paid = int(round(moved * PAID_PER_TONNE))
-        self.caller.db.coin = people.purse_of(self.caller) + paid
+        # Paid into the hull that carried it, for the same reason the buying comes
+        # out of her: the cargo was hers, and so is the money for it.
+        vessel.db.coin = people.purse_of(vessel) + paid
         self.caller.msg(f"You land {moved:.1f} tons of {commodity.name} and are paid {paid} coin.")
         if landed.refused:
             self.caller.msg(f"{landed.refused:.1f} tons stayed aboard - she had no more to land.")

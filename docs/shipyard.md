@@ -167,3 +167,32 @@ correct outcome rather than a partial failure.
 
 The lookup is exact and case-insensitive, deliberately: Evennia's own search matches on a
 prefix and would happily return *Swift* when asked for *Swiftsure*.
+
+## Planned: a price on a hull, and a menu to choose one from
+
+Not built. Recorded here so the shape is settled before anybody writes it, and because the
+demo's purse was sized against it.
+
+**A hull will cost money, and the money will be the ship's.** That is already the ruling in
+`DECISIONS.md` — the purse lives on the vessel, because this contrib cannot know what a
+player is while every ship must pay for her repairs, her wages and her cargo. A first hull
+is the one purchase with nothing to buy it *from*, so it is the one case a game has to
+answer for itself: an owner's account, a grant, a starting ship, or a loan against her
+first voyage. The contrib will publish the price and take the money from wherever the game
+says, and will not invent a wallet.
+
+**Three denominations**, at the coinage of the period: twelve copper to the silver, twenty
+silver to the gold. One unit cannot span a day's wage and the price of a ship without
+absurd numbers, and the ratios are authentic rather than decimal for the same reason
+everything else here is.
+
+**The menu is `maritime build` with prices in it.** The command already lists the seven
+hulls and what each one is; it gains what each one costs and what the buyer can afford, and
+each line becomes clickable — sending `maritime build <rig> <name>`, which is what a player
+would type. The same rule the counter follows: a click is a command, so nothing the
+graphical client can do is unavailable to a telnet player.
+
+**What the prices have to be worth.** A working demo is: buy a hull, provision her, load a
+cargo, make a passage, sell it at the other end. The example world's starting purse is
+sized so that whole loop is reachable without grinding — because somebody arriving to see
+what this contrib does should be stopped by the sea, not by pocket money.

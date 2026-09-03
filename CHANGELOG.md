@@ -13,6 +13,29 @@ weather, crew, combat and damage are not.
 
 ### Fix
 
+- **Walking up a gangway left the board blank, and it took three faults to do it.** Reported
+  as a teleport bug, then as a stale-cache bug, and it was neither on its own.
+  1. The server suppressed the resend, because the cache meaning "the client already has
+     this" was cleared only on logout.
+  2. The *client* kept the last ship's chart and readings, because it discarded them only
+     when the mode became `none` - and `ashore -> command`, or `command -> command` between
+     two ships, never passes through `none`.
+  3. Nothing was sent on arrival at all. The mode went out and the board then waited for the
+     next tick to shift a number, which on a ship lying quiet never happens.
+  A browser refresh fixed it because a fresh connection asks for everything, which is the
+  one path that was never broken.
+- The client now forgets a ship it is not standing on, keyed on **the vessel** rather than
+  the mode: walking from a deck into a hold changes the room and not the ship, and must not
+  throw the board away.
+- A ship hands over her chart and her instruments the moment somebody arrives on her deck.
+  `redraw_chart` had already made this argument in its own docstring - a captain watching an
+  empty square of sea for five seconds will conclude the chart is broken - and boarding is
+  the same wait for the same reason.
+- `send_status` is factored out of `broadcast_status` for the caller that already knows which
+  session it means. Going through the broadcast made that caller hand over a vessel so the
+  broadcast could search her compartments for the session it had just been given - and a
+  session that has only this moment changed mode may not be found that way at all.
+
 - **An alias collision does not raise; one command silently displaces the other.**
   `butchers bill` was given `muster`, which `crew` already answered to. Nothing complained
   and `crew` vanished out of the helm set entirely - a working command gone, noticed only
@@ -46,6 +69,32 @@ weather, crew, combat and damage are not.
   keeps them, or the board would redraw on every step along a deck.
 
 ### Feat
+
+- **Everything worth doing is clickable, and every click sends a command.** Exits, the
+  keeper behind a counter, each ware on it, and the Yes and No of a purchase. Not one of
+  them is a message only the graphical client speaks - they are the literal text a telnet
+  player would type, which is the same rule the chart has always followed. It earns its keep
+  twice: a player clicking their way about is reading their own next input, so the graphical
+  client teaches the text one, and nothing built for the panel can quietly become the only
+  way to do something.
+- `ClickableExits` is a mixin. The contrib's own rooms have it; a game that wants it
+  everywhere adds one class to its base room and changes nothing else.
+- **Buying asks first.** A purchase is the one thing ashore that walking back does not undo,
+  and it is reachable by a single click and by a mistyped word. `buy` asks; `buy/yes`
+  answers, which is both what the Yes link sends and what somebody who knows their own mind
+  types in the first place. No goes back to the counter rather than to a dead end, because
+  what they wanted was probably a different line on the same one.
+- **The ship pays, and the player is never charged.** The demo had the purse on the
+  character, which taught the opposite of the design it exists to demonstrate: `DECISIONS.md`
+  settled that money lives on the hull, because this contrib cannot know what a player is
+  while every ship must pay for her repairs, her wages and her cargo. Nothing is written to
+  a character now, and a counter with no ship of yours alongside says so plainly.
+- Her starting purse is two hundred gold in the smallest unit, at the ratios the ledger
+  decision records - twelve copper to the silver, twenty silver to the gold. Sized so the
+  whole demo loop is reachable without grinding, because somebody arriving to see what this
+  does should be stopped by the sea and not by pocket money.
+- `docs/shipyard.md` records what a priced hull and a build menu will look like. Not built.
+
 
 - **The butcher's bill.** While a fight is happening a casualty is one number, which is the
   right amount of detail because nobody aboard is counting. Afterwards it is the wrong amount,

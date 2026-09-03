@@ -15,6 +15,7 @@ still importable from `typeclasses` - see the note there.
 from evennia.objects.objects import DefaultExit, DefaultRoom
 from evennia.utils import create
 
+from .clickable import ClickableExits
 from .client.boundary import NoticesTheWaterline
 from .observation import DEFAULT_HEIGHT_OF_EYE
 from .ports import APPROACH_RANGE
@@ -23,7 +24,7 @@ from .stowage import Stowed
 from .vessel import EXPOSURES, INTERIOR, MAIN_DECK, WEATHER_DECKS
 
 
-class ShipRoom(NoticesTheWaterline, Stowed, DefaultRoom):
+class ShipRoom(ClickableExits, NoticesTheWaterline, Stowed, DefaultRoom):
     """
     A compartment aboard a vessel.
 
@@ -205,7 +206,7 @@ class ShipRoom(NoticesTheWaterline, Stowed, DefaultRoom):
         return f"<ShipRoom {self.key} deck {self.deck_level}>"
 
 
-class ShoreRoom(NoticesTheWaterline, DefaultRoom):
+class ShoreRoom(ClickableExits, NoticesTheWaterline, DefaultRoom):
     """
     An ordinary room on land, which keeps a maritime client's map current.
 
@@ -236,7 +237,7 @@ class ShoreRoom(NoticesTheWaterline, DefaultRoom):
     maritime_ashore = True
 
 
-class PortRoom(NoticesTheWaterline, DefaultRoom):
+class PortRoom(ClickableExits, NoticesTheWaterline, DefaultRoom):
     """
     A quayside: ordinary room space that also stands somewhere on the water.
 

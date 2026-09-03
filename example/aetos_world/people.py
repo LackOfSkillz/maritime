@@ -22,11 +22,23 @@ money uses its own and overrides `charge`.
 from evennia.objects.objects import DefaultCharacter
 from evennia.utils import create
 
-#: What a character's purse is kept under, so a game can find and replace it.
+#: What a ship's purse is kept under, so a game can find and replace it.
+#:
+#: **On the hull, never on the person.** The ruling in `DECISIONS.md` is that money
+#: lives on the vessel, because this contrib cannot know what a player is - some
+#: games have no player currency at all - while every ship must pay for her repairs,
+#: her wages and her cargo. A demo that charged the character would be teaching the
+#: opposite of the design it exists to demonstrate.
 PURSE = "coin"
 
-#: What a new character has to spend, so the example is walkable without a quest to earn it.
-STARTING_COIN = 40
+#: What a ship carries when she is new.
+#:
+#: Two hundred gold, in the smallest unit, at the ratios the ledger decision records -
+#: twelve copper to the silver and twenty silver to the gold, which is the coinage
+#: of the period this is modelled on. Against wares costing three to a dozen it is
+#: hundreds of purchases, which is the point: somebody arriving to see what this
+#: contrib does should never be stopped by the demo's pocket money.
+STARTING_COIN = 200 * 20 * 12
 
 
 class Vendor(DefaultCharacter):
@@ -59,6 +71,27 @@ class Vendor(DefaultCharacter):
 
         """
         return tuple(tuple(line) for line in (self.db.stock or ()))
+
+    def get_display_name(self, looker=None, **kwargs):
+        """
+        Args:
+            looker (Object, optional): Whoever is looking.
+            **kwargs: Passed through.
+
+        Returns:
+            name (str): Her name, clickable, so that reading the room and asking what she
+                has are the same gesture.
+
+        Notes:
+            Clicking her sends `browse <her name>`, which is what a player would type. She
+            is the only thing in the room worth a click, so she is the only thing that
+            gets one.
+
+        """
+        from ...clickable import link
+
+        shown = super().get_display_name(looker, **kwargs)
+        return link(f"browse {self.key}", shown)
 
     def sells(self, name):
         """
@@ -98,42 +131,50 @@ class Vendor(DefaultCharacter):
             moved.move_to(self.location, quiet=True, move_hooks=False)
 
 
-def purse_of(character):
+def purse_of(vessel):
     """
     Args:
-        character (Object): Whose purse.
+        vessel (Vessel): Whose purse. A hull, not a person.
 
     Returns:
-        coin (int): What they have.
+        coin (int): What she carries.
+
+    Notes:
+        Filled on first asking rather than at build time, so a ship somebody makes
+        for themselves has the same money as one the example world put there. A
+        demo where only the shipped ships can buy anything would be a demo that
+        stops working the moment anybody uses it properly.
 
     """
-    held = character.db.coin
+    held = vessel.db.coin
     if held is None:
-        character.db.coin = STARTING_COIN
+        vessel.db.coin = STARTING_COIN
         return STARTING_COIN
     return int(held)
 
 
-def charge(character, price):
+def charge(vessel, price):
     """
-    Take coin from somebody.
+    Take coin out of a ship's purse.
 
     Args:
-        character (Object): Who is paying.
+        vessel (Vessel): Which hull is paying.
         price (int): How much.
 
     Returns:
-        paid (bool): Whether they could afford it.
+        paid (bool): Whether she could afford it.
 
     Notes:
         The seam a game with real money overrides. Everything else here talks to this and
-        nothing else talks to `db.coin`, so replacing it replaces the economy.
+        nothing else talks to `db.coin`, so replacing it replaces the economy - and
+        a game that keeps its own accounts points this at them and never has a
+        second set.
 
     """
-    held = purse_of(character)
+    held = purse_of(vessel)
     if held < price:
         return False
-    character.db.coin = held - int(price)
+    vessel.db.coin = held - int(price)
     return True
 
 

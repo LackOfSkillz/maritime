@@ -1110,7 +1110,7 @@ command that exists**.
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3384 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3417 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1126,6 +1126,11 @@ of wall time runs in milliseconds.
 - An anchored ship can be sprung round on her cable to lay her broadside where she wants
   it, and shoots better for lying still. Cutting the cable frees her at once and costs her
   the anchor until a spare is rigged, which is hours.
+- **Everything worth doing is clickable, and every click sends a command a player could
+  have typed** — an exit, a shopkeeper, a ware on her counter, the Yes and No of a
+  purchase. Nothing the graphical client can do is unavailable to a telnet player.
+- **A ship's purse pays for what her people buy ashore**, and nothing is ever written to a
+  character. What a person carries is the host game's business.
 - Careenage is laid out **coordinates first**: every room has a position, and every street
   exit is derived from the difference between two of them rather than typed. There is
   nowhere left to write a direction the geometry will not support.

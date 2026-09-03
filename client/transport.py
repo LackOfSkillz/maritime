@@ -166,6 +166,7 @@ def refresh(session, force=False, room=None):
     if session is None or not understands(session):
         return False
 
+    from ..vessel import vessel_in
     from .context import ASHORE
 
     character = getattr(session, "puppet", None)
@@ -234,6 +235,25 @@ def refresh(session, force=False, room=None):
     # one - which there was, briefly, and having two was how one of them got left behind.
     if now.mode == ASHORE:
         send_land(session)
+    else:
+        # **And a ship gets her instruments at once, for the same reason.**
+        #
+        # A transition is when a client has nothing and needs everything, and until this
+        # was here only the ashore half of that was honoured: a captain walking up his own
+        # gangway got the mode and then a blank board until the next tick happened to shift
+        # a number. On a ship lying quiet nothing shifts, so the board stayed blank.
+        #
+        # `redraw_chart` already argues this case in its own docstring - a captain watching
+        # an empty square of sea for five seconds will conclude the chart is broken - and
+        # boarding is the same wait for the same reason.
+        #
+        # `broadcast_status` is safe to call for everybody aboard rather than for this one
+        # session: it compares against what each was last told, and the only session whose
+        # comparison has been reset is the one that just changed mode.
+        vessel = vessel_in(getattr(character, "location", None) if room is None else room)
+        if vessel is not None:
+            redraw_chart(session)
+            send_status(session, vessel)
     return told
 
 
@@ -260,6 +280,42 @@ def refresh_for(character, room=None):
     if sessions is None:
         return 0
     return sum(1 for session in sessions.all() if refresh(session, room=room))
+
+
+def send_status(session, vessel):
+    """
+    Send one session her instruments, if they are not what it is already holding.
+
+    Args:
+        session (Session): The connection to tell.
+        vessel (Vessel): The hull she is reading.
+
+    Returns:
+        sent (bool): Whether anything went out.
+
+    Notes:
+        Factored out of `broadcast_status` for the caller that already knows which
+        session it means. Going through the broadcast would have that caller hand over a
+        vessel so the broadcast could search her compartments for the session it was
+        handed - and a session that has only this moment changed mode may not be found
+        that way at all, which is how a board arrived empty and stayed empty.
+
+    """
+    from .context import COMMAND, resolve_maritime_ui_context
+    from .state import own_on_sheet
+
+    status = status_for(
+        vessel, commanding=resolve_maritime_ui_context(getattr(session, "puppet", None)) == COMMAND
+    )
+    if status is None:
+        return False
+
+    message = dict(status.as_message())
+    message["own"] = own_on_sheet(vessel, session.ndb.maritime_sheet_middle)
+    if message == session.ndb.maritime_status:
+        return False
+    session.ndb.maritime_status = message
+    return bool(_announce_message(session, status.kind, message, "status"))
 
 
 def broadcast_status(vessel):
