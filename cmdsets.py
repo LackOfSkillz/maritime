@@ -16,6 +16,12 @@ from evennia.commands.cmdset import CmdSet
 from .commands import (
     CmdAllStop,
     CmdAnchor,
+    CmdRefit,
+    CmdRepairs,
+    CmdSetRepairs,
+    CmdCompany,
+    CmdKeepStation,
+    CmdPartCompany,
     CmdButchersBill,
     CmdLetItGo,
     CmdStartThem,
@@ -102,6 +108,12 @@ class HelmCmdSet(CmdSet):
         self.add(CmdScan())
         self.add(CmdTarget())
         self.add(CmdAnchor())
+        self.add(CmdRefit())
+        self.add(CmdRepairs())
+        self.add(CmdSetRepairs())
+        self.add(CmdCompany())
+        self.add(CmdKeepStation())
+        self.add(CmdPartCompany())
         self.add(CmdButchersBill())
         self.add(CmdLetItGo())
         self.add(CmdStartThem())

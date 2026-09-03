@@ -559,6 +559,14 @@ class Rigged:
         # ship rather than how you sink her.
         plan = self.sail_plan
         drawing = canvas_drawing(self.damage)
+
+        # A spar lashed where a mast stood carries sail and does not carry as much, and
+        # nothing aboard improves it. Multiplied into the same number, so a jury-rigged ship
+        # is slower at every plan rather than capped at one - it is her rig that is worse,
+        # not her orders - and it stays that way until a yard sees her.
+        from .repairs import canvas_after_jury_rig
+
+        drawing = canvas_after_jury_rig(drawing, getattr(self, "jury_rigged", False))
         if drawing < 1.0:
             plan = replace(plan, area=plan.area * drawing)
 

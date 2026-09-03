@@ -389,7 +389,10 @@ class CmdSellCargo(Command):
         paid = int(round(moved * PAID_PER_TONNE))
         # Paid into the hull that carried it, for the same reason the buying comes
         # out of her: the cargo was hers, and so is the money for it.
-        vessel.db.coin = people.purse_of(vessel) + paid
+        from ...ledger import Coin
+
+        people.purse_of(vessel)
+        vessel.credit(Coin(smallest=paid), f"{commodity.name} landed")
         self.caller.msg(f"You land {moved:.1f} tons of {commodity.name} and are paid {paid} coin.")
         if landed.refused:
             self.caller.msg(f"{landed.refused:.1f} tons stayed aboard - she had no more to land.")

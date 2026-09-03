@@ -70,6 +70,74 @@ weather, crew, combat and damage are not.
 
 ### Feat
 
+- **A ship's purse, and it is on the hull.** The ruling this contrib has held since the
+  ownership work: money lives on the vessel, because it cannot know what a player is - some
+  games have no player currency at all, and none want a second one appearing underneath the
+  first - while every ship must pay for her repairs, her wages, her stores and her cargo.
+- **Three denominations, held as one integer.** Twelve copper to the silver and twenty
+  silver to the gold, which is the coinage of the age; a game names its own with
+  `MARITIME_COINAGE`. Every amount is a whole number of the smallest coin and the larger
+  ones are a *rendering* of it, because money kept as three numbers can be made to vanish by
+  carrying wrong and money kept as a float stops adding up after enough voyages.
+- A purse never goes negative. Debt is a relationship between people and this contrib has
+  none in it; a game that lends a captain money is modelling something it understands.
+- Every change publishes what moved **and why**, which is what separates a ledger from a
+  number - and it records no history, because a game that keeps books has its own and a
+  second set here would be a second set to disagree with the first.
+- The example world was migrated onto it rather than left with a purse of its own. Two sets
+  of books on one hull is precisely what this exists to prevent, and a demo keeping a second
+  would have been demonstrating the opposite of the design.
+- Her opening advance is now recorded as a fact rather than inferred from an empty purse. A
+  ship that has spent everything she had is not a ship nobody has paid, and testing the
+  balance would have handed her a fresh advance the moment she went broke.
+
+
+- **Battle repairs, and the jury rig is the whole item.** A ship that loses a mast and gets
+  a spar up where it stood is sailing within a day and is slower for the rest of the
+  commission. That is a *scar*: it does not tick down, time does not heal it, and nothing
+  aboard will ever improve it. Working longer is precisely the thing that does not help,
+  which is the difference between a scar and a slow repair - and it gives a reason to make
+  port that no repair-over-time system has, because she is not broken. She is working
+  perfectly, and she is worse.
+- What her own people can do and what wants a yard are different lists. Hull, oars and
+  canvas at sea, indefinitely. A gun never: she carries spares for neither a carriage nor a
+  gun unless she took them out of a prize.
+- **Repairs compete for hands, and nothing enforces it.** The carpenter's party comes out of
+  the same people the guns, the pumps and a fire want, which is why the source says the only
+  things possible in action are bailing, pumping and replacing sail. There is no flag for
+  being in action. There is one crew, and that is enough.
+- She mends at twice the rate hove to with her canvas in, because everybody not steering is
+  on the job - a real decision on a passage with somewhere to be.
+- The jury rig multiplies into the same number rigging damage feeds, so she is slower at
+  every sail plan rather than capped at one: it is her rig that is worse, not her orders.
+- **This finishes the combat roadmap.** Nineteen items, and the last of them is the one it
+  always said should be last.
+
+
+- **Sailing in company.** The sailing master already steered for a mark; a consort is the
+  same job with a mark that moves. `keep station on Petrel astern 2 cables`, held while she
+  tacks, wears, makes sail and takes it in again - and convoys, escorts and a squadron that
+  manoeuvres together all come out of that one order with nothing else built for any of them.
+- **A station is relative to the ship you keep it on, not to the compass.** "On her quarter"
+  is the same water after she has worn as before it; a station on a compass bearing would
+  swing across her bows the first time she came about, and a squadron ordered to hold one
+  would sail through itself. That is the difference between a squadron and a crowd, and it
+  is the one thing the tests lean hardest on.
+- She holds it by steering and trimming, like anybody else. A consort who is faster, better
+  handled, or has the wind of her leaves her astern, and the report says *falling astern*
+  rather than merely *out of position* - because one wants more sail and the other wants a
+  different course, and a single number cannot say which.
+- **A station to leeward of your consort is a station in her lee**, and nothing warns you.
+  The blocked-wind work already models it; choosing where to sit is a decision, and one that
+  quietly worked everywhere would not be one.
+- A squadron is a chain, each ship keeping station on the one ahead, because the ship ahead
+  is the one you can see. Walking it survives a ring of ships each following the other -
+  nobody would order that, and the code still has to come back.
+- The station report is `station` and not `company`: `crew` already answered to that word,
+  meaning her people, and it had it first. Caught by the collision guard written earlier the
+  same day, which is the second command it has saved.
+
+
 - **Everything worth doing is clickable, and every click sends a command.** Exits, the
   keeper behind a counter, each ware on it, and the Yes and No of a purchase. Not one of
   them is a message only the graphical client speaks - they are the literal text a telnet

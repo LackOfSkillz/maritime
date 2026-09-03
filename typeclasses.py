@@ -31,6 +31,11 @@ from evennia.objects.objects import DefaultObject
 from .boarding import Boarded
 from .aftermath import CountsTheCost
 from .burning import Burns
+from .consorts import InCompany
+from .ledger import Purse
+from .repairs import Mends
+from .rating import Rated
+from .stations import Stationed
 from .flooding import MakesWater
 from .cables import Springs
 from .charts import Charted
@@ -109,6 +114,11 @@ class Vessel(
     Owned,
     Boarded,
     Burns,
+    InCompany,
+    Mends,
+    Purse,
+    Rated,
+    Stationed,
     CountsTheCost,
     MakesWater,
     Springs,
@@ -598,6 +608,11 @@ class Vessel(
                 self.work_spring(elapsed)
             return False
 
+        # **A consort is steered for beside the sailing master, never by him.** He runs a
+        # passage - a list of marks that do not move - and she is following a ship. Both
+        # at once would give the helm to whichever was asked last, so ordering either
+        # gives up the other and only one of these ever does anything.
+        self.work_station()
         self.work_her()
 
         # A watch passes over her people whether or not anything happens to them.
@@ -608,6 +623,10 @@ class Vessel(
         # Time is the only thing that brings back the wounded and the men who
         # broke, so it happens on the watch rather than by anybody ordering it.
         self.stand_watch_over_the_hurt()
+
+        # The carpenter's party works on the watch, like everything else that takes
+        # time rather than an order. Nobody set to it means nothing happens.
+        self.work_repairs(elapsed)
 
         before = MotionState(position=position, heading=self.heading, speed=self.speed)
 

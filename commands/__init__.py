@@ -38,6 +38,8 @@ from .lookout import (
     sightings_toward,
 )
 from .aftermath import CmdButchersBill, CmdLetItGo, CmdStartThem
+from .company import CmdCompany, CmdKeepStation, CmdPartCompany
+from .repairing import CmdRefit, CmdRepairs, CmdSetRepairs
 from .firefighting import CmdFightFire, CmdFires
 from .pumping import CmdFother, CmdManPumps, CmdPumps
 from .mooring import (
@@ -130,6 +132,12 @@ __all__ = (
     "CmdKedge",
     "CmdCastOff",
     "CmdAnchor",
+    "CmdRefit",
+    "CmdRepairs",
+    "CmdSetRepairs",
+    "CmdCompany",
+    "CmdKeepStation",
+    "CmdPartCompany",
     "CmdButchersBill",
     "CmdLetItGo",
     "CmdStartThem",

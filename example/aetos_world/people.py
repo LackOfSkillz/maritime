@@ -29,7 +29,7 @@ from evennia.utils import create
 #: games have no player currency at all - while every ship must pay for her repairs,
 #: her wages and her cargo. A demo that charged the character would be teaching the
 #: opposite of the design it exists to demonstrate.
-PURSE = "coin"
+PURSE = "purse"
 
 #: What a ship carries when she is new.
 #:
@@ -146,11 +146,15 @@ def purse_of(vessel):
         stops working the moment anybody uses it properly.
 
     """
-    held = vessel.db.coin
-    if held is None:
-        vessel.db.coin = STARTING_COIN
-        return STARTING_COIN
-    return int(held)
+    from ...ledger import Coin
+
+    # Recorded as a fact rather than inferred from the purse being empty. A ship that has
+    # spent everything she had is not a ship nobody has paid, and testing the balance
+    # would hand her a second advance the moment she went broke.
+    if not vessel.db.advanced:
+        vessel.db.advanced = True
+        vessel.credit(Coin(smallest=STARTING_COIN), "her owner's advance")
+    return vessel.purse.smallest
 
 
 def charge(vessel, price):
@@ -165,17 +169,17 @@ def charge(vessel, price):
         paid (bool): Whether she could afford it.
 
     Notes:
-        The seam a game with real money overrides. Everything else here talks to this and
-        nothing else talks to `db.coin`, so replacing it replaces the economy - and
-        a game that keeps its own accounts points this at them and never has a
-        second set.
+        Straight through to the contrib's own ledger rather than a purse of its own.
+        Two sets of books on one hull is the thing that ledger exists to prevent, and a
+        demo keeping a second one would be demonstrating the opposite of the design.
 
     """
-    held = purse_of(vessel)
-    if held < price:
-        return False
-    vessel.db.coin = held - int(price)
-    return True
+    from ...ledger import Coin
+
+    # So a hull nobody has advanced anything to gets her opening balance before being
+    # asked to spend from it.
+    purse_of(vessel)
+    return vessel.debit(Coin(smallest=int(price)), "bought ashore")
 
 
 def make(key, description, stock, greeting, home):

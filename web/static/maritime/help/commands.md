@@ -109,6 +109,34 @@ The keeper, each ware, and the Yes and No are all clickable, and each sends the 
 command. **Her ship's purse pays, never the player's** - what a person carries is the host
 game's business.
 
+## Mending her
+
+| Command | Effect |
+| --- | --- |
+| `repairs` | What is wrong, who is on it, and what wants a yard |
+| `set repairs <hands>` | Put a carpenter's party to work |
+| `refit` | Alongside only. What a yard does that her people cannot |
+
+They are the same hands the guns, the pumps and a fire want - which is why, in
+action, all anybody can do is bail, pump and replace sail. She mends at twice the
+rate hove to with her canvas in.
+
+A mast that has gone comes back as a **jury rig**: she sails, she is slower, and
+nothing aboard will ever improve it. Only a yard lifts it.
+
+## Sailing in company
+
+| Command | Effect |
+| --- | --- |
+| `keep station on <ship> [<where> <how far>]` | Hold a place relative to her |
+| `station` | Whether she is holding it, and why not |
+| `part company` | Leave off |
+
+A station is relative to *her* heading, not the compass - `astern`, `starboard
+quarter`, `port beam`. That is what makes "her quarter" the same water after she
+has come about. A station directly to leeward of her is in her lee, and nobody
+will stop you taking it.
+
 ## Fire
 
 | Command | Effect |

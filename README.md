@@ -1110,7 +1110,7 @@ command that exists**.
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3417 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**3546 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1126,6 +1126,15 @@ of wall time runs in milliseconds.
 - An anchored ship can be sprung round on her cable to lay her broadside where she wants
   it, and shoots better for lying still. Cutting the cable frees her at once and costs her
   the anchor until a spare is rigged, which is hours.
+- **A ship carries her own purse**, in three denominations held as one integer. Money is
+  a fact about the hull, because this contrib cannot know what a player is while every
+  ship must pay for her repairs, her wages and her cargo.
+- **Posts**: helm, lookout, gunnery, master, carpenter, surgeon, with command succeeding
+  down a written order. The contrib owns what a post does to the ship; a game owns how
+  good the person standing it is, through one replaceable seam that answers *well enough*
+  until it is replaced.
+- Her **rating** is worked out from her tons burthen every time it is asked for, so a
+  builder cannot draw a great ship and call it a dinghy.
 - **Everything worth doing is clickable, and every click sends a command a player could
   have typed** — an exit, a shopkeeper, a ware on her counter, the Yes and No of a
   purchase. Nothing the graphical client can do is unavailable to a telnet player.

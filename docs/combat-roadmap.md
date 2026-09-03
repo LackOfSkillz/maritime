@@ -360,9 +360,9 @@ your consort is a genuine mistake you can make.
     O   springing on a cable         DONE
     F   fire                         DONE
     G   flooding and pumping         DONE
-    S   consorts and station-keeping independent
+    S   consorts and station-keeping DONE
     J   post-battle casualties       DONE
-    K2  battle repairs               last
+    K2  battle repairs               DONE
 
 ---
 

@@ -53,6 +53,7 @@ DEFAULT_WATER_NARRATOR = f"{__package__}.messaging.WaterNarrator"
 DEFAULT_OCEAN_ROOM = f"{__package__}.projection.OceanRoom"
 DEFAULT_COMMAND_POLICY = f"{__package__}.ownership.may_command"
 DEFAULT_SUBDUED_POLICY = f"{__package__}.capture.captain_subdued"
+DEFAULT_COMPETENCE_POLICY = f"{__package__}.stations.competence_of"
 
 
 def get_setting(name, default=None):
@@ -544,5 +545,35 @@ def subdued_policy():
         raise TypeError(
             f"MARITIME_SUBDUED_POLICY must point at a callable taking "
             f"(captain, prize, captor), got {type(policy).__name__}."
+        )
+    return policy
+
+
+def competence_policy():
+    """
+    The function that says how well a post is being kept.
+
+    Returns:
+        policy (callable): Takes `(character, post, vessel)` and returns 0 to 1.
+
+    Raises:
+        TypeError: If the configured value is not callable.
+
+    Notes:
+        **The seam the whole career design rests on.** This contrib owns what a post does to
+        a ship - what the guns do, how far the lookout sees, how she answers her helm - and
+        a game owns how good the person standing it is. Shipping a skill system here would
+        be competing with whatever the host game already has, and every game with its own
+        would have to fight it.
+
+        The shipped default answers *well enough* to everything, so a game that adopts none
+        of this sails exactly as it did.
+
+    """
+    policy = load_class(get_setting("COMPETENCE_POLICY", DEFAULT_COMPETENCE_POLICY))
+    if not callable(policy):
+        raise TypeError(
+            f"MARITIME_COMPETENCE_POLICY must point at a callable taking "
+            f"(character, post, vessel), got {type(policy).__name__}."
         )
     return policy
