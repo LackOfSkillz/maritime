@@ -24,7 +24,7 @@ into it is not a ram at all — it glances.
 
 **What is on your bow.** A plain stem spreads the blow and much of it comes back into your
 own timbers. A beak is structure built forward of the hull to be hit *instead* of the hull:
-it drives more into her and takes less back.
+more of the blow lands in her, and less of it comes back.
 
 **How big you both are.** A frigate running down a ship's boat destroys the boat and barely
 marks her own stem. A boat rowed at a frigate cannot open her, however determined the

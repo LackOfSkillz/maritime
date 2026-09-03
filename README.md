@@ -566,7 +566,8 @@ for this; here it is a consequence of where you got your ship.
 **Ammunition is intent.** Ball for the hull is "I intend to sink you"; chain for the
 rigging is "I intend to catch you"; grape for the people is "I intend to board you". None is
 strictly better, and range decides what you may even attempt — ball carries, chain tumbles,
-grape is a knife-range weapon. Closing to grape range means taking his ball the whole way in.
+grape is a knife-range weapon. So choosing grape is choosing to cross water where his ball
+carries and your grape does not — you pay for the boarding before you may attempt it.
 
 **Rating is not quality, and a company is made of divisions.** Seamen work her, oarsmen
 pull, marines fight and are close to useless at anything else. A crack marine and a crack

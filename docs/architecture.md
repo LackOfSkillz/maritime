@@ -1099,8 +1099,9 @@ every shot would be the same shot.
 
 **Range is the constraint that makes it a choice rather than an optimisation.** Ball carries
 as far as the gun will throw it; chain tumbles and loses its way; grape is a knife-range
-weapon. So the shot a captain wants is often the shot he cannot yet use, and closing to grape
-range means taking his enemy's ball the whole way in. A captain who loaded early has
+weapon. So the shot a captain wants is often the shot he cannot yet use: closing to grape
+range means crossing water where the enemy's ball carries and his own grape does not. The
+approach is paid for before the boarding can be attempted, and a captain who loaded early has
 shortened his own reach for the afternoon.
 
 **Five tracks, not one pool.** Hull, rigging, oars, weapons and crew are damaged

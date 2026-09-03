@@ -39,7 +39,7 @@ clickable, and clicking still routes over every exit that really exists.
 Markers tell you what a room is worth stopping at: somewhere to trade, a way out of the
 drawn area, and the room you are in.
 
-## Leaving her behind
+## Leaving your ship
 
 If you disembark and log out, your ship is laid up rather than left in the fairway. See
 [harbours](harbours.md) for getting her back.

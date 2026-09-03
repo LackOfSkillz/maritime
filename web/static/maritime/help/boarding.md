@@ -66,8 +66,8 @@ the contact — so frontage changes the size of the fight and not the odds. The 
 *cannot* field twice what comes over, every extra man across is a man she has nobody to
 meet.
 
-That is the argument for grape and for gunnery before you lay yourself alongside. Fill her
-with grape, then board what is left.
+That is the argument for grape and for gunnery before you lay yourself alongside. Sweep her
+decks with grape, and board what is left standing.
 
 ## Striking
 

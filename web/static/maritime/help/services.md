@@ -73,7 +73,7 @@ tug.slip_the_tow()
 
 **The tow does not steer.** She is *placed* astern of the tug on the tug's heading every
 step — a tow that kept her own helm would be two ships arguing over one position, and one
-simply set at the tug's position would be inside her.
+simply set at the tug's own position would be overlapping her hull.
 
 **And she is not free.** What she costs is felt in the speed the tick actually steers the tug
 by, and it depends on the tow's *mass* — so her manifest counts, and the way to make a stubborn
