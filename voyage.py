@@ -252,6 +252,12 @@ class Conned:
 
             berth = take_her_alongside(self)
             self.narrator.passage_made()
+
+            # Announced as well as narrated. The narrator tells the people aboard; this
+            # tells the game, which is what a career counts.
+            from .career import passage_made
+
+            passage_made(self, sailed=self.stream_the_log())
             if berth is not None:
                 self.narrator.gone_alongside(berth)
             return False
@@ -429,6 +435,50 @@ class Conned:
         )
         wanted = MASTER_MARGIN if margin is None else float(margin)
         return water_along(here, here.moved(heading, look), self.draft + wanted, world)
+
+    def water_before_her(self, speed, seconds=None):
+        """
+        The least water on the stretch she is about to cross.
+
+        Args:
+            speed (float): How fast she is going, in metres per second.
+            seconds (float, optional): How far ahead to look, in seconds of running.
+
+        Returns:
+            found (GroundingResult or None): The shallowest contact on the corridor ahead,
+                or None if there is nothing to sound with.
+
+        Notes:
+            The same look-ahead the sailing master uses, deliberately - so a captain
+            steering by hand is warned of exactly what would have stopped his mate, and the
+            two never disagree about where the water goes.
+
+        """
+        from .grounding import check_swept_grounding
+        from .voyage import LOOKAHEAD_METRES, LOOKAHEAD_SECONDS
+
+        world = self.map_here()
+        here = self.maritime_position
+        if world is None or here is None:
+            return None
+
+        look = max(
+            LOOKAHEAD_METRES,
+            abs(float(speed)) * (LOOKAHEAD_SECONDS if seconds is None else seconds),
+        )
+        return check_swept_grounding(
+            here,
+            here.moved(self.heading, look),
+            self.heading,
+            self.draft,
+            0.0,
+            self.length,
+            self.beam,
+            world,
+            time_provider().now(),
+        )
+
+    # --- persistence --------------------------------------------------------
 
     def fall_off(self, heading, speed, margin=None):
         """

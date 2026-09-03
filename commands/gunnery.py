@@ -5,10 +5,8 @@ The gun deck: serving her, laying her, and firing.
 
 from ..ammunition import DEFAULT_SHOT, SHOT_TYPES, shot_named
 from ..config import rng_context, time_provider
-from ..damage import serving_time
 from ..observation import DEFAULT_HEIGHT_OF_EYE, IDENTIFIED
 from ..rng import COMBAT
-from ..sailing import hands_aloft
 from ..tactical import AFT, FORWARD, PORT_BROADSIDE, STARBOARD_BROADSIDE
 from ..vessel import WEATHER_DECKS
 from ..weapons import serve
@@ -103,9 +101,7 @@ class CmdLoad(MaritimeCommand):
                 # so a ship that has shortened down serves her battery faster. That
                 # is the other half of what fighting sail buys, and the reason a ship
                 # cleared for action carries less canvas than one on passage.
-                seconds = serving_time(
-                    mount.weapon.reload_time, vessel.damage, vessel.hesitation
-                ) * (1.0 + hands_aloft(vessel.sail_plan))
+                seconds = vessel.serving_seconds(mount)
                 vessel.replace_mount(serve(mount, now, seconds, charge))
                 served += 1
 

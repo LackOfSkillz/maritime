@@ -30,7 +30,9 @@ from evennia.objects.objects import DefaultObject
 
 from .boarding import Boarded
 from .aftermath import CountsTheCost
+from .boats import Boats
 from .burning import Burns
+from .career import KeepsALog
 from .consorts import InCompany
 from .ledger import Purse
 from .repairs import Mends
@@ -38,6 +40,14 @@ from .rating import Rated
 from .stations import Stationed
 from .flooding import MakesWater
 from .cables import Springs
+from .orders import UnderOrders
+from .passengers import CarriesPassengers
+from .provisioning import SECONDS_A_DAY, Provisioned
+from .economy import Trades
+from .refits import Refitted
+from .sections import Sectioned
+from .towing import Tows
+from .wrecks import Wrecked
 from .charts import Charted
 from .crew import Crewed
 from .damage import HULL, Damaged
@@ -113,7 +123,9 @@ class Vessel(
     Conned,
     Owned,
     Boarded,
+    Boats,
     Burns,
+    KeepsALog,
     InCompany,
     Mends,
     Purse,
@@ -122,6 +134,14 @@ class Vessel(
     CountsTheCost,
     MakesWater,
     Springs,
+    Trades,
+    Refitted,
+    Provisioned,
+    Tows,
+    CarriesPassengers,
+    UnderOrders,
+    Sectioned,
+    Wrecked,
     Crewed,
     Handled,
     Damaged,
@@ -612,6 +632,12 @@ class Vessel(
         # passage - a list of marks that do not move - and she is following a ship. Both
         # at once would give the helm to whichever was asked last, so ordering either
         # gives up the other and only one of these ever does anything.
+        # **Standing orders come before the mate.** A captain who left word that she is to
+        # shorten down when it blows meant *before* the mate carries what the wind allows,
+        # not after him - and the condition is re-read here every tick rather than latched,
+        # which is what lets an order let go of her again when the squall passes.
+        self.obey_standing_orders()
+
         self.work_station()
         self.work_her()
 
@@ -623,6 +649,11 @@ class Vessel(
         # Time is the only thing that brings back the wounded and the men who
         # broke, so it happens on the watch rather than by anybody ordering it.
         self.stand_watch_over_the_hurt()
+
+        # **And they eat on the watch too.** Stores are the pacing lever: how far she can go
+        # is what she has aboard divided by how many she is feeding, and both of those are
+        # things a player chose. Running out costs morale rather than lives.
+        self.eat(elapsed / SECONDS_A_DAY)
 
         # The carpenter's party works on the watch, like everything else that takes
         # time rather than an order. Nobody set to it means nothing happens.
@@ -663,6 +694,11 @@ class Vessel(
 
         floor = steerage_floor(wind, self.sail_plan) if under_sail else 0.0
         after = advance(before, orders, limits, elapsed, turn_floor=floor)
+
+        # The log. Entered from what she actually covered rather than from her ordered
+        # speed, so leeway and a foul tide are both in it - which is the difference
+        # between what she sailed and what the chart says the passage was.
+        self.enter_in_the_log(before.position.horizontal_distance_to(after.position))
 
         if under_sail and after.speed > 0.0:
             slip = leeway_angle(after.heading, wind, self.sail_plan, after.speed)
@@ -777,6 +813,12 @@ class Vessel(
         narrator = self.narrator
         narrator.underway(before, after)
 
+        # **The tow follows the step the tug just took, not the one before it.** She has no
+        # helm of her own while she is on the line, so she is placed astern rather than
+        # steered - and placed here, where the tug's new position is known, rather than at
+        # the top of the tick where it is still the last one.
+        self.drag_the_tow()
+
         # **The lead goes in ahead of her, which is what a leadsman is for.**
         #
         # This warned on the water under her middle, which is the water she has already
@@ -789,50 +831,6 @@ class Vessel(
         # and it turns a grounding from an ambush into a decision somebody made.
         narrator.soundings(self.water_before_her(after.speed) or contact)
         return True
-
-    def water_before_her(self, speed, seconds=None):
-        """
-        The least water on the stretch she is about to cross.
-
-        Args:
-            speed (float): How fast she is going, in metres per second.
-            seconds (float, optional): How far ahead to look, in seconds of running.
-
-        Returns:
-            found (GroundingResult or None): The shallowest contact on the corridor ahead,
-                or None if there is nothing to sound with.
-
-        Notes:
-            The same look-ahead the sailing master uses, deliberately - so a captain
-            steering by hand is warned of exactly what would have stopped his mate, and the
-            two never disagree about where the water goes.
-
-        """
-        from .grounding import check_swept_grounding
-        from .voyage import LOOKAHEAD_METRES, LOOKAHEAD_SECONDS
-
-        world = self.map_here()
-        here = self.maritime_position
-        if world is None or here is None:
-            return None
-
-        look = max(
-            LOOKAHEAD_METRES,
-            abs(float(speed)) * (LOOKAHEAD_SECONDS if seconds is None else seconds),
-        )
-        return check_swept_grounding(
-            here,
-            here.moved(self.heading, look),
-            self.heading,
-            self.draft,
-            0.0,
-            self.length,
-            self.beam,
-            world,
-            _now(),
-        )
-
-    # --- persistence --------------------------------------------------------
 
     def checkpoint(self):
         """
@@ -916,8 +914,15 @@ class Vessel(
         if not standing:
             return False
 
+        hurt = float(record.get("severity") or 0.0)
         self.aground = False
         self.db.grounding = None
+
+        # Said out loud, because a game counting seamanship needs to tell waiting for
+        # the tide apart from hauling her off - one is patience and the other is work.
+        from .career import TIDE, came_off_the_ground
+
+        came_off_the_ground(self, TIDE, hurt)
         self.narrator.floated_off()
         return True
 

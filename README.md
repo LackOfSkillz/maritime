@@ -10,9 +10,87 @@ standing. They carry characters in ordinary
 Evennia rooms while under way. The sea has a bottom, the bottom has depth, and the tide
 moves the surface over it. Genre-neutral, and usable with core Evennia alone.
 
+## Quick start
+
+Five minutes to a ship you are standing on, with core Evennia and nothing to install. The
+package lives at `evennia/contrib/full_systems/maritime` like any other contrib, and
+requires Evennia 6.1 or later.
+
+**1. Give the world a coast.** In `mygame/server/conf/settings.py`:
+
+```python
+MARITIME_MAP_PROVIDER = "evennia.contrib.full_systems.maritime.example.ExampleSeabed"
+MARITIME_CURRENT_PROVIDER = "evennia.contrib.full_systems.maritime.example.ExampleCurrents"
+MARITIME_WIND_BEARING = 165.0
+MARITIME_WIND_SPEED = 6.0
+```
+
+Every line is optional. With none of them you get a flat, still, windless sea — a legitimate
+world, and a dull one.
+
+**2. Add the builder command.** In `mygame/commands/default_cmdsets.py`:
+
+```python
+from evennia.contrib.full_systems.maritime.example import CmdMaritimeExample
+
+class CharacterCmdSet(default_cmds.CharacterCmdSet):
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+        self.add(CmdMaritimeExample())
+```
+
+**3. Start the driver, once per game.** Nothing moves without it:
+
+```python
+from evennia.utils import create
+from evennia.contrib.full_systems.maritime.scripts import MaritimeDriver
+
+create.create_script(MaritimeDriver)
+```
+
+**4. Reload, and run `example`** as a builder. You get a mainland with a pond, a river and a
+harbour town, six islands strung eastward, and three craft. It is safe to run twice.
+
+**5. Go and sail.** Walk to the Pond Shore, board the kayak, and paddle. Or find the sloop
+and take her to sea:
+
+```text
+> sail working
+You call out, "Set working sail!"
+The mate answers, "Working sail, aye sir."
+
+> helm 090
+You call out, "Helm, steer 0-9-0."
+The helmsman answers, "Steering 0-9-0 now, sir."
+The deck leans as she comes round to starboard.
+
+> sound
+You order a cast of the lead.
+The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
+
+> maritime help
+The Sailor's Handbook: http://localhost:4001/static/maritime/help.html
+It opens in your browser and can be left open while you sail.
+```
+
+**What to try next.** `make for <harbour>` hands the whole passage to a sailing master and
+takes her alongside at the far end. `lookout` from a masthead sees further than from the
+deck, because the horizon depends on how high you are standing. `stow 400 salt` and then
+`stow 400 wool` into the same hull, and watch which capacity stops you.
+
+The [handbook](web/static/maritime/help/index.md) is the manual — twenty-odd short pages
+ordered the way you would learn it. There is a page for putting the graphical interface on a
+web client, and a page for taking two layers of this and leaving the rest.
+
 ## Status
 
-**Early development.** Nothing here is API-stable.
+**Feature-complete against its roadmap, and not yet API-frozen.** All twenty-five numbered
+phases in `docs/architecture.md` read *done*, with 4,022 tests behind them. One row is
+open after them: fish, and what the sea feeds.
+
+Interfaces are settled where they have had a second caller and may still move where they have
+not. Nothing is deprecated, and `DECISIONS.md` records why each of the deliberate absences is
+absent.
 
 Working and tested:
 
@@ -26,14 +104,32 @@ Working and tested:
   berths, discovery of what nobody had seen before.
 - **Fighting.** Tactical geometry, weapons, ammunition as intent, point of impact and
   raking, damage tracks, battle sails, wind shadow, opportunity fire, how fast a crew
-  answers, ramming and sheering, boarding and grappling.
-- **People.** Who owns and commands a ship; her company - quality, morale, exhaustion and
-  mutiny, with marines, seamen and oarsmen as distinct divisions.
-- **The screen.** An optional graphical interface for web clients, which shows a chart at
-  sea and a clickable map of the town ashore, and runtime switches for whoever runs the
-  game.
+  answers, ramming and sheering, boarding, grappling and capture.
+- **Being hurt.** Fire and flooding, which compete for the same hands; holes in a named part
+  of her that let water in when they are lower than she is deep; her people driven up a deck
+  at a time as she fills; her own carpenter mending what he can and a yard finishing what he
+  cannot; her boats, and the water for whoever gets no seat; and where she lies afterwards,
+  with what floated off her and what can still be got out of her.
+- **People.** Who owns and commands a ship; her company — quality, morale, exhaustion and
+  mutiny, with marines, seamen and oarsmen as distinct divisions; six posts to stand and a
+  published order of succession; and one seam by which a game's own skills decide how well
+  each of them is kept.
+- **Trade and the world beyond the rail.** A purse on the hull, passages sold and refunded,
+  stores that run down and decide how far she can go, pilots, tows, refits, a price on a hull
+  and a price on what she carries — and a background sea of merchants, fishermen, patrols and
+  raiders, each of them a record advancing by arithmetic rather than a ship being simulated.
+- **The screen.** An optional graphical interface for web clients, which shows a chart at sea
+  and a clickable map of the town ashore, and runtime switches for whoever runs the game.
 
-Not built: fire, flooding, the strategic layer, and the service economy.
+**Commands do not yet cover all of it.** Twenty-two command modules cover sailing, fighting,
+mooring, pumping, repairing and building a hull. Standing orders, passengers, trade, stores,
+pilots, tows, refits and salvage are model and seam only — the calls, and a worked example of
+putting a command on one, are in the handbook under
+[what has no command yet](web/static/maritime/help/no-command-yet.md).
+
+What is otherwise absent is absent on purpose and argued in `DECISIONS.md`: no character
+system, no player money, no combat resolution for people, and no economy at all unless a game
+turns one on.
 
 The first vertical slice runs end to end: walk aboard at one quay, cast off, make sail,
 sail continuous water, sound your way through a channel past a rock ledge, come alongside
@@ -106,7 +202,7 @@ And the lead is cast the way a lead line is actually read:
 
 ```text
 > sound
-Elias orders a cast of the lead.
+You order a cast of the lead.
 The leadsman calls, "By the deep six!" That is 4.9 fathoms under her keel.
 ```
 
@@ -516,46 +612,11 @@ revisit interval rather than blocking the reactor.
 
 ## Installation
 
-Requires Evennia 6.1 or later. There is nothing to `pip install` — the package lives at
-`evennia/contrib/full_systems/maritime` like any other contrib.
+**The four steps are in [Quick start](#quick-start) above** — settings, the builder command,
+the driver script, and `example`. They are not repeated here, because instructions that live
+in two places go stale in one of them.
 
-**1. Point your game at the example world.** In `mygame/server/conf/settings.py`:
-
-```python
-MARITIME_MAP_PROVIDER = "evennia.contrib.full_systems.maritime.example.ExampleSeabed"
-MARITIME_CURRENT_PROVIDER = "evennia.contrib.full_systems.maritime.example.ExampleCurrents"
-MARITIME_WIND_BEARING = 165.0
-MARITIME_WIND_SPEED = 6.0
-```
-
-Every one of those is optional. With none of them you get a flat, still, windless sea,
-which is a legitimate world and a dull one. Replace them with your own classes when you
-have a coastline of your own — see [Settings](#settings).
-
-**2. Add the builder command.** In `mygame/commands/default_cmdsets.py`:
-
-```python
-from evennia.contrib.full_systems.maritime.example import CmdMaritimeExample
-
-class CharacterCmdSet(default_cmds.CharacterCmdSet):
-    def at_cmdset_creation(self):
-        super().at_cmdset_creation()
-        self.add(CmdMaritimeExample())
-```
-
-**3. Start the driver.** Once per game, or nothing moves:
-
-```python
-from evennia.utils import create
-from evennia.contrib.full_systems.maritime.scripts import MaritimeDriver
-
-create.create_script(MaritimeDriver)
-```
-
-**4. Reload, and run `example`** as a builder. It creates a mainland with a pond, a river
-and a harbour town, six islands strung eastward, and three craft. It is safe to run twice.
-
-Then walk to the Pond Shore, board the kayak, and start paddling.
+What follows is everything the quick start deliberately left out.
 
 ### The graphical interface, which is optional
 
@@ -887,6 +948,10 @@ All optional. Every one is prefixed `MARITIME_`.
 | `MARITIME_DISTANCE_UNITS` | `leagues` | `leagues`, `nautical`, `metric` or `raw` |
 | `MARITIME_DEPTH_UNITS` | `fathoms` | `fathoms`, `metres` or `raw` |
 | `MARITIME_DEFAULT_DEPTH` | `200.0` | Depth of the default flat sea, in metres |
+| `MARITIME_COMPETENCE_POLICY` | *well enough* to everything | Dotted path to `(character, post, vessel) -> 0..1`, for a game whose own skills decide how well a post is kept |
+| `MARITIME_ORDER_CONDITIONS` | the shipped six | A dict of extra conditions a standing order may ask about, merged over the shipped ones |
+| `MARITIME_ORDER_ACTIONS` | the shipped five | A dict of extra actions a standing order may take, merged the same way |
+| `MARITIME_CARGO_ECONOMY` | `False` | Turn on the shipped trade. Off by default, so a game with its own economy is untouched |
 
 ## Usage
 
@@ -1092,12 +1157,17 @@ Two copies of a manual is one copy and one lie — the second is always the stal
 nothing tells you which — so there is one set of words and the renderer is forty lines.
 
 It is in two halves. The first is for anybody aboard a ship: the helm, sailing, oars,
-navigation, soundings, harbours, the lookout, the guns, ramming, boarding, her people, cargo,
-ashore, and the interface. The second is for anybody building with it — the layers and which
-ones you actually need, the four integration steps, **four worked recipes for taking only
-part of it**, your own coast, your own ships, rooms and typeclasses, the seams your game's own
-decisions go in, and a full reference of every command and every setting grouped by what you
-are trying to do.
+navigation, soundings, harbours, the lookout, the guns, ramming, boarding, being hurt, wrecks
+and salvage, her people, the posts they stand, standing orders, cargo, trade, passengers,
+what a port sells, ashore, and the interface. The second is for anybody building with it —
+the layers and which ones you actually need, the four integration steps, **four worked
+recipes for taking only part of it**, your own coast, your own ships, a background world of
+merchants and raiders, rooms and typeclasses, the seams your game's own decisions go in, and
+a full reference of every command and every setting grouped by what you are trying to do.
+
+There is also a page for **what has no command yet** — the systems that are model and seam
+only, with the calls and a worked example of putting a command on one. A capability nobody
+can reach is a capability nobody will find, and the honest place to say so is the manual.
 
 A test holds the handbook to the game: every link between pages resolves, every page can get
 back to the contents, the contents lists every page, the command's own topic list and the
@@ -1110,7 +1180,7 @@ command that exists**.
 evennia test --settings settings.py evennia.contrib.full_systems.maritime
 ```
 
-**3546 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
+**4,022 tests**, of which forty-six are **scenarios** rather than unit tests — named voyages
 in `tests/test_scenarios.py` that set sail, stand on, and check where she ends up. They are
 the slowest part of the suite and worth it twice over: writing them found a sailing master
 who handed back the con at his last mark and then sailed twelve kilometres past it, and they
@@ -1197,16 +1267,21 @@ of wall time runs in milliseconds.
   do to a ship reaches into sailing and damage at once, and both of those decisions are
   the game's.
 - Nothing yet puts a player in the water. The projection can hold them, drift them and
-  describe the sea to them, but going over the side is something damage and boarding do,
-  and neither is built.
+  describe the sea to them. A ship that founders now puts her people into her boats and
+  whoever gets no seat into the water, and says so - but what the water then does to them
+  is the next entry, and is not this contrib's.
 - Being in the water costs nothing. There is no exhaustion, no cold and no drowning,
   because those are statements about how harsh a game is and would collide with the
   health and stamina the host game already has. Recorded in `DECISIONS.md`.
-- The water column is not built. `Buoyancy` carries a sink rate so that a wreck has
-  somewhere to go, but nothing yet decides when something stops floating, and nothing
-  can be dived on.
-- A port is a quay with berths. Anchorages, pilots, tugs, cargo handling and repair
-  facilities are all later phases.
+- The water column is thin, and deliberately. A wreck sinks at her own rate to the seabed
+  the chart already knows about, and can be worked while she is inside diving reach - but
+  there is nothing between the surface and the bottom. Nobody swims down, nothing lives at
+  a depth, and there is no pressure.
+- A port is a quay with berths, and now a berth may want a pilot and a hull may take one
+  aboard. Tugs are the same machinery as a tow; provisioning, repair and a price on a new
+  hull are all built. What a port has *not* got is an interior: a chandler is a berth flag
+  and a price, not a person behind a counter, and building that is a game deciding what its
+  world is like.
 - The default weather is one wind, one visibility and one sea everywhere. A game supplies
   a provider for anything better; call sites do not change.
 - Sea state slows a vessel and is described from the deck. Its effect on stability, gunnery,
@@ -1243,6 +1318,35 @@ of wall time runs in milliseconds.
   thing and the hold another, but cannot yet tell the captain and a deck hand standing
   side by side two different things. The ship's own cry uses her highest weather deck, so
   she calls a sighting the masthead can see even when nobody is up there.
+
+- **Several systems have no command yet.** Standing orders, passengers, trade, stores,
+  pilots, tows, refits and salvage are model and seam only. Every call returns a `Result`
+  with a refusal code, so writing one is about a dozen lines — the handbook page
+  [what has no command yet](web/static/maritime/help/no-command-yet.md) has a worked example
+  and the list of names already taken.
+- **The shipped economy is off unless a game turns it on**, and its standing worths are
+  authored rather than derived. Deriving value from how densely a thing stows is tempting and
+  wrong: hay is bulky and worth almost nothing, wine stows tighter and is worth fifty times
+  as much. The *prices* are derived — a port pays less for what it exports and more for what
+  it is short of — but what a tonne is worth to begin with is a table, and it says so.
+- **A wreck sinks through a thin water column.** She goes down at her own rate to the seabed
+  the chart knows about and can be worked while she is inside diving reach, but there is
+  nothing modelled between the surface and the bottom: nobody swims down, nothing lives at a
+  depth, and there is no pressure.
+- **A hole is measured against her waterline and nothing else.** No heel, so firing on the
+  downroll is not yet a thing a gunner can choose — the model publishes where a hole is and
+  what depth of water stands over it, and leaves the rest to the phase that owns aiming.
+- **The background world reports; it does not interrupt.** `encounters` says who is in the
+  offing and where they have got to. Materialising one into a real hull is a separate call a
+  game makes, because only a game knows whether its players are in a state to be interrupted
+  by a strange sail.
+- **A tow is placed, not coupled.** She is set astern of the tug on the tug's heading each
+  step, which is where a tow rides and is not a two-body model. She does not sheer about, and
+  a tow that ought to take charge in a following sea does not.
+- **Fish are not built.** Phase 27 on the roadmap: fish as a thing that is *somewhere*, so
+  the boats already working off their own coast are working over something real, a catch is
+  stores bought back at the cost of time, and a company's morale has something to be mended
+  by.
 
 ## License
 

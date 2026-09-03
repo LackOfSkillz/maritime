@@ -577,3 +577,44 @@ def competence_policy():
             f"(character, post, vessel), got {type(policy).__name__}."
         )
     return policy
+
+
+def order_conditions():
+    """
+    What a standing order is allowed to ask about.
+
+    Returns:
+        conditions (dict): Name to a callable taking a vessel and returning a bool.
+
+    Notes:
+        **A registry rather than a callable on the order**, because an order lives in an
+        Evennia attribute and an attribute is a pickle. A function stored there works
+        perfectly until the server reloads, which is the worst possible moment to find out.
+
+        The shipped set is what this contrib can answer out of state it already owns. A game
+        registers its own by pointing `MARITIME_ORDER_CONDITIONS` at a dict of its own,
+        which is merged over these - so a game can add `enemy_in_sight` and can also replace
+        `stranger_in_sight` with something that knows who is an enemy.
+
+    """
+    from .orders import CONDITIONS
+
+    return dict(CONDITIONS, **(get_setting("ORDER_CONDITIONS", None) or {}))
+
+
+def order_actions():
+    """
+    What a standing order is allowed to do.
+
+    Returns:
+        actions (dict): Name to a callable taking a vessel and returning whether it acted.
+
+    Notes:
+        Merged the same way as the conditions and for the same reason. What is shipped are
+        the things doable without knowing anything about a game: canvas, the helm, the pumps.
+        Anything that spends money, sends a message or fights somebody is a game's.
+
+    """
+    from .orders import ACTIONS
+
+    return dict(ACTIONS, **(get_setting("ORDER_ACTIONS", None) or {}))

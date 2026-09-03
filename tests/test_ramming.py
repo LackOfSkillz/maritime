@@ -748,7 +748,7 @@ class TestSheFiresIntoWhatIsAboutToHitHer(EmptySeaMixin, BaseEvenniaTest):
         ramming is worth attempting in the first place.
 
         """
-        from ..weapons import aspect_accuracy
+        from ..ballistics import aspect_accuracy
 
         self.assertLess(aspect_accuracy(0.0), aspect_accuracy(90.0))
 

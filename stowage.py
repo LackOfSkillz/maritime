@@ -55,6 +55,7 @@ from .cargo import (
     total_tonnes,
 )
 from .results import Result
+from .stations import HELM
 from .vessel import VesselCapacity
 
 # Why a transfer did not happen, or did not happen in full.
@@ -557,17 +558,31 @@ class Laden:
             returned something other than what was set would be a trap rather
             than a convenience.
 
-            Acceleration and turn rate are left alone. A loaded hull is slower to
-            gather way and slower to answer her helm as well, but by how much is a
-            question about her hull form rather than her tonnage, and inventing a
-            second and a third coefficient to look thorough would be inventing
-            them.
+            Acceleration is left alone. A loaded hull is slower to gather way as
+            well, but by how much is a question about her hull form rather than her
+            tonnage, and inventing a second coefficient to look thorough would be
+            inventing it.
+
+            Nor is her top speed left to her own tonnage alone. A hull with something on
+            the line astern is dragging it, and this is where that is felt - so a squadron
+            bringing two prizes in makes four knots and is caught by anything, which is what
+            makes taking a tow a decision.
+
+            Turn rate is *not* left alone either, and not for her tonnage - for
+            whoever has the wheel. `competence_at` has existed since posts did and
+            was read by nothing, which made the seam a claim rather than a rule; a
+            green helmsman being slower to answer is the plainest thing a helmsman
+            can be. A hull without posts at all is steered as well as she can be,
+            which is what she did before this line existed.
 
         """
         limits = self.motion_limits
+        helmsman = self.competence_at(HELM) if hasattr(self, "competence_at") else 1.0
+        clear = laden_speed(limits.max_speed, total_mass(self.cargo), self.deadweight)
         return replace(
             limits,
-            max_speed=laden_speed(limits.max_speed, total_mass(self.cargo), self.deadweight),
+            max_speed=self.dragging(clear) if hasattr(self, "dragging") else clear,
+            turn_rate=limits.turn_rate * helmsman,
         )
 
     def stowage(self):
@@ -708,6 +723,14 @@ class Laden:
             return TransferResult(success=False, code=NOT_ABOARD, refused=wanted)
 
         refused = max(0.0, wanted - moved)
+
+        # Announced here, at the one moment cargo actually leaves her, rather than wherever
+        # a game happens to run a sale. A cargo delivered is what a merchant's career is
+        # counted in, and the count should not depend on which command was typed.
+        from .career import cargo_landed
+
+        cargo_landed(self, getattr(commodity, "name", commodity), moved, self.docked_at)
+
         return TransferResult(
             success=True,
             code=PART_ONLY if refused > TOLERANCE else "",

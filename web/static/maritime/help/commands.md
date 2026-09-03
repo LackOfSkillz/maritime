@@ -1,6 +1,12 @@
 # Every command
 
-[Back to the handbook](index.md) · [For developers](for-developers.md)
+[Back to the handbook](index.md) · [For developers](for-developers.md) ·
+[What has no command yet](no-command-yet.md)
+
+**Not everything the contrib does is on this page.** Several of the newer systems — standing
+orders, passengers, trade, stores, pilots, tows, refits and salvage — are model and seam
+only, with nothing yet to type. They are listed, with the calls and a worked example of
+putting a command on one, in [what has no command yet](no-command-yet.md).
 
 Grouped by what you are trying to do, because that is how anybody looks for one. Alphabetical
 order is a filing decision, and this is a manual.
@@ -246,4 +252,5 @@ you are after.
 
 ---
 
-Next: **[Every setting](settings.md)**.
+Next: **[What has no command yet](no-command-yet.md)**, then
+**[every setting](settings.md)**.

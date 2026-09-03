@@ -423,7 +423,44 @@ class Lookout:
         if height_of_eye is None:
             height_of_eye = self.height_of_eye
         candidates = environment.vessels_within_sight(position, height_of_eye, exclude=self)
-        return environment.contacts_from(position, self.heading, height_of_eye, candidates)
+        seen = environment.contacts_from(position, self.heading, height_of_eye, candidates)
+        return self._noticed(seen, height_of_eye)
+
+    def _noticed(self, seen, height_of_eye):
+        """
+        What the lookout actually picks out of what is theoretically in sight.
+
+        Args:
+            seen (tuple): Everything the geometry allows.
+            height_of_eye (float): How high his eye is.
+
+        Returns:
+            noticed (tuple): What he reports.
+
+        Notes:
+            **The horizon is geometry and the lookout is attention, and they are not the
+            same thing.** A poor lookout cannot see further than the curve of the earth
+            allows, and shortening his horizon to model him would be saying he can - so
+            what a bad one loses is the faint stuff at the edge of vision, the topsail on
+            the skyline he has not picked out yet. He sees what is near perfectly well.
+
+            This is the second consequence `competence_at` finally buys. A game that points
+            `MARITIME_COMPETENCE_POLICY` at its own skills now gets a sharp-eyed lookout who
+            reports a stranger before a dull one does, which is what a lookout is for.
+
+        """
+        from .stations import LOOKOUT
+
+        sharpness = self.competence_at(LOOKOUT)
+        if sharpness >= 1.0:
+            return seen
+        return tuple(
+            sighting
+            for sighting in seen
+            if sighting.distance
+            <= sharpness
+            * geographic_range(height_of_eye, getattr(sighting.target, "air_draft", 0.0))
+        )
 
 
 # The four quarters of the horizon, as seen from a ship, by the relative bearing

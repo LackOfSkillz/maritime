@@ -27,9 +27,10 @@ and let the sea press it into the hole. It is slow, it costs you the sail, and i
 mend anything - but it turns a leak she cannot outpump into one she can, which is exactly
 what it did for the ships that survived to report it.
 
-**What is not here.** What becomes of the people when she goes down. That is the boats, and
-it is its own item - the ruling is in `DECISIONS.md` and the event this publishes carries
-enough for a game to act on in the meantime.
+**When she does go, her people go into the boats.** That is `boats`, and it is why having
+them shot away during the fight is a consequence that outlives it. Whoever gets no seat is
+in the water, and what *that* means is the game's - the event this publishes carries the
+conditions so it can decide well.
 
 """
 
@@ -40,6 +41,7 @@ from .damage import HULL
 from .events import Event, bus
 from .floating import Buoyancy
 from .results import Result
+from .vessel import OPEN
 
 #: The share of her buoyancy that has to be water before she goes down.
 FOUNDERS_AT = 1.0
@@ -75,6 +77,12 @@ FOTHERING_TIME = 900.0
 
 #: How much of the inflow a fothered sail holds back.
 FOTHERING_RELIEF = 0.6
+
+#: How deep the water gets in a compartment before it is given up.
+#:
+#: Half its height. A man works in water to his knees and not to his chest, and by the time
+#: it is over the gratings there is nothing down there worth doing anyway.
+GIVEN_UP_AT = 0.5
 
 #: How fast she goes down once she is no longer floating, in metres a second.
 FOUNDERING_RATE = 0.4
@@ -318,8 +326,111 @@ class MakesWater:
         Returns:
             rate (float): What she is making, as a share of her buoyancy per minute.
 
+        Notes:
+            **Two sources, added.** The hull track is her general condition - strained seams,
+            started planks, everything a number per track can say. `sections` adds what is
+            coming through holes that are actually below her waterline, which the track
+            cannot say because it does not know where anything is.
+
+            They are added rather than one replacing the other, because they are different
+            water. A ship with no holes in her still weeps at the seams if she has been
+            hammered, and a ship holed once below the waterline is in trouble that her
+            otherwise sound hull does not describe.
+
         """
-        return leak_rate(self.damage.of(HULL), self.speed, self.fothered)
+        seams = leak_rate(self.damage.of(HULL), self.speed, self.fothered)
+        holes = self.breach_inflow() if hasattr(self, "breach_inflow") else 0.0
+        return seams + (holes * (1.0 - FOTHERING_RELIEF) if self.fothered else holes)
+
+    def untenable(self):
+        """
+        Which of her compartments the water has driven her people out of.
+
+        Returns:
+            drowned (tuple): Compartments, lowest first.
+
+        Notes:
+            **She fills from the bottom**, which is not a modelling choice so much as the
+            only thing water does. The share of her buoyancy she has lost is taken as the
+            share of her internal height the sea has climbed, so the orlop goes first, the
+            hold next, and the weather deck only when she is going anyway.
+
+            **And it is given up before it is full**, at `GIVEN_UP_AT` of its own height.
+            A compartment that only counted as lost when it was full to the beams would let
+            a ship with a third of her buoyancy gone still have people working comfortably
+            in the bilge, and would drown them all at once at the end instead of driving
+            them up a deck at a time.
+
+            Derived on asking rather than flagged on each compartment. A stored flag would
+            have to be cleared when the pumps gained, and a hold that stayed marked flooded
+            after it had been pumped out is exactly the kind of stale state that survives
+            a code review and not a playtest.
+
+        """
+        rooms = [room for room in self.ship_rooms if room.exposure != OPEN]
+        if not rooms:
+            return ()
+
+        levels = sorted({room.deck_level for room in rooms})
+        risen = float(self.water)
+        drowned = {
+            level
+            for rank, level in enumerate(levels)
+            if risen >= (rank + GIVEN_UP_AT) / len(levels)
+        }
+        return tuple(
+            sorted(
+                (room for room in rooms if room.deck_level in drowned),
+                key=lambda room: room.deck_level,
+            )
+        )
+
+    def highest_deck(self):
+        """
+        Returns:
+            room (object or None): The compartment furthest from the water.
+
+        """
+        rooms = list(self.ship_rooms)
+        if not rooms:
+            return None
+        return max(rooms, key=lambda room: (room.exposure == OPEN, room.deck_level))
+
+    def flood_out(self):
+        """
+        Get her people out of the compartments the sea has taken.
+
+        Returns:
+            moved (tuple): Who had to leave.
+
+        Notes:
+            **Up, not off.** Somebody driven out of a flooded hold is on deck, not in the
+            water - she has not foundered yet, and confusing the two would drown a crew
+            every time a hold took water. `abandon_ship` is a different moment and this is
+            not it.
+
+            Called from the tick, so a player standing in the hold of a ship that is filling
+            is moved by the water rather than by a message telling them they ought to move.
+
+        """
+        drowning = self.untenable()
+        if not drowning:
+            return ()
+
+        higher = self.highest_deck()
+        if higher is None or higher in drowning:
+            return ()
+
+        moved = []
+        for room in drowning:
+            for thing in tuple(room.contents):
+                if getattr(thing, "destination", None) is not None:
+                    continue
+                if not thing.is_typeclass("evennia.objects.objects.DefaultCharacter", exact=False):
+                    continue
+                thing.location = higher
+                moved.append(thing)
+        return tuple(moved)
 
     def man_pumps(self, hands):
         """
@@ -450,6 +561,9 @@ class MakesWater:
 
         if foundered:
             self._founder()
+        else:
+            # She is not gone, but the hold may be. Whoever is standing in it comes up.
+            self.flood_out()
 
         return WaterResult(
             success=True,
@@ -476,6 +590,18 @@ class MakesWater:
 
         """
         self.buoyancy = Buoyancy(floats=False, sink_rate=FOUNDERING_RATE)
+
+        # **The boats, and then the water.** Her people go over the side before she does,
+        # into whatever boats she has left - which is why having them shot away during the
+        # fight is a consequence that outlives it. Whoever gets no seat is in the water, and
+        # what that means is the game's: the event below carries what it needs to decide.
+        self.abandon_ship()
+
+        # **And then she is a place.** She stops being a ship the moment the buoyancy goes,
+        # but she does not stop being *somewhere* - `wrecks` records when, lets what will
+        # float free do so, and hands the rest to the seabed she sank over.
+        self.go_down()
+
         company = self.company
         bus().publish(
             Foundered(

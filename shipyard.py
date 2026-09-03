@@ -727,7 +727,77 @@ def figures(name):
         "hold": hold_of(spec["length"], spec["beam"], spec["usable"]),
         "berths": spec["berths"],
         "compartments": len(spec["decks"]),
+        "price": price_of(name),
     }
+
+
+#: What a ton burthen costs, in the smallest coin.
+#:
+#: **Ships were contracted and bought by the ton burthen**, which is why the price hangs off
+#: the one figure this module already computes rather than off a table somebody has to keep
+#: in step with the hulls. A builder who draws a bigger ship gets a dearer one without
+#: touching anything, and a rig that is added later is priced the moment it exists.
+#:
+#: Sized against the example world's starting purse so the demo loop - buy a hull, provision
+#: her, load a cargo, make a passage - is reachable. Somebody arriving to see what this
+#: contrib does should be stopped by the sea, not by pocket money.
+PER_TON_BURTHEN = 1400
+
+#: What each rig costs against a plain fore-and-aft hull of the same burthen.
+#:
+#: A square rig is dearer than she looks: more spars, more standing rigging, more blocks,
+#: and a great deal more of all of it aloft. A lug sits just above a bare fore-and-aft rig -
+#: which is what made it the working rig of small craft that could not afford the other - and
+#: a gaff rig above that again, for the boom, the gaff and the throat and peak halyards that
+#: come with it.
+#:
+#: **Every rig the yard builds is in here, and nothing else is.** A missing one would be
+#: priced as the cheapest by a default and look right; a spare one would sit there looking
+#: correct for ever. Both are pinned by tests, because the first of them was found by one.
+RIG_COST = {"fore-and-aft": 1.0, "lug": 1.15, "gaff": 1.2, "square": 1.45}
+
+
+def price_of(name, per_ton=PER_TON_BURTHEN):
+    """
+    What a hull of this rig costs new.
+
+    Args:
+        name (str): One of `NAMES`.
+        per_ton (int, optional): What a ton burthen costs, in the smallest coin.
+
+    Returns:
+        price (Coin or None): What the yard wants, or None if there is no such rig.
+
+    Notes:
+        Derived from her burthen and her rig, so the seven hulls are priced in order of size
+        without anybody deciding what order that is - and so the yawl and the frigate are
+        priced by the same rule rather than by two opinions.
+
+    """
+    from .ledger import Coin
+
+    spec = specification(name)
+    if spec is None:
+        return None
+    tons = burthen(spec["length"], spec["beam"])
+    # Subscripted rather than fetched with a default, deliberately. A `get` here priced a
+    # gaff cutter as a bare fore-and-aft hull and looked entirely correct doing it - the
+    # kind of silent fallback that survives review and is found by a completeness test.
+    rigging = RIG_COST[spec["rig"]]
+    return Coin(smallest=int(round(tons * float(per_ton) * rigging)))
+
+
+def prices():
+    """
+    Returns:
+        prices (dict): Every rig by name, and what it costs.
+
+    Notes:
+        What a menu reads. The menu itself is a game's - see `docs/shipyard.md` - but what
+        each hull is worth is a fact about the hull, so it lives here beside her dimensions.
+
+    """
+    return {name: price_of(name) for name in NAMES}
 
 
 def capacity_of(name):

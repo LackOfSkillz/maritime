@@ -19,7 +19,7 @@ from ..position import WorldPosition
 from ..rooms import ShipRoom
 from ..typeclasses import Vessel
 from ..vessel import OPEN
-from ..weapons import ANCHORED_STEADINESS, MAX_SEA_PENALTY, sea_accuracy
+from ..ballistics import ANCHORED_STEADINESS, MAX_SEA_PENALTY, sea_accuracy
 from ..weather import CALM, ROUGH
 from .base import EmptySeaMixin
 

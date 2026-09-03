@@ -39,6 +39,7 @@ TOO_LONG = "too_long"
 TOO_BEAMY = "too_beamy"
 TOO_DEEP = "too_deep"
 OCCUPIED = "occupied"
+WANTS_A_PILOT = "wants_a_pilot"
 
 # How close she must be for lines to reach the shore, in metres. Generous: the
 # last of an approach was warped or poled in, and this is the range at which that
@@ -67,11 +68,17 @@ class Berth:
         max_length (float): Longest vessel that fits, in metres.
         max_beam (float): Widest vessel that fits, in metres.
         max_draft (float): Deepest vessel the water there will take, in metres.
+        pilotage (bool): Whether a stranger needs a pilot to come in here.
 
     Notes:
         Dimensions are the reason berths exist rather than dock-anywhere. A hull
         that has been fitted out until she draws another half metre may no longer
         fit her home berth, which is the tradeoff made physical.
+
+        Pilotage is off by default, and that is the important half of it: a game
+        that has not thought about pilots must not find its ships refused at every
+        quay. A builder who marks a berth for pilotage is saying something about
+        that place - a bar, a tide race, a channel nobody can read from seaward.
 
     """
 
@@ -81,6 +88,7 @@ class Berth:
     max_length: float = 0.0
     max_beam: float = 0.0
     max_draft: float = 0.0
+    pilotage: bool = False
 
     def __post_init__(self):
         object.__setattr__(self, "heading", normalize_bearing(self.heading))
@@ -151,7 +159,7 @@ def alongside_side(heading, berth_heading):
     return "port" if abs(bearing_difference(berth_heading, heading)) < 90.0 else "starboard"
 
 
-def can_dock(position, speed, heading, length, beam, draft, berth, occupied=False):
+def can_dock(position, speed, heading, length, beam, draft, berth, occupied=False, piloted=True):
     """
     Test a ship against a berth.
 
@@ -164,6 +172,8 @@ def can_dock(position, speed, heading, length, beam, draft, berth, occupied=Fals
         draft (float): How deep she sits, in metres.
         berth (Berth): The berth she is trying for.
         occupied (bool, optional): Whether somebody else is already lying there.
+        piloted (bool, optional): Whether she has a pilot aboard. True by default, so a
+            game that models no pilots is refused nothing.
 
     Returns:
         result (DockingResult): Successful if she can be made fast, and failed
@@ -184,6 +194,19 @@ def can_dock(position, speed, heading, length, beam, draft, berth, occupied=Fals
     misfit = berth.takes(length, beam, draft)
     if misfit:
         return DockingResult.failed(misfit, berth=berth, distance=distance)
+
+    # Discovered before the approach, not during it. A pilot boards outside, so a stranger
+    # off a pilotage port learns she wants one while there is still sea room to wait in -
+    # which is the difference between an inconvenience and a grounding.
+    #
+    # **Safe for a world built before this field existed**, and worth knowing why: berths are
+    # stored in the database, and unpickling one restores its state without running
+    # `__post_init__`. What saves it is that a dataclass default lives on the *class*, so an
+    # old berth falls through to it and wants no pilot - which is both the safe answer and
+    # the true one. A field added here without a default would not be safe, and that is the
+    # rule this comment exists to record.
+    if berth.pilotage and not piloted:
+        return DockingResult.failed(WANTS_A_PILOT, berth=berth, distance=distance)
 
     if distance > APPROACH_RANGE:
         return DockingResult.failed(TOO_FAR, berth=berth, distance=distance)
@@ -291,6 +314,56 @@ class Berthing:
 
         """
         self.db.beam = float(metres)
+
+    @property
+    def pilot(self):
+        """
+        Returns:
+            pilot (object or None): Whoever is conning her in.
+
+        Notes:
+            An object rather than a flag, because a pilot is somebody - a game may want him
+            paid, or wanting to be put ashore again, or refusing to take a ship he does not
+            like the look of. What this contrib needs to know is only whether he is aboard.
+
+        """
+        aboard = self.db.pilot
+        return aboard if aboard is not None and aboard.pk else None
+
+    @property
+    def piloted(self):
+        """
+        Returns:
+            piloted (bool): Whether she has a pilot aboard.
+
+        """
+        return self.pilot is not None
+
+    def take_a_pilot(self, pilot):
+        """
+        Args:
+            pilot (object): Whoever is coming aboard to con her in.
+
+        Returns:
+            taken (bool): Whether he was taken.
+
+        """
+        if pilot is None:
+            return False
+        self.db.pilot = pilot
+        return True
+
+    def discharge_pilot(self):
+        """
+        Put him back in his boat.
+
+        Returns:
+            pilot (object or None): Whoever it was.
+
+        """
+        going = self.pilot
+        self.db.pilot = None
+        return going
 
     @property
     def docked_at(self):

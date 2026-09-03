@@ -17,6 +17,7 @@ from ..motion import HelmOrders
 from ..ports import (
     BADLY_ALIGNED,
     OCCUPIED,
+    WANTS_A_PILOT,
     TOO_BEAMY,
     TOO_DEEP,
     TOO_FAR,
@@ -36,6 +37,7 @@ BERTH_REFUSALS = {
     TOO_BEAMY: "She is too broad in the beam for that berth.",
     TOO_DEEP: "She draws too much for the water alongside there.",
     OCCUPIED: "There is a ship lying there already.",
+    WANTS_A_PILOT: "No stranger goes in there without a pilot. Lie off and wait for one.",
 }
 
 
@@ -97,6 +99,7 @@ class CmdDock(MaritimeCommand):
             vessel.draft,
             berth,
             occupied=port.occupant_of(berth) is not None,
+            piloted=vessel.piloted,
         )
         if not result:
             refusal = BERTH_REFUSALS.get(result.code, "She cannot lie there.")

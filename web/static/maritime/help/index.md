@@ -33,15 +33,29 @@ Ordered the way you would learn it, not alphabetically.
 9. **[Ramming](ramming.md)** — running one hull into another, and what it costs you
 10. **[Boarding](boarding.md)** — grapples, carrying a deck, and striking your colours
 
+## When it goes wrong
+
+11. **[Being hurt](damage.md)** — fire, water, holes below the waterline, and going down
+12. **[Wrecks and salvage](wrecks.md)** — where she lies afterwards, and what can be got out
+    of her
+
 ## The ship herself
 
-11. **[Her people](crew.md)** — the company, what they are worth, and what they will take
-12. **[Cargo](cargo.md)** — loading, discharging, and what a full hold does to her
+13. **[Her people](crew.md)** — the company, what they are worth, and what they will take
+14. **[Posts](posts.md)** — the six, succession, and the one seam your own skills plug into
+15. **[Standing orders](standing-orders.md)** — what she is to do when nobody is asking
+16. **[Cargo](cargo.md)** — loading, discharging, and what a full hold does to her
+
+## Making a living
+
+17. **[Trade](trade.md)** — what a cargo is worth, and why it is worth more there than here
+18. **[Passengers](passengers.md)** — cargo with an opinion
+19. **[What a port sells](services.md)** — stores, pilots, tows, refits, and a price on a hull
 
 ## On land
 
-13. **[Ashore](ashore.md)** — the town, the counters, and walking about
-14. **[The interface](interface.md)** — the panel, the chart, the map, and the switches
+20. **[Ashore](ashore.md)** — the town, the counters, and walking about
+21. **[The interface](interface.md)** — the panel, the chart, the map, and the switches
 
 ---
 
@@ -50,20 +64,24 @@ Ordered the way you would learn it, not alphabetically.
 **You do not have to take all of this.** A game that wants a ferry between two islands takes
 two layers and stops, and that is not a compromise — it is what the layers are for.
 
-15. **[For developers](for-developers.md)** — the layers, and which ones you actually need
-16. **[Putting it in an existing game](integrating.md)** — four steps, none of which touch a
+22. **[For developers](for-developers.md)** — the layers, and which ones you actually need
+23. **[Putting it in an existing game](integrating.md)** — four steps, none of which touch a
     file outside your own game
-17. **[Taking only part of it](adopting-a-part.md)** — the ferry, the rowing boat, the
+24. **[Taking only part of it](adopting-a-part.md)** — the ferry, the rowing boat, the
     trader: four worked recipes with the rest left out
-18. **[Your own coast](your-own-world.md)** — seabed, weather, currents, tides and marks
-19. **[Your own ships](your-own-ships.md)** — hulls, rigs, guns and crews
-20. **[Rooms and typeclasses](rooms-and-typeclasses.md)** — what to mix into your own rooms
-21. **[Hooking into it](extending.md)** — narration, ownership, and the decisions left to you
+25. **[Your own coast](your-own-world.md)** — seabed, weather, currents, tides and marks
+26. **[Your own ships](your-own-ships.md)** — hulls, rigs, guns and crews
+27. **[The sea beyond the rail](the-sea-beyond.md)** — a background world of merchants,
+    patrols and raiders that costs almost nothing to have
+28. **[Rooms and typeclasses](rooms-and-typeclasses.md)** — what to mix into your own rooms
+29. **[Hooking into it](extending.md)** — narration, ownership, and the decisions left to you
 
 ## Reference
 
-22. **[Every command](commands.md)** — grouped by what you are trying to do
-23. **[Every setting](settings.md)** — grouped the same way
+30. **[Every command](commands.md)** — grouped by what you are trying to do
+31. **[What has no command yet](no-command-yet.md)** — the systems that are API only, and how
+    to put a command on one
+32. **[Every setting](settings.md)** — grouped the same way
 
 ---
 

@@ -87,4 +87,4 @@ worth more.
 
 ---
 
-Next: **[Her people](crew.md)** — who does all this.
+Next: **[Being hurt](damage.md)** — what all that does to her.

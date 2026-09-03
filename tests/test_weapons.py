@@ -10,22 +10,24 @@ from ..position import EAST, NORTH, WorldPosition
 from ..tactical import FORWARD, PORT_BROADSIDE, STARBOARD_BROADSIDE
 from ..typeclasses import Vessel
 from ..weapons import (
-    END_ON_FRACTION,
-    LONG_RANGE_ACCURACY,
     NOT_LOADED,
     OUT_OF_RANGE,
     STILL_RELOADING,
     WILL_NOT_BEAR,
     Mount,
     WeaponType,
-    aim_point,
-    aspect_accuracy,
     can_fire,
     fire,
+    serve,
+)
+from ..ballistics import (
+    END_ON_FRACTION,
+    LONG_RANGE_ACCURACY,
+    aim_point,
+    aspect_accuracy,
     hit_chance,
     range_accuracy,
     sea_accuracy,
-    serve,
     time_of_flight,
 )
 from ..weather import CALM, PHENOMENAL

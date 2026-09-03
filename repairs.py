@@ -30,6 +30,7 @@ from dataclasses import dataclass
 
 from .damage import HULL, MAST_DOWN_AT, OARS, RIGGING, WEAPONS
 from .results import Result
+from .stations import CARPENTER
 
 #: What a fully-manned carpenter's party mends in a day, as a fraction of one track.
 #:
@@ -223,6 +224,30 @@ class Mends:
             wanting.append(RIGGING)
         return tuple(wanting)
 
+    def repair_rate(self, quiet=None):
+        """
+        How fast the work is going.
+
+        Args:
+            quiet (bool, optional): Whether she is doing nothing else. Worked out if not
+                given.
+
+        Returns:
+            rate (float): Fraction of a track per day.
+
+        Notes:
+            **Where the carpenter finally costs or saves something.** `competence_at` has
+            existed since posts did and was read by nothing, which made the whole seam a
+            claim rather than a rule - a game pointing `MARITIME_COMPETENCE_POLICY` at its
+            own skill system got a number back and no consequence. A good carpenter getting
+            more out of the same party is the plainest consequence there is.
+
+        """
+        if quiet is None:
+            quiet = doing_nothing_else(self.speed, self.sail_plan.area)
+        rate = party_rate(self.carpenters) * (DOING_NOTHING_ELSE if quiet else 1.0)
+        return rate * self.competence_at(CARPENTER)
+
     def repair_report(self):
         """
         Returns:
@@ -230,7 +255,7 @@ class Mends:
 
         """
         quiet = doing_nothing_else(self.speed, self.sail_plan.area)
-        rate = party_rate(self.carpenters) * (DOING_NOTHING_ELSE if quiet else 1.0)
+        rate = self.repair_rate(quiet)
         return RepairResult(
             success=True,
             mended={},

@@ -34,11 +34,14 @@ Four things, and none of them is a number in a menu:
 
 ## What it is worth
 
-Nothing here has an opinion about that. Prices, contracts, freight rates and who is buying
-belong to the game this is installed in, because they collide with whatever economy it
+**Off unless you turn it on.** With `MARITIME_CARGO_ECONOMY` unset — the default — nothing
+here has an opinion about prices at all, because they collide with whatever economy the game
 already has. The islands each want one cargo and offer another, which is enough to make a
 round worth running.
 
+Turn it on and a port pays less for what it exports and more for what it is short of, which
+draws the trade routes without anybody authoring one. See **[trade](trade.md)**.
+
 ---
 
-Next: **[Ashore](ashore.md)**.
+Next: **[Trade](trade.md)**.

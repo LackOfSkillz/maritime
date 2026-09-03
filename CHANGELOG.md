@@ -7,9 +7,16 @@ Entry prefixes follow Evennia's own changelog convention (`Feat:`, `Fix:`, `Docs
 
 ## Unreleased
 
-Nothing released yet. Foundations, the spatial model, vessels, the simulation
-service, sailing, grounding and who owns a ship are in place; ports, navigation,
-weather, crew, combat and damage are not.
+Nothing released yet, and the roadmap in `docs/architecture.md` now reads *done*
+against all twenty-five phases. The spatial model, vessels, the simulation service,
+sailing, grounding, ports, navigation, weather, crew, combat, damage, boarding and
+capture, wrecks and salvage, standing orders, passengers, the cargo economy, the
+services a port sells, ownership, and a background world that fills the sea are all
+in place.
+
+What is *not* here is deliberate rather than missing, and each of those is argued in
+`DECISIONS.md`: no character system, no player money, no combat resolution for people,
+and no economy at all unless a game asks for one.
 
 ### Fix
 
@@ -67,6 +74,157 @@ weather, crew, combat and damage are not.
   the same thing. The mode change is now the moment both caches are cleared, because it is
   the one place that knows the panels were thrown away. A mover who has *not* changed mode
   keeps them, or the board would redraw on every step along a deck.
+
+### Feat
+
+- **The twenty-five numbered phases are closed.** The ten that were still open are done, and
+  the summary of each is in `docs/architecture.md`. What follows is the short form.
+- Two rows added to the roadmap after it. **26** records what the client already does - it
+  follows the *player*, swapping to a chart at sea and a room map ashore, keyed on where
+  somebody is rather than on their having crossed a landmark. **27** is open: fish as a
+  thing that is somewhere, which would give the boats already working off their own coast
+  something real to work over, turn a catch into stores, and give a company's morale
+  something to be mended by.
+- **A wreck is a place, not an entry in a table.** She stops floating, sinks at her own rate
+  to the seabed the chart already knows about, and stays where she went down. Depth is the
+  whole of what gates salvage, because a ship lost on a bank is a salvage job and one lost
+  off soundings is a story - and a share of what she carried breaks free and drifts off on
+  the same current everything else afloat drifts on.
+- **A hole is under water when it is lower than she is deep**, which needs nothing new:
+  `draft` already knows how deep she sits and already grows with what is in her. So a laden
+  ship drowns from a hole a light one shrugs off, and - the part worth having - a ship
+  already making water settles onto her own wounds. Nobody wrote that spiral; it falls out
+  of measuring a hole against a waterline that moves.
+- **What comes through a hole is the square root of the head.** Torricelli, because that is
+  what a hole in a tank does, and because it gives the right shape: a hole well under her is
+  bad without being instantly fatal.
+- **She fills from the bottom, and gives a compartment up at half its height.** Her people
+  come up a deck at a time rather than all drowning at the end. Up, not off - `abandon_ship`
+  is a different moment.
+- **A shot goes into bow, waist or quarter by the bearing it came over**, which is both what
+  happens and why crossing the T was worth the manoeuvring.
+- **A background vessel is a record and a route, and she advances by arithmetic.** One
+  untouched for a week costs what one untouched for a second costs. Measured at 100, 500 and
+  1000. A hull carrying anything individual - a chest as much as a person - is refused
+  rather than summarised, because a summary that dropped what it could not carry would work
+  in every test and lose somebody's belongings the first time it mattered.
+- **The skill seam finally buys something.** `competence_at` had existed since posts did and
+  was read by nothing, which made the whole of `MARITIME_COMPETENCE_POLICY` a claim rather
+  than a rule. It now costs or saves four things, each the post doing what that post is for:
+  the helmsman answers, the lookout picks a faint sail off the skyline, the gunner gets his
+  people through the drill, the carpenter gets more out of the same party. The horizon is
+  geometry and the lookout is attention, and shortening his horizon would have said
+  otherwise.
+- **Standing orders: four plain values, so an order survives a reload.** A condition name, an
+  action name and a priority - a stored callable would work perfectly until the server
+  restarted. The highest priority whose condition holds is the one in force and only one is;
+  the rest are *named* as overridden, because an order losing silently is the worst thing
+  the module could do. Conditions are re-read every tick rather than latched, so a ship that
+  shortened down for a squall makes sail again when it passes.
+- **Passengers, who are cargo with an opinion.** He is bound for a named place, he paid
+  before he sailed, and if she does not go there he wants his money back - which is what
+  makes a captain who took a prize instead of a passage able to work out whether it was
+  worth it. A timetable that cannot be kept is refused before she sails: a run that does not
+  close pays for the passage home, or the second sailing starts late and every one after it
+  starts later.
+- **The cargo economy, off by default behind `MARITIME_CARGO_ECONOMY`.** A port has a
+  surplus of what it exports and a shortage of what it imports, and price follows from that
+  rather than from a table per quay - so the trade routes draw themselves. The worth of a
+  commodity lives in the optional module and not on `Commodity`, which stays silent about
+  value for every game that wants the stowage model without the prices. And it is authored
+  rather than dressed up as a derivation: hay and wine stow much alike and are not remotely
+  alike.
+- **A tow is placed astern, not steered**, and it costs the tug speed in the limits the tick
+  actually steers her by - which is what makes bringing a prize in a decision rather than a
+  formality. Her manifest counts, so the way to make a prize towable is to start throwing
+  cargo over the side.
+- **Stores are the pacing lever, and it is geography rather than a dial.** How far she can go
+  is what she has aboard divided by how many she is feeding, and both are things a player
+  chose. Days, not a percentage, because "eighteen days of stores and twenty-two days of
+  passage" is a decision. Running out costs morale rather than lives.
+- **A berth may want a pilot, off by default**, so a game that has thought about none is
+  refused at no quay. The refusal comes before the approach, while there is still sea room
+  to wait in.
+- **Hulls are priced by the ton burthen**, which is how ships were actually contracted - so
+  the seven shipped rigs are priced in order of size without anybody deciding what that
+  order is.
+- **She is valued on what she is, not on what she was.** Worth comes from the dimensions and
+  the condition she has now, so a lengthened hull is worth more and a hammered one less
+  without either being written down. Three refits, each changing a fact something already
+  reads; a refit that only made a line of text appear would be a cosmetic, and cosmetics are
+  a game's.
+- **Nobody authored a shipping lane.** A lane is what the ports are, so a builder who changes
+  what a place exports changes who sails past it. Merchants on those lanes, fishermen out
+  and home, patrols on a beat that closes, and raiders on the richest passage there is -
+  which is where the danger of a cargo comes from, and why loading tobacco is choosing a
+  dangerous voyage without anybody saying so.
+- **What she has done is counted where it happens**: a passage made, a cargo landed, and how
+  she came off the ground - the tide lifting her and being kedged off are told apart, because
+  a game rewarding seamanship rather than endurance needs to know which. The log counts what
+  she *sailed*, not the straight line, so beating up to windward pays.
+- **Boats, and then the water.** Seats are scarce, boats are shot away, and a ship that kept
+  hers saves her people. What happens to somebody in the water is the game's; this puts them
+  there and publishes the conditions.
+
+### Docs
+
+- **Nine new handbook pages**, and the contents rebuilt round them: being hurt, wrecks and
+  salvage, posts, standing orders, trade, passengers, what a port sells, the sea beyond the
+  rail, and what has no command yet. Same one set of files, still readable three ways.
+- **A page that admits a gap.** Several systems are model and seam only, and a capability
+  nobody can reach is a capability nobody will find — so *what has no command yet* lists
+  every one of them, the call to make, and a worked example of putting a command on one in
+  about a dozen lines. It also carries the warning that produced it: `buy` is already the
+  shop counter ashore, and two commands sharing a name do not raise, they displace.
+- **The package now exports what the new systems are made of.** Writing the handbook found
+  that `from ...maritime import Coin` failed - `Berth` was exported and `Coin`, `Market`,
+  `StrategicVessel`, `Passage` and `Anchorage` were not, so the first line of three worked
+  examples would have been an `ImportError`. Twenty-five names added to `__all__`, and the
+  whole of it now guarded by a test rather than trusted - every name resolves, none is
+  promised twice, and the list stays sorted so adding one is a one-line diff.
+  `passengers.Passage` is aliased to `PassengerPassage`, because two modules have a `Passage`
+  and they mean genuinely different things - a ship on her way somewhere, and one person's
+  booking.
+- **The README is out of early development** and opens with a five-minute quick start
+  instead of burying installation six hundred lines down. The Installation section no longer
+  repeats those steps - instructions that live in two places go stale in one of them.
+- Stale claims corrected rather than left standing. The README said fire, flooding, the
+  strategic layer and the service economy were not built; that the water column was not
+  built; that a port was a quay with berths and pilots were a later phase; and that going
+  over the side was something damage and boarding did, neither of which was built. All of
+  those had become untrue. `cargo.md` still said nothing here has an opinion about what a
+  cargo is worth.
+- The limitations list gained the honest new ones: no heel, so firing on the downroll is not
+  yet a gunner's choice; a tow is placed rather than coupled; the background world reports
+  and never interrupts; the economy's standing worths are authored and say so; and fish are
+  not built.
+
+### Chore
+
+- `ballistics` split out of `weapons`, which had reached the thousand-line ceiling. The seam
+  was already there: everything moved takes numbers and returns numbers - a distance, a sea
+  state, an aspect - with no mounts, no vessels and no database in it.
+- `water_before_her` moved from the typeclass into `Conned`, beside the look-ahead it is
+  deliberately identical to, so their agreement is visible in one file.
+
+### Fix
+
+- **A ship nobody has victualled is not a starving ship**, and without the flag that says
+  which, every hull in every existing world would have begun losing morale on the first tick
+  after this was installed - a famine shipped as a feature. Zero stores is a fact about what
+  she has, not about whether anybody ever gave her any. Exactly the shape of mistake the
+  purse made once. Once she has been stored she is in the model for good, because a ship that
+  has eaten everything aboard *is* starving and that is the whole point - and the guard
+  immediately caught a test that had been comparing short commons against a ship which was
+  not actually going hungry.
+- **A gaff rig was being priced as a bare fore-and-aft hull, and looked entirely correct
+  doing it.** A `dict.get` with a default is a silent fallback, and the completeness test
+  written alongside the prices is what found it. Both directions are now pinned: every rig
+  the yard builds is in the table, and nothing in the table is a rig nobody builds.
+- **`Trades.sell` would have sold the ship.** `Refitted.sell` already meant selling the
+  hull, and two mixins with the same public name do not raise - they displace one another.
+  Renamed to `sell_cargo` and `buy_cargo`, and `Refitted.take_in_hand` for the same reason
+  against `Mends.refit`. The guard in `test_mixins` exists because this has happened before.
 
 ### Feat
 

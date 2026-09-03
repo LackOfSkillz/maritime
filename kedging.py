@@ -315,9 +315,16 @@ def _settled(vessel, where, world, now, came, hoped):
         now,
     )
     if standing:
+        hurt = float((vessel.db.grounding or {}).get("severity") or 0.0)
         vessel.aground = False
         vessel.db.grounding = None
         vessel.checkpoint()
+
+        # The other way off, and the one worth more to anybody counting: she was hauled
+        # off by her own people rather than lifted by water that was coming anyway.
+        from .career import WORK, came_off_the_ground
+
+        came_off_the_ground(vessel, WORK, hurt)
         return Heave(CAME_OFF, moved=came, clearance=standing.clearance)
     return Heave(MOVED, moved=came, clearance=hoped)
 
